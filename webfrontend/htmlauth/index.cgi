@@ -34,7 +34,7 @@ use Cwd 'abs_path';
 use JSON qw( decode_json );
 use utf8;
 use warnings;
-#use strict;
+use strict;
 #use Data::Dumper;
 #no strict "refs"; # we need it for template system
 
@@ -51,6 +51,8 @@ my $saveformdata = 0;
 my $do = "form";
 my $helplink;
 my $helptemplate;
+my $storepath;
+my $fullpath;
 my $i;
 
 my $helptemplatefilename		= "help.html";
@@ -62,6 +64,9 @@ my $noticetemplatefilename 		= "notice.html";
 my $no_error_template_message	= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
 my $pluginconfigfile 			= "tts_all.cfg";
 my $pluginlogfile				= "error.log";
+my $lbhostname 					= lbhostname();
+my $ttsfolder					= "tts";
+my $mp3folder					= "mp3";
 #my $urlfile						= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
 my $log 						= LoxBerry::Log->new ( name => 'T2S Add-on', filename => $lbplogdir ."/". $pluginlogfile, append => 1, addtime => 1 );
 #my $helplink 					= "http://www.loxwiki.eu/display/LOXBERRY/Sonos4Loxone";
@@ -269,7 +274,6 @@ $template->param("DATADIR" => $lbpdatadir);
 # übergibt Log Verzeichnis und Dateiname an HTML
 $template->param("LOGFILE" , $lbplogdir . "/" . $pluginlogfile);
 
-
 ##########################################################################
 # check if config files exist and they are readable
 ##########################################################################
@@ -322,7 +326,32 @@ sub form {
 	$template		->param("VOICE" 		=> $pcfg->param("TTS.voice"));
 	$template		->param("CODE" 			=> $pcfg->param("TTS.messageLang"));
 	$template		->param("VOLUME" 		=> $pcfg->param("TTS.volume"));
-		
+	
+	# Get storage folder
+	$storepath = $pcfg->param("SYSTEM.path"),
+	
+	# Full path to check if folders already there
+	$fullpath = $storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder;
+	
+	# Split path
+	my @fields = split /\//, $storepath;
+	my $folder = $fields[3];
+
+	if ($folder ne "data")  {	
+		if(-d $fullpath)  {
+			LOGDEB "Directory already exists.";
+		} else {
+			# Create folder
+			mkdir($storepath."/".$lbhostname, 0777);
+			mkdir($storepath."/".$lbhostname."/".$ttsfolder, 0777);
+			mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder, 0777);
+			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' were created.";
+			LOGINF "Please copy your MP3 files to ../mp3 folder.";
+		}
+	} else {
+		LOGINF "Local dir has been selected.";
+	}
+	
 	# Load saved values for "select"
 	my $t2s_engine	= $pcfg->param("TTS.t2s_engine");
 	
@@ -352,8 +381,6 @@ sub form {
 	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
 	LoxBerry::Web::head();
 	LoxBerry::Web::pagestart($template_title, $helplink, $helptemplate);
-	#my $storage = LoxBerry::Storage::get_storage_html(formid => 'STORAGEPATH', type_usb => 1, type_local => 1, type_net => 1, readwriteonly => 1, label => "$SL{'T2S.SAFE_DETAILS'}");
-	#$template->param("STORAGEPATH", $storage);
 	print LoxBerry::Log::get_notifications_html($lbpplugindir);
 	print $template->output();
 	undef $template;	
@@ -363,9 +390,14 @@ sub form {
 	#my $content =  "Miniserver Nr. 1 heißt: $MiniServer und hat den Port: $MSWebPort User ist: $MSUser und PW: $MSPass.";
 	#my $template_title = '';
 	#LoxBerry::Web::lbheader($template_title);
-	#print $content;
+	#print $fullpath.'<br>';
+	#print $folder;
 	#LoxBerry::Web::lbfooter();
 	#exit;
+	
+	# /opt/loxberry/data/plugins/tts_all/loxberry-dev/tts/mp3 --> localdir
+	# /opt/loxberry/system/storage/usb/11f031a7-01/loxberry-dev/tts/mp3 --> USB
+	# /opt/loxberry/system/storage/smb/192.168.50.60/video/loxberry-dev/tts/mp3 --> NAS/Server
 
 }
 
