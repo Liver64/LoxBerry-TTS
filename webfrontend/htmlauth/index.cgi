@@ -394,11 +394,6 @@ sub form {
 	#print $folder;
 	#LoxBerry::Web::lbfooter();
 	#exit;
-	
-	# /opt/loxberry/data/plugins/tts_all/loxberry-dev/tts/mp3 --> localdir
-	# /opt/loxberry/system/storage/usb/11f031a7-01/loxberry-dev/tts/mp3 --> USB
-	# /opt/loxberry/system/storage/smb/192.168.50.60/video/loxberry-dev/tts/mp3 --> NAS/Server
-
 }
 
 #####################################################
