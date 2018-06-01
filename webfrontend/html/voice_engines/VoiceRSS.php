@@ -9,7 +9,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 	global $config, $messageid, $pathlanguagefile;
 	
 		$ttskey = $config['TTS']['API-key'];
-		$ttsaudiocodec = "48khz_16bit_stereo";
+		$ttsaudiocodec = "44khz_16bit_mono";
 		$textstring = urlencode($textstring);
 		
 		$file = "voicerss.json";

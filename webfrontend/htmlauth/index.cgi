@@ -30,6 +30,7 @@ use CGI;
 use LWP::Simple;
 use LWP::UserAgent;
 use File::HomeDir;
+use File::Copy;
 use Cwd 'abs_path';
 use JSON qw( decode_json );
 use utf8;
@@ -269,7 +270,7 @@ LOGDEB "Read main settings from " . $languagefile . " for language: " . $lblang;
 $template->param("PLUGINDIR" => $lbpplugindir);
 
 # übergibt Data Verzeichnis an HTML
-$template->param("DATADIR" => $lbpdatadir);
+#$template->param("DATADIR" => $lbpdatadir);
 
 # übergibt Log Verzeichnis und Dateiname an HTML
 $template->param("LOGFILE" , $lbplogdir . "/" . $pluginlogfile);
@@ -319,15 +320,16 @@ sub form {
 					label => "$SL{'T2S.SAFE_DETAILS'}");
 					
 	$template->param("STORAGEPATH", $storage);
-
+	
 	# fill saved values into form
 	$template		->param("SELFURL", $ENV{REQUEST_URI});
 	$template		->param("T2S_ENGINE" 	=> $pcfg->param("TTS.t2s_engine"));
 	$template		->param("VOICE" 		=> $pcfg->param("TTS.voice"));
 	$template		->param("CODE" 			=> $pcfg->param("TTS.messageLang"));
 	$template		->param("VOLUME" 		=> $pcfg->param("TTS.volume"));
+	$template		->param("DATADIR" 		=> $pcfg->param("SYSTEM.path"));
 	
-	# Get storage folder
+	# Get current storage folder
 	$storepath = $pcfg->param("SYSTEM.path"),
 	
 	# Full path to check if folders already there
@@ -336,7 +338,7 @@ sub form {
 	# Split path
 	my @fields = split /\//, $storepath;
 	my $folder = $fields[3];
-
+	
 	if ($folder ne "data")  {	
 		if(-d $fullpath)  {
 			LOGDEB "Directory already exists.";
@@ -345,8 +347,23 @@ sub form {
 			mkdir($storepath."/".$lbhostname, 0777);
 			mkdir($storepath."/".$lbhostname."/".$ttsfolder, 0777);
 			mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder, 0777);
-			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' were created.";
-			LOGINF "Please copy your MP3 files to ../mp3 folder.";
+			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' has been created.";
+			
+			# Copy MP3 files to newly created folder
+			my $source_dir = $lbpdatadir.'/mp3';
+			my $target_dir = $storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder;
+
+			opendir(my $DIRE, $source_dir) || die "can't opendir $source_dir: $!";  
+			my @files = readdir($DIRE);
+
+			foreach my $t (@files)	{
+			   if(-f "$source_dir/$t" )  {
+				  #Check with -f only for files (no directories)
+				  copy "$source_dir/$t", "$target_dir/$t";
+			   }
+			}
+			closedir($DIRE);
+			LOGINF "All MP3 files has been copied successful to target location.";
 		}
 	} else {
 		LOGINF "Local dir has been selected.";
@@ -390,8 +407,8 @@ sub form {
 	#my $content =  "Miniserver Nr. 1 heißt: $MiniServer und hat den Port: $MSWebPort User ist: $MSUser und PW: $MSPass.";
 	#my $template_title = '';
 	#LoxBerry::Web::lbheader($template_title);
-	#print $fullpath.'<br>';
-	#print $folder;
+	#print $lbpdatadir.'/mp3/'.'<br>';
+	#print $directory;
 	#LoxBerry::Web::lbfooter();
 	#exit;
 }

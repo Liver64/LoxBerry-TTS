@@ -2,7 +2,7 @@
 
 ##############################################################################################################################
 #
-# Version: 	0.0.3
+# Version: 	0.0.4
 # Datum: 	25.05.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
@@ -17,11 +17,11 @@ include('logging.php');
 date_default_timezone_set(date("e"));
 
 # prepare variables
-$home = $lbhomedir;												// get Folder (/opt/loxberry)
-$hostname = gethostname();										// hostname LoxBerry (loxberry-dev)
-$myIP = $_SERVER["SERVER_ADDR"];								// get IP of LoxBerry (192.50.xx.xxx)
-$syntax = $_SERVER['REQUEST_URI'];								// get syntax (URL)
-$psubfolder = $lbpplugindir;									// get pluginfolder (tts_all)
+$home = $lbhomedir;												// get Folder 
+$hostname = gethostname();										// hostname LoxBerry 
+$myIP = $_SERVER["SERVER_ADDR"];								// get IP of LoxBerry
+$syntax = $_SERVER['REQUEST_URI'];								// get syntax 
+$psubfolder = $lbpplugindir;									// get pluginfolder 
 $lbversion = LBSystem::lbversion();								// get LoxBerry Version
 $path = LBSCONFIGDIR; 											// get path to general.cfg
 $myFolder = "$lbpconfigdir";									// get config folder
@@ -36,7 +36,7 @@ $MP3path = "mp3";												// path to preinstalled numeric MP§ files
 $Home = getcwd();												// get Plugin Pfad (/opt/loxberry/webfrontend/html/plugins/tts_all)
 
 echo '<PRE>'; 
-
+global $mp3;
 	
 #echo $logpath;	
 #-- Start Preparation ------------------------------------------------------------------
@@ -50,7 +50,15 @@ echo '<PRE>';
 		$config = parse_ini_file($myFolder.'/tts_all.cfg', TRUE);
 		LOGGING("TTS config has been loaded", 7);
 	}
-	$MessageStorepath = $config['SYSTEM']['path']."/".$hostname."/tts/";
+	LOGGING("Config has been successfull loaded",6);
+	$folderpeace = explode("/",$config['SYSTEM']['path']);
+	if ($folderpeace[3] != "data") {
+		// wenn NICHT local dir als Speichermedium selektiert wurde
+		$MessageStorepath = $config['SYSTEM']['path']."/".$hostname."/tts/";
+	} else {
+		// wenn local dir als Speichermedium selektiert wurde
+		$MessageStorepath = $config['SYSTEM']['path']."/";
+	}
 	#print_r($config);
 	#exit;
 	$soundcard = $config['SYSTEM']['card'];
@@ -79,38 +87,29 @@ switch ($soundcard) {
 }
 	# select language file for text-to-speech
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
+	LOGGING("All variables has been collected",6);
 	
 	if ($soundcard != "004")  {			// Ausgabe an Soundkarte
 		$soundcard="alsa:hw:".$card.",".$device;
 				
 		# prüfen ob Volume in syntax, wenn nicht Std. von Config
 		If (!isset($_GET["volume"])) {
-			$config['TTS']['volume'];
+			$volume = $config['TTS']['volume'];
 			LOGGING("Standardvolume from Config beeen adopted",7);
 		} else { 
-			$_GET["volume"];
+			$volume = $_GET["volume"];
 			LOGGING("Volume from Syntax beeen adopted",7);
 		}
-
-		$Player1 = "mpg321 -q ";		// obsolet
-		$Player2 = "mpg123 -q ";		// obsolet
-		$Player3 = "omxplayer -b -o $soundcard --vol ";
-		LOGGING("Command to be executed: omxplayer -b -o $soundcard --vol ", 7);
-		
-		$cards = shell_exec("aplay -l");
 		speak();
-		
+		# http://sox.sourceforge.net/sox.html
+		$sox = shell_exec("play -v 2.0 $MessageStorepath$filename.mp3");
+		LOGGING("SoX command has been executed: 'play $MessageStorepath$filename.mp3'", 7);
 	} else {							// Ausgabe für ext. Program
 		
 	}
-
-	
 	# checking size of LoxBerry logfile
 	LOGGING("Perform Logfile size check",7);
 	check_size_logfile();
-	# Log success
-	LOGGING("All variables has been collected",6);
-	LOGGING("Config has been successfull loaded",6);
 	exit;
 
 #-- End Preparation ---------------------------------------------------------------------
@@ -139,14 +138,14 @@ switch($_GET['action']) {
 **/
 
 function speak() {
-	global $text, $messageid, $logging, $textstring, $voice, $config, $time_start, $filename, $MP3path;
+	global $text, $messageid, $logging, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path;
 			
 	#$time_start = microtime(true);
 	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
 		LOGGING("There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
 	exit();
 	}
-	if ((!isset($_GET['text'])) && (!isset($_GET['messageid'])) && 
+	if ((!isset($_GET['text'])) && (!isset($_GET['file'])) && 
 		(!isset($_GET['weather'])) && (!isset($_GET['abfall'])) &&
 		(!isset($_GET['witz'])) && (!isset($_GET['pollen'])) && 
 		(!isset($_GET['warning'])) && (!isset($_GET['bauernregel'])) && 
@@ -176,7 +175,7 @@ function speak() {
 function create_tts() {
 	global $config, $filename, $MessageStorepath, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path;
 						
-	$messageid = !empty($_GET['messageid']) ? $_GET['messageid'] : '0';
+	$messageid = !empty($_GET['file']) ? $_GET['file'] : '0';
 		
 	isset($_GET['text']) ? $text = $_GET['text'] : $text = '';
 	if(isset($_GET['weather'])) {
@@ -239,11 +238,11 @@ function create_tts() {
 		}
 	elseif (!empty($messageid)) { # && ($rawtext != '')) {
 		// takes the messageid
-		$messageid = $_GET['messageid'];
+		$messageid = $_GET['file'];
 		if (file_exists($MessageStorepath."".$MP3path."/".$messageid.".mp3") === true)  {
-			LOGGING("Messageid '".$messageid."' has been entered", 7);
+			LOGGING("File '".$messageid."' has been entered", 7);
 		} else {
-			LOGGING("The corrosponding messageid file '".$messageid.".mp3' does not exist or could not be played. Please check your directory or syntax!", 3);
+			LOGGING("The corrosponding file '".$messageid.".mp3' does not exist or could not be played. Please check your directory or syntax!", 3);
 			exit;
 		}	
 		}

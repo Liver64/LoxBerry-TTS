@@ -2,6 +2,7 @@
 # One line per package, use exact packagename as you would do for apt-get.
 #
 omxplayer
+libsox-fmt-mp3
 lame
 curl 
 libcurl3

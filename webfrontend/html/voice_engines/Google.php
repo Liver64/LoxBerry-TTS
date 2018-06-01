@@ -39,7 +39,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
         }
 								  
 		# Speicherort der MP3 Datei
-		$mpath = $config['SYSTEM']['messageStorePath'];
+		$mpath = $MessageStorepath;
 		$file = $MessageStorepath . $filename . ".mp3";
 		$textstring = urlencode($textstring);
 		
