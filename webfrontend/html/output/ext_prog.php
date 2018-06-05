@@ -73,7 +73,12 @@ function txtfile()  {
 		fwrite($file, "$filepath/$jingle\n" );
 		LOGGING("Source for jingle MP3 '".$filepath."/".$jingle."' has been added to TXT file", 7);
 	}
-	fwrite($file, "$ttspath$filename.mp3\n" );
+	if (isset($_GET['file']))  {
+		$mp3file = $_GET['file'];
+		fwrite($file, "$filepath/$mp3file.mp3\n" );
+	} else {
+		fwrite($file, "$ttspath$filename.mp3\n" );
+	}
 	LOGGING("Source for TTS '".$ttspath."".$filename.".mp3' has been added to TXT file", 7);
 	fclose($file);
 }
@@ -104,12 +109,17 @@ function jsonfile()  {
 		array_push($files, $filepath."/".$jingle);
 		LOGGING("Source for jingle MP3 '".$filepath."/".$jingle."' has been added to JSON file", 7);
 	}
-	array_push($files, $ttspath."".$filename.".mp3");
+	if (isset($_GET['file']))  {
+		$mp3file = $_GET['file'];
+		array_push($files, $filepath."/".$mp3file.".mp3");
+	} else {
+		array_push($files, $ttspath."".$filename.".mp3");
+	}
 	File_Put_Array_As_JSON($filenamebatch, $files, $zip=false);
 	LOGGING("Source for TTS '".$ttspath."".$filename.".mp3' has been added to JSON file", 7);
 }
 	
-
+	
 
 
 ?>
