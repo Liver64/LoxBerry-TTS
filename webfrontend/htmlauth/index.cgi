@@ -68,6 +68,7 @@ my $pluginlogfile				= "error.log";
 my $lbhostname 					= lbhostname();
 my $ttsfolder					= "tts";
 my $mp3folder					= "mp3";
+my $ttsinfo						= "info";
 #my $urlfile						= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
 my $log 						= LoxBerry::Log->new ( name => 'T2S Add-on', filename => $lbplogdir ."/". $pluginlogfile, append => 1, addtime => 1 );
 #my $helplink 					= "http://www.loxwiki.eu/display/LOXBERRY/Sonos4Loxone";
@@ -347,13 +348,17 @@ sub form {
 			mkdir($storepath."/".$lbhostname, 0777);
 			mkdir($storepath."/".$lbhostname."/".$ttsfolder, 0777);
 			mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder, 0777);
+			mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo, 0777);
+			LOGDEB "Directory '".$storepath."/".$lbhostname."' has been created.";
+			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."' has been created.";
 			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' has been created.";
+			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo."' has been created.";
 			
-			# Copy MP3 files to newly created folder
+			# Copy delivered MP3 files from local dir (source) to new created folder
 			my $source_dir = $lbpdatadir.'/mp3';
 			my $target_dir = $storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder;
 
-			opendir(my $DIRE, $source_dir) || die "can't opendir $source_dir: $!";  
+			opendir(my $DIRE, $source_dir) || die "Can't opendir $source_dir: $!";  
 			my @files = readdir($DIRE);
 
 			foreach my $t (@files)	{

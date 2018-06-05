@@ -2,8 +2,8 @@
 
 ##############################################################################################################################
 #
-# Version: 	0.0.4
-# Datum: 	25.05.2018
+# Version: 	0.0.6
+# Datum: 	05.06.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
 ##############################################################################################################################
@@ -32,11 +32,13 @@ $templatepath = "$lbptemplatedir";								// get templatedir
 $t2s_text_stand = "t2s-text_en.ini";							// T2S text Standardfile
 $sambaini = $lbhomedir.'/system/samba/smb.conf';				// path to Samba file smb.conf
 $searchfor = '[plugindata]';									// search for already existing Samba share
-$MP3path = "mp3";												// path to preinstalled numeric MP§ files
+$MP3path = "mp3";												// path to preinstalled numeric MP3 files
+$infopath = "info";												// path to info for ext. Prog
 $Home = getcwd();												// get Plugin Pfad (/opt/loxberry/webfrontend/html/plugins/tts_all)
 
 echo '<PRE>'; 
-global $mp3;
+
+global $text, $messageid, $MessageStorepath, $logging, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3;
 	
 #echo $logpath;	
 #-- Start Preparation ------------------------------------------------------------------
@@ -61,56 +63,43 @@ global $mp3;
 	}
 	#print_r($config);
 	#exit;
-	$soundcard = $config['SYSTEM']['card'];
 	
-switch ($soundcard) {
-	case '001':			// Soundcard bcm2835
-		$card = "0";
-		$device = "0";
-	break;
-	case '002':			// Soundcard bcm2835 IEC958/HDMI]
-		$card = "0";
-		$device = "1";
-	break;
-	case '003':			// USB Soundcard  
-		$card = "1";
-		$device = "0";
-	break;
-	case '004':			// ext. Programm
-		$card = "";
-		$device = "";
-	break;
-	default;			// Soundcard bcm2835
-		$card = "0";
-		$device = "0";
-	break;
-}
-	# select language file for text-to-speech
+	# wählt Sprachdatei für hinterlegte Texte für add-on's
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
 	LOGGING("All variables has been collected",6);
 	
-	if ($soundcard != "004")  {			// Ausgabe an Soundkarte
-		$soundcard="alsa:hw:".$card.",".$device;
-				
+	$soundcard = $config['SYSTEM']['card'];
+	if ($soundcard != "004")  {			
 		# prüfen ob Volume in syntax, wenn nicht Std. von Config
-		If (!isset($_GET["volume"])) {
+		if (!isset($_GET["volume"])) {
 			$volume = $config['TTS']['volume'];
 			LOGGING("Standardvolume from Config beeen adopted",7);
 		} else { 
 			$volume = $_GET["volume"];
 			LOGGING("Volume from Syntax beeen adopted",7);
 		}
-		speak();
-		# http://sox.sourceforge.net/sox.html
-		$sox = shell_exec("play -v 2.0 $MessageStorepath$filename.mp3");
-		LOGGING("SoX command has been executed: 'play $MessageStorepath$filename.mp3'", 7);
-	} else {							// Ausgabe für ext. Program
-		
+	}
+	
+	# prüfe of initial datei vorhanden
+	#$time_start = microtime(true);
+	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
+		LOGGING("There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
+	exit();
+	}
+	# Prüfung ob syntax korrekt eingeben wurde.
+	if ((!isset($_GET['text'])) && (!isset($_GET['file'])) && 
+		(!isset($_GET['weather'])) && (!isset($_GET['abfall'])) &&
+		(!isset($_GET['witz'])) && (!isset($_GET['pollen'])) && 
+		(!isset($_GET['warning'])) && (!isset($_GET['bauernregel'])) && 
+		(!isset($_GET['distance'])) && (!isset($_GET['clock'])) && 
+		(!isset($_GET['calendar']))) {
+		LOGGING("Wrong Syntax, please correct! Even 'say&text=' or 'say&messageid=' are necessary to play an anouncement. (check Wiki)", 3);	
+	exit;
 	}
 	# checking size of LoxBerry logfile
 	LOGGING("Perform Logfile size check",7);
 	check_size_logfile();
-	exit;
+	
 
 #-- End Preparation ---------------------------------------------------------------------
 
@@ -120,11 +109,13 @@ switch($_GET['action']) {
 		speak();
 	break;
 	
-	case 'getuser':
+	case 'aplay':
 		echo '<PRE>';
-		echo get_current_user();
+		$info = shell_exec("aplay -l");
+		echo $info;
 	break;	
 }
+
 
 
 # Funktionen für Skripte ------------------------------------------------------
@@ -138,23 +129,49 @@ switch($_GET['action']) {
 **/
 
 function speak() {
-	global $text, $messageid, $logging, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path;
-			
-	#$time_start = microtime(true);
-	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
-		LOGGING("There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
-	exit();
-	}
-	if ((!isset($_GET['text'])) && (!isset($_GET['file'])) && 
-		(!isset($_GET['weather'])) && (!isset($_GET['abfall'])) &&
-		(!isset($_GET['witz'])) && (!isset($_GET['pollen'])) && 
-		(!isset($_GET['warning'])) && (!isset($_GET['bauernregel'])) && 
-		(!isset($_GET['distance'])) && (!isset($_GET['clock'])) && 
-		(!isset($_GET['calendar']))) {
-		LOGGING("Wrong Syntax, please correct! Even 'say&text=' or 'say&messageid=' are necessary to play an anouncement. (check Wiki)", 3);	
-	exit;
-	}
+	global $soundcard;
+	
 	create_tts();
+	# Output devices:
+	#  null                        - Discard all samples (playback) or generate zero samples (capture)
+	#  default:CARD=0              - bcm2835 ALSA, bcm2835 ALSA - Default Audio Device
+	#  sysdefault:CARD=0           - bcm2835 ALSA, bcm2835 ALSA - Default Audio Device
+	#  dmix:CARD=0,DEV=0           - bcm2835 ALSA, bcm2835 ALSA - Direct sample mixing device
+	#  dmix:CARD=0,DEV=1           - bcm2835 ALSA, bcm2835 IEC958/HDMI - Direct sample mixing device
+	#  dsnoop:CARD=0,DEV=0         - bcm2835 ALSA, bcm2835 ALSA - Direct sample snooping device
+	#  dsnoop:CARD=0,DEV=1         - bcm2835 ALSA, bcm2835 IEC958/HDMI - Direct sample snooping device
+	#  hw:CARD=0,DEV=0             - bcm2835 ALSA, bcm2835 ALSA - Direct hardware device without any conversions
+	#  hw:CARD=0,DEV=1             - bcm2835 ALSA, bcm2835 IEC958/HDMI - Direct hardware device without any conversions
+	#  plughw:CARD=0,DEV=0         - bcm2835 ALSA, bcm2835 ALSA - Hardware device with all software conversions
+	#  plughw:CARD=0,DEV=1         - bcm2835 ALSA, bcm2835 IEC958/HDMI - Hardware device with all software conversions
+	
+	switch ($soundcard) {
+		case '001':			// Soundcard bcm2835
+			require_once('output/alsa.php');
+			shell_exec("export AUDIODRIVER=alsa");
+			shell_exec("export AUDIODEV=hw:0,0");
+			alsa_ob();
+		break;
+		case '002':			// Soundcard bcm2835 IEC958/HDMI]
+			require_once('output/alsa.php');
+			shell_exec("export AUDIODRIVER=alsa");
+			shell_exec("export AUDIODEV=hw:0,1");
+			alsa_ob();
+		break;
+		case '003':			// USB Soundcard  
+			require_once('output/usb.php');
+			shell_exec("export AUDIODEV=hw:1,1");
+			usb();
+		break;
+		case '004':			// ext. Programm
+			require_once('output/ext_prog.php');
+			ext();
+		break;
+		default;			// Soundcard bcm2835
+			require_once('output/BCM2835.php');
+			$output = shell_exec("export AUDIODEV=hw:0,0");
+		break;
+	}
 	delmp3();
 	#$time_end = microtime(true);
 	#$t2s_time = $time_end - $time_start;
@@ -283,9 +300,10 @@ function create_tts() {
 			include_once("voice_engines/Polly.php");
 			LOGGING("AWS Polly has been successful selected", 7);		
 		}
-	t2s($messageid, $MessageStorepath, $textstring, $filename);
-	return $messageid;
+		t2s($messageid, $MessageStorepath, $textstring, $filename);
+		return $messageid;
 	}
+	return $messageid;
 }
 
 
@@ -317,10 +335,11 @@ function create_tts() {
 			}
         }
     }
-	LOGGING("All files according to criteria were successfully deleted", 7);
+	LOGGING("All TTS (MP3) files according to criteria were successfully deleted", 7);
     $folder->close();
     return; 	 
  }
+
 
 ?>
 
