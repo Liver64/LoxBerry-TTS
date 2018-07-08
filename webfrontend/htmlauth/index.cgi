@@ -64,11 +64,12 @@ my $errortemplatefilename 		= "error.html";
 my $noticetemplatefilename 		= "notice.html";
 my $no_error_template_message	= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
 my $pluginconfigfile 			= "tts_all.cfg";
+my $outputfile 					= 'output.cfg';
 my $pluginlogfile				= "error.log";
 my $lbhostname 					= lbhostname();
 my $ttsfolder					= "tts";
 my $mp3folder					= "mp3";
-my $ttsinfo						= "info";
+#my $ttsinfo						= "info";
 #my $urlfile						= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
 my $log 						= LoxBerry::Log->new ( name => 'T2S Add-on', filename => $lbplogdir ."/". $pluginlogfile, append => 1, addtime => 1 );
 #my $helplink 					= "http://www.loxwiki.eu/display/LOXBERRY/Sonos4Loxone";
@@ -342,17 +343,17 @@ sub form {
 	
 	if ($folder ne "data")  {	
 		if(-d $fullpath)  {
-			LOGDEB "Directory already exists.";
+			LOGDEB "Folders already exists.";
 		} else {
 			# Create folder
 			mkdir($storepath."/".$lbhostname, 0777);
 			mkdir($storepath."/".$lbhostname."/".$ttsfolder, 0777);
 			mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder, 0777);
-			mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo, 0777);
+			#mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo, 0777);
 			LOGDEB "Directory '".$storepath."/".$lbhostname."' has been created.";
 			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."' has been created.";
 			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' has been created.";
-			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo."' has been created.";
+			#LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo."' has been created.";
 			
 			# Copy delivered MP3 files from local dir (source) to new created folder
 			my $source_dir = $lbpdatadir.'/mp3';
@@ -371,7 +372,7 @@ sub form {
 			LOGINF "All MP3 files has been copied successful to target location.";
 		}
 	} else {
-		LOGINF "Local dir has been selected.";
+		LOGINF "Local directory has been selected.";
 	}
 	
 	# Load saved values for "select"
@@ -398,6 +399,27 @@ sub form {
 	LOGDEB "List of MP3 files has been successful loaded";
 	LOGOK "Plugin has been successfully loaded.";
 	
+	my $line;
+	my $out_list;
+	
+	# Fill output Dropdown
+	my $outpath = $lbpconfigdir . "/" . $outputfile;
+	open my $in, $outpath or die "$outpath: $!";
+	
+	my $i = 1;
+	while ($line = <$in>) {
+		if ($i < 10) {
+			$out_list.= "<option value='00".$i++."'>" . $line . "</option>\n";
+		} else {
+			$out_list.= "<option value='0".$i++."'>" . $line . "</option>\n";
+		}
+	}
+	close $in;
+	$template->param("OUT_LIST", $out_list);
+	
+	
+	
+	
 	# Print Template
 	my $sversion = LoxBerry::System::pluginversion();
 	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
@@ -412,8 +434,7 @@ sub form {
 	#my $content =  "Miniserver Nr. 1 heißt: $MiniServer und hat den Port: $MSWebPort User ist: $MSUser und PW: $MSPass.";
 	#my $template_title = '';
 	#LoxBerry::Web::lbheader($template_title);
-	#print $lbpdatadir.'/mp3/'.'<br>';
-	#print $directory;
+	#print $line;
 	#LoxBerry::Web::lbfooter();
 	#exit;
 }
@@ -443,7 +464,7 @@ sub save
 	$pcfg->param("VARIOUS.CALDav2", "\"$R::cal\"");
 	$pcfg->param("SYSTEM.LOGLEVEL", "$R::LOGLEVEL");
 	$pcfg->param("SYSTEM.path", "$R::STORAGEPATH");
-	$pcfg->param("SYSTEM.card", "$R::scard");
+	$pcfg->param("SYSTEM.card", "$R::out_list");
 	$pcfg->param("TTS.volume", "$R::volume");
 	
 	

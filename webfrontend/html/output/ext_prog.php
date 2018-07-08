@@ -6,6 +6,7 @@
 **/
 
 
+
 /**
 /* Funktion : ext --> Funktion zum Speichern und Übergeben der TTS info an externe Programme/Plugins
 /* @param: 	leer
@@ -13,36 +14,34 @@
 /* @return: TXT und JSON file für weitere Verwendung
 /**/
 
-function ext() {
-	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath;
+function ext_prog($text) {
+	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath, $shortcut, $text;
 	
 	$ttspath = $MessageStorepath;
 	$filepath = $MessageStorepath."".$MP3path;
-	$ttsinfopath = $MessageStorepath."".$infopath."/";
+	$ttsinfopath = LBPCONFIGDIR."/".$infopath."/";
 	
+	echo 'TTS Empfang: '.$text.'<br>';
+				
 	# prüft ob Verzeichnis für Übergabe existiert
 	$is_there = file_exists($ttsinfopath);
 	if ($is_there === false)  {
 		LOGGING("The info folder seems not to be available!! System now try to create the 'info' folder.", 4);
-		mkdir($ttspath."".$infopath);
+		mkdir($ttsinfopath);
+		LOGGING("Folder '".$ttsinfopath."' has been succesful created.", 5);
 	} else {
 		LOGGING("Folder '".$infopath."' to pass over audio infos is already there (".$ttsinfopath.")", 5);
-	}
-	# prüft erneut
-	$check_is_there = file_exists($ttsinfopath);
-	if ($check_is_there === false)  {
-		LOGGING("The info folder could not been created!! Please create manually the 'info' folder in '".$ttspath."' or change your storage in Config.", 3);
-		exit;
 	}
 	# Löschen alle vorhandenen Dateien aus dem info folder
 	chdir($ttsinfopath);
 	foreach (glob("*.*") as $file) {
-		LOGGING("File: '".$file."' has been deleted from 'info' folder.",5);
-		unlink($file);
+		LOGGING("File: '".$file."' has been deleted from '".$infopath."' folder.",5);
+		#unlink($file);
 	}
 	txtfile();
 	jsonfile();
-	LOGGING("File/source Info for external usage has been successful created", 5);					
+	delmp3();
+	LOGGING("Source Info for external usage has been successful created", 5);					
 }
 
 
@@ -57,7 +56,7 @@ function ext() {
 function txtfile()  {
 	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath;
 	
-	$fullfilename = $filename.".txt";
+	$fullfilename = "t2s_source.txt";
 	$filenamebatch = $ttsinfopath."".$fullfilename;
 	$file = fopen($filenamebatch, "a+");
 	
@@ -95,7 +94,7 @@ function txtfile()  {
 function jsonfile()  {
 	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath;
 	
-	$fullfilename = $filename.".json";
+	$fullfilename = "t2s_source.json";
 	$filenamebatch = $ttsinfopath."".$fullfilename;
 	
 	$files = array();
@@ -118,7 +117,7 @@ function jsonfile()  {
 	File_Put_Array_As_JSON($filenamebatch, $files, $zip=false);
 	LOGGING("Source for TTS '".$ttspath."".$filename.".mp3' has been added to JSON file", 7);
 }
-	
+
 	
 
 

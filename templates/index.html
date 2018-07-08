@@ -204,17 +204,15 @@
 				<tr>
 					<div data-role="collapsible">
 						<td style="height: 36px; width: 294px; text-align: left;">
-							<fieldset data-role="controlgroup" data-type="horizontal">
-								<input type="radio" name="scard" id="scard1" value="001"><TMPL_VAR SELECTEDCARD1>
-					 			<label for="scard1">BCM2835</label>
-								<input type="radio" name="scard" id="scard2" value="002"><TMPL_VAR SELECTEDCARD2>
-								<label for="scard2">BCM2835 IEC958</label>
-								<input type="radio" name="scard" id="scard3" value="003"><TMPL_VAR SELECTEDCARD3>
-								<label for="scard3">USB Card</label>
-								<input type="radio" name="scard" id="scard4" value="004"><TMPL_VAR SELECTEDCARD4>
-								<label for="scard4">ext. Program</label>
-							</fieldset>
-							<script>$("input[name=scard]").val(['<TMPL_VAR SYSTEM.card>']);</script>
+							<select id='out_list' name='out_list' data-mini='true' 
+								data-validation-error-msg="<TMPL_VAR T2S.SELECT_OUTPUT_DROPDOWN>" 
+								data-validation-rule="^([A-Za-z0-9]){4,10}$" style="width: 244px">
+								<option selected='true' value='' disabled><TMPL_VAR T2S.SELECT_OUTPUT_DROPDOWN></option>
+								<TMPL_VAR OUT_LIST>
+							</select>
+							<script>
+							$('#out_list').val('<TMPL_VAR SYSTEM.card>');
+							</script>
 							</td>
 					<div id="loginResult" style="display:none;">
 					</div>

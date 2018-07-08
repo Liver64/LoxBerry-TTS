@@ -9,13 +9,10 @@ ini_set('html_errors', true);
 #ini_set("display_errors", false);      	// Fehler nicht direkt via PHP ausgeben
 #ini_set('html_errors', false);			 
 
+echo'<PRE>';
 require_once "loxberry_system.php";
 require_once "loxberry_log.php";
-
 $L = LBSystem::readlanguage("tts_all.ini");
-ini_set("log_errors", 1);
-ini_set("error_log", LBPLOGDIR."/error.log");
-echo '<PRE>';
 
 require_once 'tts.php';
 ?>
