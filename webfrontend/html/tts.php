@@ -2,13 +2,13 @@
 
 ##############################################################################################################################
 #
-# Version: 	0.0.6
-# Datum: 	05.06.2018
+# Version: 	0.0.7
+# Datum: 	05.07.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
 ##############################################################################################################################
 
-ini_set('max_execution_time', 90); 							// Max. Skriptlaufzeit auf 900 Sekunden
+ini_set('max_execution_time', 90); 								// Max. Skriptlaufzeit auf 90 Sekunden
 
 include("helper.php");
 include('logging.php');
@@ -25,7 +25,7 @@ $psubfolder = $lbpplugindir;									// get pluginfolder
 $lbversion = LBSystem::lbversion();								// get LoxBerry Version
 $path = LBSCONFIGDIR; 											// get path to general.cfg
 $myFolder = "$lbpconfigdir";									// get config folder
-#$MessageStorepath = "$lbpdatadir/";								// get T2S folder to store
+#$MessageStorepath = "$lbpdatadir/";							// get T2S folder to store
 $pathlanguagefile = "$lbphtmldir/voice_engines/langfiles/";		// get languagefiles
 $logpath = "$lbplogdir";										// get log folder
 $templatepath = "$lbptemplatedir";								// get templatedir
@@ -44,7 +44,7 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 	
 #-- Start Preparation ------------------------------------------------------------------
 	
-	#LOGGING("called syntax: ".$myIP."".urldecode($syntax),5);
+	LOGGING("called syntax: ".$myIP."".urldecode($syntax),5);
 	
 	// Parsen der Konfigurationsdatei
 	if (!file_exists($myFolder.'/tts_all.cfg')) {
@@ -95,7 +95,9 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 	$data = json_decode(file_get_contents($file), true);
 	$text = $data[0];
 	# ********************************
-	#create_tts();
+	if ($soundcard != '013')  {
+	 create_tts();
+	}
 	# prüfe of TTS Anbieter und ggf. Stimme gewählt wurde
 	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
 		LOGGING("There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
@@ -193,7 +195,9 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 			$output = shell_exec("export AUDIODEV=hw:0,0");
 		break;
 	}
-	create_tts();
+	if ($soundcard == '013')  {
+	 create_tts();
+	}
 	delmp3();
 	#$time_end = microtime(true);
 	#$t2s_time = $time_end - $time_start;

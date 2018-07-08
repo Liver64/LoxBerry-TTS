@@ -99,7 +99,7 @@ function jsonfile()  {
 	
 	$files = array();
 		if (isset($_GET['jingle']))  {
-		$jingle = $_GET['jingle'];
+			$jingle = $_GET['jingle'];
 		if (empty($_GET['jingle']))  {
 			$jingle = $config['MP3']['file_gong'];
 		} else {
