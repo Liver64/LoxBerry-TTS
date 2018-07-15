@@ -17,6 +17,10 @@ function alsa_ob() {
 	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $output, $config;
 	
 	echo $output;
+
+	# Volume prozentual für sox (1=100%)
+	$volume = $volume / 100;
+
 	# wenn MP3 file ohne jingle
 	if ((isset($_GET['file'])) and (!isset($_GET['jingle'])))  {
 		$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa");

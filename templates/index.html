@@ -50,7 +50,7 @@
 			<label id="ltts_instanz"><TMPL_VAR T2S.TTS_INSTANZ></label>
 		</td>
 		<td style="width: 50%; height: 45px;">
-			<fieldset data-role="controlgroup" data-type="horizontal">
+			<fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
 				<input onclick="disable()" type="radio" name="t2s_engine" id="tts_voicerss" value="1001"><TMPL_VAR SELECTEDINSTANZ2>
 	 			<label for="tts_voicerss">VoiceRSS</label>
 				<input onclick="disable()" type="radio" name="t2s_engine" id="tts_mac_osx" value="3001"><TMPL_VAR SELECTEDINSTANZ3>
@@ -135,7 +135,7 @@
 							</fieldset>
 						<td style="height: 36px; width: 294px; text-align: right;">
 								<fieldset style="width: 48px">
-								<input name="langiso" id ="langiso" style="width: 46px" readonly="true" type="text" align="middle">
+								<input name="langiso" id ="langiso" style="width: 46px" readonly="true" type="text" align="middle" data-mini="true">
 							</fieldset>
 						</td>
 					</div>
@@ -182,10 +182,14 @@
 							<script>
 							$('#file_gong').val('<TMPL_VAR MP3.file_gong>');
 							</script>
-							<font size="-1"><TMPL_VAR T2S.JINGLE_SOURCE> <TMPL_VAR DATADIR>/mp3/</font>
 						</td>
 					</tr>
 				</table>
+			</td>
+		</tr>
+		<tr>
+			<td colspan=2 align="right">
+				<font size="-1"><TMPL_VAR T2S.JINGLE_SOURCE> <TMPL_VAR DATADIR>/mp3/</font>
 			</td>
 		</tr>
 	</table>
@@ -244,12 +248,26 @@
 			<td style="height: 30px; width: 201px;">
 			<label id="lvolume"><TMPL_VAR T2S.LABEL_TTS_VOLUME></label>
 		</td>
-		<td width="15%">
+		<td>
+		<!--
 		<fieldset style="width: 15%">
 			<input id="volume" name="volume" type="text" class="textfield" value="<TMPL_VAR TTS.volume>"
 				data-validation-error-msg="<TMPL_VAR ERRORS.ERR_VOLUME>" 
 				data-validation-rule="special:number-min-max-value:0:100">
 			</fieldset>
+		-->
+		<table border=0 width="100%">
+		<tr>
+		<td width="95%"> 
+		<input type="range" name="volume" id="volume" value="<TMPL_VAR TTS.volume>" min="0" max="500"
+			data-validation-error-msg="<TMPL_VAR ERRORS.ERR_VOLUME>"
+			data-validation-rule="special:number-min-max-value:0:500">
+		</td>
+		<td width="5%">
+		%
+		</td>
+		</tr>
+		</table>
 		</td>
 			<td style="height: 30px; width: 20%;">
 		</td>
