@@ -16,7 +16,8 @@
 function usb() {
 	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $output, $config;
 	
-	echo $output;
+	#echo $output;
+	
 	# wenn MP3 file ohne jingle
 	if ((isset($_GET['file'])) and (!isset($_GET['jingle'])))  {
 		$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa");

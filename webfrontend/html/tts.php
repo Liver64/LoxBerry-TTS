@@ -70,15 +70,23 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
 	LOGGING("All variables has been collected",6);
 	$soundcard = $config['SYSTEM']['card'];
-	if ($soundcard != "004")  {			
+	if ($soundcard != "013")  {			
 		# prüfen ob Volume in syntax, wenn nicht Std. von Config
 		if (!isset($_GET["volume"])) {
 			$volume = $config['TTS']['volume'];
 			LOGGING("Standardvolume from Config beeen adopted",7);
 		} else { 
-			$volume = $_GET["volume"];
-			LOGGING("Volume from Syntax beeen adopted",7);
+			if(isset($_GET['volume']) && is_numeric($_GET['volume']) && $_GET['volume'] >= 0 && $_GET['volume'] <= 500) {
+				$volume = $_GET["volume"];
+				LOGGING("Volume from Syntax beeen adopted",7);
+			} else {
+				LOGGING("The entered volume is out of range. Please use 0 to 500",4);
+				$volume = $config['TTS']['volume'];
+				LOGGING("As backup the Standardvolume from Config beeen adopted. Please correct your syntax",4);
+			}
 		}
+		# Volume prozentual für sox (1=100%)
+		$volume = $volume / 100;
 	}
 	#$time_start = microtime(true);
 	# checking size of LoxBerry logfile
