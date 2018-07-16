@@ -5,53 +5,33 @@
 **/
 
 # suche nach evtl. vorhandenen Plugins die TTS nutzen
-$pluginusage = glob("$lbhomedir/config/plugins/*/tts_plugin.cfg");
+$pluginusage = glob("$lbhomedir/config/plugins/*/tts_logging.cfg");
 # Laden der Plugindb
 $plugindb = LBSystem::get_plugins();
-#print_r($plugindb);
-
-#$alldata = array();
-if (($pluginusage === false) or (empty($pluginusage)))  {
-	#echo 'NO PLUGIN FOUND<br>';
-	$ownplugindata = LBSystem::plugindata();
-	$alldata[] = array(
-						"logpath" => $lbplogdir,
-						'pluginname' => $ownplugindata['PLUGINDB_NAME'], 
-						'pluginfolder' => $ownplugindata['PLUGINDB_FOLDER'], 
-						'loggingname' => "TTS", 
-						'logfilename' => "error.log", 
-						'loglevel' => $ownplugindata['PLUGINDB_LOGLEVEL'],
-						"append" => 1,
-						);
-	
-} else {
-	#echo 'PLUGIN FOUND<br>';
-	foreach($pluginusage as $plugfolder)  {
-		$folder = explode('/',$plugfolder);
-		$plugfolder = $folder[5];
-		$myFolder = $lbhomedir."/config/plugins/".$plugfolder;
-		$key = recursive_array_search($plugfolder,$plugindb);
-		if (!file_exists($myFolder.'/tts_plugin.cfg')) {
-			LOGGING('The file tts_plugin.cfg could not be opened, please try again!', 4);
-		} else {
-			$tmp_ini = parse_ini_file($myFolder.'/tts_plugin.cfg', TRUE);
-			$folders = $lbhomedir."/log/plugins/".$plugfolder."/".$tmp_ini['SYSTEM']['logfilename'];
-			$alldata[] = array(
-								'logpath' => $folders, 
-								'pluginname' => $plugindb[$key]['PLUGINDB_NAME'], 
-								'pluginfolder' => $plugindb[$key]['PLUGINDB_FOLDER'], 
-								'loggingname' => $tmp_ini['SYSTEM']['loggingname'], 
-								'logfilename' => $tmp_ini['SYSTEM']['logfilename'], 
-								'loglevel' => $plugindb[$key]['PLUGINDB_LOGLEVEL'],
-								"append" => 1,
-								);
-			LOGGING("TTS Plugin config has been loaded", 5);
-		}
+$alldata = array();
+#echo 'PLUGIN FOUND<br>';
+foreach($pluginusage as $plugfolder)  {
+	$folder = explode('/',$plugfolder);
+	$plugfolder = $folder[5];
+	$myFolder = $lbhomedir."/config/plugins/".$plugfolder;
+	$key = recursive_array_search($plugfolder,$plugindb);
+	if (!file_exists($myFolder.'/tts_logging.cfg')) {
+		LOGGING('The file tts_logging.cfg could not be opened, please try again!', 4);
+	} else {
+		$tmp_ini = parse_ini_file($myFolder.'/tts_logging.cfg', TRUE);
+		$folders = $lbhomedir."/log/plugins/".$plugfolder."/".$tmp_ini['SYSTEM']['logfilename'];
+		$alldata[] = array(
+							'logpath' => $folders, 
+							'pluginname' => $plugindb[$key]['PLUGINDB_NAME'], 
+							'pluginfolder' => $plugindb[$key]['PLUGINDB_FOLDER'], 
+							'loggingname' => $tmp_ini['SYSTEM']['loggingname'], 
+							'logfilename' => $tmp_ini['SYSTEM']['logfilename'], 
+							'loglevel' => $plugindb[$key]['PLUGINDB_LOGLEVEL'],
+							"append" => 1,
+							);
+		LOGGING("TTS Logging config has been loaded", 5);
 	}
 }
-#print_r($alldata);
-#echo count($alldata);
-
 return $alldata;
 
 
@@ -67,13 +47,10 @@ return $alldata;
 function LOGGING($message = "", $loglevel = 7, $raw = 0)
 {
 	global $pcfg, $L, $config, $lbplogdir, $logfile, $alldata;
-	#echo count($alldata);
-	#print_r($alldata);
 	foreach($alldata as $allplugin)  {
-		
 		$params = [
 				"name" => $allplugin['loggingname'],
-				"filename" => $allplugin['logpath']."/".$allplugin['logfilename'],
+				"filename" => $allplugin['logpath'],
 				"package" => $allplugin['pluginfolder'],
 				"append" => 1,
 				];
@@ -109,18 +86,15 @@ function LOGGING($message = "", $loglevel = 7, $raw = 0)
 					break;
 			}
 			#echo $alldata[$i]['pluginfolder']."/".$alldata[$i]['logfilename'].'<br>';
-			if ($loglevel < 2) {
+			if ($loglevel < 4) {
 				if (isset($message) && $message != "" )
 				$notification = array (
-									"PACKAGE" => $alldata[$i]['loggingname'],    // Mandatory
-									"NAME" => $alldata[$i]['loggingname'],       // Mandatory           
+									"PACKAGE" => $allplugin['pluginfolder'],    // Mandatory
+									"NAME" => $allplugin['loggingname'],       // Mandatory           
 									"MESSAGE" => $message, 							// Mandatory
-									#"SEVERITY" => 3,
-									#"fullerror" => "Access is denied: " . $error,
-									#"msnumber" => 1,
-									"LOGFILE" => $alldata[$i]['pluginfolder']."/".$alldata[$i]['logfilename']
-										);
- 
+									"LOGFILE" => $allplugin['logpath']
+									);
+				#print_r($notification);
 				notify_ext($notification);
 			}
 		}
@@ -135,15 +109,15 @@ function LOGGING($message = "", $loglevel = 7, $raw = 0)
 * @return: 	empty
 **/
 function check_size_logfile()  {
-	global $L;
+	global $L, $allplugin, $alldata;
 	
-	$logsize = @filesize(LBPLOGDIR."/error.log");
+	$logsize = @filesize($allplugin['logpath']);
 	if ( $logsize > 5242880 )
 	{
 		LOGGING($L["ERRORS.ERROR_LOGFILE_TOO_BIG"]." (".$logsize." Bytes)",4);
-		LOGGING("Set Logfile notification: ".LBPPLUGINDIR." ".$L['BASIS.MAIN_TITLE']." => ".$L['ERRORS.ERROR_LOGFILE_TOO_BIG'],7);
-		notify (LBPPLUGINDIR, $L['BASIS.MAIN_TITLE'], $L['ERRORS.ERROR_LOGFILE_TOO_BIG']);
-		system("echo '' > ".LBPLOGDIR."/error.log");
+		LOGGING("Set Logfile notification: ".$alldata[0]['pluginfolder']." ".$L['BASIS.MAIN_TITLE']." => ".$L['ERRORS.ERROR_LOGFILE_TOO_BIG'],7);
+		notify ($alldata[0]['pluginfolder'], $L['BASIS.MAIN_TITLE'], $L['ERRORS.ERROR_LOGFILE_TOO_BIG']);
+		system("echo '' > ".$alldata[0]['logpath']);
 	}
 	return;
 }

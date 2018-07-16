@@ -259,7 +259,7 @@
 		<table border=0 width="100%">
 		<tr>
 		<td width="95%"> 
-		<input type="range" name="volume" id="volume" value="<TMPL_VAR TTS.volume>" min="0" max="500"
+		<input type="range" name="volume" id="volume" value="<TMPL_VAR TTS.volume>" min="0" max="500" step="10"
 			data-validation-error-msg="<TMPL_VAR ERRORS.ERR_VOLUME>"
 			data-validation-rule="special:number-min-max-value:0:500">
 		</td>

@@ -63,9 +63,7 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 		// wenn local dir als Speichermedium selektiert wurde
 		$MessageStorepath = $config['SYSTEM']['path']."/";
 	}
-	#print_r($config);
-	#exit;
-	
+		
 	# wählt Sprachdatei für hinterlegte Texte für add-on's
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
 	LOGGING("All variables has been collected",6);
@@ -98,20 +96,19 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 
 	global $soundcard, $config, $text;
 	
+	if ($soundcard == '013')  {
 	# *** Lese Daten von ext. Call ***
-	$file = $myFolder."/".$infopath."/".$t2s_share_file;
-	$data = json_decode(file_get_contents($file), true);
-	$text = $data[0];
-	# ********************************
-	if ($soundcard != '013')  {
-	 create_tts();
+		$file = $myFolder."/".$infopath."/".$t2s_share_file;
+		$data = json_decode(file_get_contents($file), true);
+		$text = $data[0];
+	} else {
+		create_tts();
 	}
 	# prüfe of TTS Anbieter und ggf. Stimme gewählt wurde
 	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
 		LOGGING("There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
 	exit();
 	}
-	
 	# Prüfung ob syntax korrekt eingeben wurde.
 	if ((!isset($_GET['text'])) && (!isset($_GET['file'])) && 
 		(!isset($_GET['weather'])) && (!isset($_GET['abfall'])) &&
@@ -239,6 +236,7 @@ function create_tts() {
 		LOGGING("weather-to-speech plugin has been called", 7);
 		} 
 	elseif (isset($_GET['clock']) or ($text == "clock")) {
+		echo $text;
 		// calls the clock-to-speech Function
 		include_once("addon/clock-to-speech.php");
 		$textstring = c2s();
@@ -278,7 +276,7 @@ function create_tts() {
 		// calls the wastecalendar-to-speech Function
 		include_once("addon/waste-calendar-to-speech.php");
 		$textstring = substr(muellkalender(), 0, 500);
-		LOGGING("waste calendar-to-speech  plugin has been called", 7);
+		LOGGING("waste calendar-to-speech plugin has been called", 7);
 		}
 	elseif (isset($_GET['calendar']) or ($text == "calendar")) {
 		// calls the calendar-to-speech Function
