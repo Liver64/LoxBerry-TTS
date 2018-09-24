@@ -266,12 +266,6 @@ function create_tts() {
 		$textstring = substr(GetWitz(), 0, 1000);
 		LOGGING("Joke plugin has been called", 7);
 		}
-	elseif (isset($_GET['bauernregel']) or ($text == "bauernregel")) {
-		// calls the weather warning-to-speech Function
-		include_once("addon/gimmicks.php");
-		$textstring = substr(GetTodayBauernregel(), 0, 500);
-		LOGGING("Bauernregeln plugin has been called", 7);
-		}
 	elseif (isset($_GET['abfall']) or ($text == "abfall")) {
 		// calls the wastecalendar-to-speech Function
 		include_once("addon/waste-calendar-to-speech.php");

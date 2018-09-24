@@ -11,6 +11,8 @@
 /*
 /* @return: 
 /**/
+#	Version: 	1.0.0 - Initial Release
+#				1.0.1 - Änderung von alsa -d zu alsa dmix:1,0
 
 
 function usb() {
@@ -20,13 +22,13 @@ function usb() {
 	
 	# wenn MP3 file ohne jingle
 	if ((isset($_GET['file'])) and (!isset($_GET['jingle'])))  {
-		$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa");
-		LOGGING("SoX command has been executed: 'sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa -d'", 7);
+		$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa dmix:1,0");
+		LOGGING("SoX command has been executed: 'sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa dmix:1,0'", 7);
 	}
 	# wenn TTS ohne jingle
 	elseif ((isset($_GET['text'])) and (!isset($_GET['jingle'])))  {
-		$sox = shell_exec("sox -v $volume $MessageStorepath$filename.mp3 -t alsa -d");
-		LOGGING("SoX command has been executed: 'sox -v $volume $MessageStorepath$filename.mp3 -t alsa -d'", 7);
+		$sox = shell_exec("sox -v $volume $MessageStorepath$filename.mp3 -t alsa dmix:1,0");
+		LOGGING("SoX command has been executed: 'sox -v $volume $MessageStorepath$filename.mp3 -t alsa dmix:1,0'", 7);
 	}
 	# wenn TTS mit jingle
 	elseif ((isset($_GET['text'])) and (isset($_GET['jingle'])))  {
@@ -39,10 +41,10 @@ function usb() {
 		# prüft ob jingle vorhanden ist
 		$valid = mp3_files($jingle);
 		if ($valid === true) {
-			$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa -d");
-			$sox = shell_exec("sox -v $volume $MessageStorepath$filename.mp3 -t alsa -d");
-			LOGGING("first SoX command (jingle) has been executed: 'sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa -d'", 7);
-			LOGGING("second SoX command has been executed: 'sox -v $volume $MessageStorepath$filename.mp3 -t alsa -d'", 7);
+			$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa dmix:1,0");
+			$sox = shell_exec("sox -v $volume $MessageStorepath$filename.mp3 -t alsa dmix:1,0");
+			LOGGING("first SoX command (jingle) has been executed: 'sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa dmix:1,0'", 7);
+			LOGGING("second SoX command has been executed: 'sox -v $volume $MessageStorepath$filename.mp3 -t alsa dmix:1,0'", 7);
 		} else {
 			LOGGING("The entered jingle file '".$jingle."' is not valid, please correct your syntax! ", 4);
 		}
@@ -58,10 +60,10 @@ function usb() {
 		# prüft ob jingle vorhanden ist
 		$valid = mp3_files($jingle);
 		if ($valid === true) {
-			$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa -d");
-			$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa -d");
-			LOGGING("first SoX command (jingle) has been executed: 'sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa -d'", 7);
-			LOGGING("second SoX command has been executed: 'sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa -d'", 7);
+			$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa dmix:1,0");
+			$sox = shell_exec("sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa dmix:1,0");
+			LOGGING("first SoX command (jingle) has been executed: 'sox -v $volume $MessageStorepath$MP3path/$jingle -t alsa dmix:1,0'", 7);
+			LOGGING("second SoX command has been executed: 'sox -v $volume $MessageStorepath$MP3path/$messageid.mp3 -t alsa dmix:1,0'", 7);
 		} else {
 			LOGGING("The entered jingle file '".$jingle."' is not valid, please correct your syntax! ", 4);
 		}
