@@ -39,7 +39,7 @@ function w2s()
 		#print_r($current);
 		#print_r($dailyforecast);
 		#print_r($hourlyforecast);
-		
+				
 		$Stunden = intval(strftime("%H"));
 		$Minuten = intval(strftime("%M"));
 		$regenschwelle = '10';

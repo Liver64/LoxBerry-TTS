@@ -1,0 +1,7 @@
+ ----------------------------------------------------------------------------------------------------------------------------
+ 1.0.0		Initiales Release des Plugin (Stable Version)
+ 1.0.1		[Bugfix] USB Output korrigiert
+			[Bugfix] weather4lox Plugin inkludiert
+ 1.0.2		[Feature] Automatische Grußformel hinzugefügt
+			[Bugfix] Logging optimiert
+ 

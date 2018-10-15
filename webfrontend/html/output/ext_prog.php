@@ -15,14 +15,14 @@
 /**/
 
 function ext_prog($text) {
-	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath, $shortcut, $text;
+	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath, $shortcut, $text, $plugindatapath, $lbhomedir, $psubfolder, $hostname;
 	
 	$ttspath = $MessageStorepath;
 	$filepath = $MessageStorepath."".$MP3path;
-	$ttsinfopath = LBPCONFIGDIR."/".$infopath."/";
+	$ttsinfopath = LBPDATADIR."/".$infopath."/";
 	
-	echo 'TTS Empfang: '.$text.'<br>';
-				
+	#echo 'TTS Empfang: '.$text.'<br>';
+	$filename  = md5($text);
 	# prüft ob Verzeichnis für Übergabe existiert
 	$is_there = file_exists($ttsinfopath);
 	if ($is_there === false)  {
@@ -38,7 +38,7 @@ function ext_prog($text) {
 		LOGGING("File: '".$file."' has been deleted from '".$infopath."' folder.",5);
 		#unlink($file);
 	}
-	txtfile();
+	#txtfile();
 	jsonfile();
 	delmp3();
 	LOGGING("Source Info for external usage has been successful created", 5);					
@@ -92,30 +92,50 @@ function txtfile()  {
 /**/	
 
 function jsonfile()  {
-	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath;
+	global $volume, $MessageStorepath, $MP3path, $messageid, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname;
 	
 	$fullfilename = "t2s_source.json";
 	$filenamebatch = $ttsinfopath."".$fullfilename;
 	
 	$files = array();
-		if (isset($_GET['jingle']))  {
-			$jingle = $_GET['jingle'];
-		if (empty($_GET['jingle']))  {
-			$jingle = $config['MP3']['file_gong'];
+		#if (isset($_GET['jingle']))  {
+		#	$jingle = $_GET['jingle'];
+		#if (empty($_GET['jingle']))  {
+		#	$jingle = $config['MP3']['file_gong'];
+		#} else {
+		#	$jingle = $_GET['jingle'].'.mp3';
+		#}
+		#array_push($files, $filepath."/".$jingle);
+		#LOGGING("Source for jingle MP3 '".$filepath."/".$jingle."' has been added to JSON file", 7);
+	#}
+		
+	#if (isset($_GET['file']))  {
+	#	$mp3file = $_GET['file'];
+	#	array_push($files, $filepath."/".$mp3file.".mp3");
+	#} else {
+		$StorePath = $config['SYSTEM']['path'];
+		$split = explode("/", $StorePath);
+		print_r($split);
+		if ($split[3] == "data") {
+			$intData = $lbhomedir."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3";
+			$extData = $myIP."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3";
 		} else {
-			$jingle = $_GET['jingle'].'.mp3';
+			if ($split[5] == "smb") {
+				$intData = $StorePath."/".$hostname."/tts/".$filename.".mp3";
+				$extData = $split[6]."/".$split[7]."/".$hostname."/tts/".$filename.".mp3";
+			} else {
+				LOGGING("USB devices and NetShares could not be interfaced!", 3);
+				exit;
+			}
 		}
-		array_push($files, $filepath."/".$jingle);
-		LOGGING("Source for jingle MP3 '".$filepath."/".$jingle."' has been added to JSON file", 7);
-	}
-	if (isset($_GET['file']))  {
-		$mp3file = $_GET['file'];
-		array_push($files, $filepath."/".$mp3file.".mp3");
-	} else {
-		array_push($files, $ttspath."".$filename.".mp3");
-	}
+		#echo "IntData: ".$intData."<br>";
+		#echo "ExtData: ".$extData."<br>";
+		array_push($files, $intData);
+		array_push($files, $extData);
+		LOGGING("Internal source for TTS '".$intData."' has been added to JSON file", 7);
+		LOGGING("External source for TTS '".$extData."' has been added to JSON file", 7);
+	#}
 	File_Put_Array_As_JSON($filenamebatch, $files, $zip=false);
-	LOGGING("Source for TTS '".$ttspath."".$filename.".mp3' has been added to JSON file", 7);
 }
 
 	

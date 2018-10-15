@@ -2,8 +2,8 @@
 
 ##############################################################################################################################
 #
-# Version: 	0.0.7
-# Datum: 	05.07.2018
+# Version: 	1.0.3
+# Datum: 	15.10.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
 ##############################################################################################################################
@@ -24,7 +24,8 @@ $syntax = $_SERVER['REQUEST_URI'];								// get syntax
 $psubfolder = $lbpplugindir;									// get pluginfolder 
 $lbversion = LBSystem::lbversion();								// get LoxBerry Version
 $path = LBSCONFIGDIR; 											// get path to general.cfg
-$myFolder = "$lbpconfigdir";									// get config folder
+$myFolder = "$lbpdatadir";										// get data folder
+$myConfigFolder = "$lbpconfigdir";								// get config folder
 #$MessageStorepath = "$lbpdatadir/";							// get T2S folder to store
 $pathlanguagefile = "$lbphtmldir/voice_engines/langfiles/";		// get languagefiles
 $logpath = "$lbplogdir";										// get log folder
@@ -32,25 +33,27 @@ $templatepath = "$lbptemplatedir";								// get templatedir
 $t2s_text_stand = "t2s-text_en.ini";							// T2S text Standardfile
 $sambaini = $lbhomedir.'/system/samba/smb.conf';				// path to Samba file smb.conf
 $searchfor = '[plugindata]';									// search for already existing Samba share
+$plugindatapath = "plugindata";									// get plugindata folder
 $MP3path = "mp3";												// path to preinstalled numeric MP3 files
-$infopath = "tts_share";										// path to info for ext. Prog
+$infopath = "share";											// path to info for ext. Prog
 $Home = getcwd();												// get Plugin Pfad
-$t2s_share_file = "t2s_text.json";
+$t2s_share_file = "t2s_text.json";								// filename to pass text from ext. Prog.
+
 
 echo '<PRE>'; 
 
+global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $lbhomedir;
 
-global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext;
-	
+LOGSTART("T2S PHP started");
+
 #-- Start Preparation ------------------------------------------------------------------
-	
 	LOGGING("called syntax: ".$myIP."".urldecode($syntax),5);
-	
 	// Parsen der Konfigurationsdatei
-	if (!file_exists($myFolder.'/tts_all.cfg')) {
-		LOGGING('The file tts_all.cfg could not be opened, please try again!', 4);
+	if (!file_exists($myConfigFolder.'/tts_all.cfg')) {
+		LOGGING('The file tts_all.cfg could not be opened, please try again!', 3);
+		exit;
 	} else {
-		$config = parse_ini_file($myFolder.'/tts_all.cfg', TRUE);
+		$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
 		LOGGING("TTS config has been loaded", 7);
 	}
 	
@@ -86,15 +89,16 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
 	}
-	#$time_start = microtime(true);
+	$time_start = microtime(true);
 	# checking size of LoxBerry logfile
 	LOGGING("Perform Logfile size check",7);
 	check_size_logfile();
 	
+	
 
 #-- End Preparation ---------------------------------------------------------------------
 
-	global $soundcard, $config, $text;
+	global $soundcard, $config, $text, $time_start;
 	
 	if ($soundcard == '013')  {
 	# *** Lese Daten von ext. Call ***
@@ -192,7 +196,6 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 		case '013':			// ext. Programm
 			require_once('output/ext_prog.php');
 			ext_prog($text);
-			#exit;
 		break;
 		default;			// Soundcard bcm2835
 			require_once('output/alsa.php');
@@ -204,10 +207,11 @@ global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $con
 	 create_tts();
 	}
 	delmp3();
-	#$time_end = microtime(true);
-	#$t2s_time = $time_end - $time_start;
+	$time_end = microtime(true);
+	$t2s_time = $time_end - $time_start;
 	LOGGING("Deletion of no longer needed MP3 files has been executed", 7);		
-	#LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
+	LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
+	LOGEND("T2S PHP finished");
 exit;
 
 
@@ -223,7 +227,34 @@ exit;
 function create_tts() {
 	
 	global $config, $filename, $MessageStorepath, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text;
-						
+	
+	if (isset($_GET['greet']))  {
+		$Stunden = intval(strftime("%H"));
+		$TL = LOAD_T2S_TEXT();
+		switch ($Stunden) {
+			# Gruß von 04:00 bis 10:00h
+			case $Stunden >=4 && $Stunden <10:
+				$greet = $TL['GREETINGS']['MORNING_'.mt_rand (1, 5)];
+			break;
+			# Gruß von 10:00 bis 17:00h
+			case $Stunden >=10 && $Stunden <17:
+				$greet = $TL['GREETINGS']['DAY_'.mt_rand (1, 5)];
+			break;
+			# Gruß von 17:00 bis 22:00h
+			case $Stunden >=17 && $Stunden <22:
+				$greet = $TL['GREETINGS']['EVENING_'.mt_rand (1, 5)];
+			break;
+			# Gruß nach 22:00h
+			case $Stunden >=22:
+				$greet = $TL['GREETINGS']['NIGHT_'.mt_rand (1, 5)];
+			break;
+			default:
+				$greet = "";
+			break;
+		}
+	} else {
+		$greet = "";
+	}
 	$messageid = !empty($_GET['file']) ? $_GET['file'] : '0';
 	isset($_GET['text']) ? $text = $_GET['text'] : $text;
 	
@@ -236,7 +267,6 @@ function create_tts() {
 		LOGGING("weather-to-speech plugin has been called", 7);
 		} 
 	elseif (isset($_GET['clock']) or ($text == "clock")) {
-		echo $text;
 		// calls the clock-to-speech Function
 		include_once("addon/clock-to-speech.php");
 		$textstring = c2s();
@@ -266,6 +296,12 @@ function create_tts() {
 		$textstring = substr(GetWitz(), 0, 1000);
 		LOGGING("Joke plugin has been called", 7);
 		}
+	elseif (isset($_GET['bauernregel']) or ($text == "bauernregel")) {
+		// calls the weather warning-to-speech Function
+		include_once("addon/gimmicks.php");
+		$textstring = substr(GetTodayBauernregel(), 0, 500);
+		LOGGING("Bauernregeln plugin has been called", 7);
+		}
 	elseif (isset($_GET['abfall']) or ($text == "abfall")) {
 		// calls the wastecalendar-to-speech Function
 		include_once("addon/waste-calendar-to-speech.php");
@@ -294,7 +330,7 @@ function create_tts() {
 		}
 	elseif ((empty($messageid)) && ($text <> '')) {
 		// prepares the T2S message
-		$textstring = $text;
+		$textstring = $greet." ".$text;
 		LOGGING("Textstring has been entered", 7);		
 		}	
 	// encrypt MP3 file as MD5 Hash
@@ -302,6 +338,7 @@ function create_tts() {
 	#echo 'messageid: '.$messageid.'<br>';
 	#echo 'textstring: '.$textstring.'<br>';
 	#echo 'filename: '.$filename.'<br>';
+	
 	// calls the various T2S engines depending on config)
 	if (($messageid == '0') && ($textstring != '')) {
 		if ($config['TTS']['t2s_engine'] == 1001) {

@@ -3,9 +3,12 @@
 * Submodul: logging
 *
 **/
+$logging_config = "tts_logging.cfg";		// fixed filename to pass log entries to ext. Prog.
+
+$level = LBSystem::pluginloglevel();
 
 # suche nach evtl. vorhandenen Plugins die TTS nutzen
-$pluginusage = glob("$lbhomedir/config/plugins/*/tts_logging.cfg");
+$pluginusage = glob("$lbhomedir/config/plugins/*/".$logging_config);
 # Laden der Plugindb
 $plugindb = LBSystem::get_plugins();
 $alldata = array();
@@ -15,10 +18,10 @@ foreach($pluginusage as $plugfolder)  {
 	$plugfolder = $folder[5];
 	$myFolder = $lbhomedir."/config/plugins/".$plugfolder;
 	$key = recursive_array_search($plugfolder,$plugindb);
-	if (!file_exists($myFolder.'/tts_logging.cfg')) {
-		LOGGING('The file tts_logging.cfg could not be opened, please try again!', 4);
+	if (!file_exists($myFolder.'/'.$logging_config)) {
+		LOGGING('The file '.$logging_config.' could not be opened, please try again!', 4);
 	} else {
-		$tmp_ini = parse_ini_file($myFolder.'/tts_logging.cfg', TRUE);
+		$tmp_ini = parse_ini_file($myFolder.'/'.$logging_config, TRUE);
 		$folders = $lbhomedir."/log/plugins/".$plugfolder."/".$tmp_ini['SYSTEM']['logfilename'];
 		$alldata[] = array(
 							'logpath' => $folders, 
@@ -29,9 +32,10 @@ foreach($pluginusage as $plugfolder)  {
 							'loglevel' => $plugindb[$key]['PLUGINDB_LOGLEVEL'],
 							"append" => 1,
 							);
-		LOGGING("TTS Logging config has been loaded", 5);
+		LOGGING("TTS Logging config '".$logging_config."' has been loaded", 5);
 	}
 }
+#print_r($alldata);
 return $alldata;
 
 
@@ -55,35 +59,35 @@ function LOGGING($message = "", $loglevel = 7, $raw = 0)
 				"append" => 1,
 				];
 				#print_r($params);
-		$log = LBLog::newLog($params);	
+		LBLog::newLog($params);	
 					
 		if ($allplugin['loglevel'] >= intval($loglevel) || $loglevel == 8)  {
 			switch ($loglevel) 	{
 				case 0:
-					#LOGEMERGE("$message");
-					break;
+		        #LOGEMERGE("$message");
+		        break;
 				case 1:
-					$log->ALERT("TTS -> $message");
-					break;
+					LOGALERT("$message");
+				break;
 				case 2:
-					$log->CRIT("TTS -> $message");
-					break;
+					LOGCRIT("$message");
+				break;
 				case 3:
-					$log->ERR("TTS -> $message");
-					break;
+					LOGERR("$message");
+				break;
 				case 4:
-					$log->WARN("TTS -> $message");
-					break;
+					LOGWARN("$message");
+				break;
 				case 5:
-					$log->OK("TTS -> $message");
-					break;
+					LOGOK("$message");
+				break;
 				case 6:
-					$log->INF("TTS -> $message");
-					break;
+					LOGINF("$message");
+				break;
 				case 7:
-					$log->DEB("TTS -> $message");
+					LOGDEB("$message");
 				default:
-					break;
+		        break;
 			}
 			#echo $alldata[$i]['pluginfolder']."/".$alldata[$i]['logfilename'].'<br>';
 			if ($loglevel < 4) {

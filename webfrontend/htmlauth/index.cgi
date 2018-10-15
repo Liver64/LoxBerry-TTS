@@ -65,13 +65,18 @@ my $noticetemplatefilename 		= "notice.html";
 my $no_error_template_message	= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
 my $pluginconfigfile 			= "tts_all.cfg";
 my $outputfile 					= 'output.cfg';
-my $pluginlogfile				= "error.log";
+my $pluginlogfile				= "text2speech.log";
 my $lbhostname 					= lbhostname();
 my $ttsfolder					= "tts";
 my $mp3folder					= "mp3";
 #my $ttsinfo						= "info";
 #my $urlfile						= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
-my $log 						= LoxBerry::Log->new ( name => 'T2S Add-on', filename => $lbplogdir ."/". $pluginlogfile, append => 1, addtime => 1 );
+my $log 						= LoxBerry::Log->new ( 
+												name => 'Text2Speech', 
+												filename => $lbplogdir ."/". $pluginlogfile, 
+												append => 1, 
+												addtime => 1
+												);
 #my $helplink 					= "http://www.loxwiki.eu/display/LOXBERRY/Sonos4Loxone";
 my $pcfg 						= new Config::Simple($lbpconfigdir . "/" . $pluginconfigfile);
 my %Config 						= $pcfg->vars() if ( $pcfg );
@@ -100,8 +105,9 @@ $cgi->import_names('R');
 if (-z $lbplogdir."/".$pluginlogfile) {
 	system("/usr/bin/date > $pluginlogfile");
 	$log->open;
-	LOGSTART "Logfile started";
+	LOGSTART "T2S UI started";
 }
+LOGSTART "T2S UI started";
 
 ##########################################################################
 
@@ -117,7 +123,6 @@ if ( $R::delete_log )
 	print "Content-Type: text/plain\n\nOK";
 	exit;
 }
-
 
 #########################################################################
 # Parameter
@@ -416,9 +421,8 @@ sub form {
 	}
 	close $in;
 	$template->param("OUT_LIST", $out_list);
-	
-	
-	
+		
+	$log->LOGEND;
 	
 	# Print Template
 	my $sversion = LoxBerry::System::pluginversion();
@@ -427,8 +431,9 @@ sub form {
 	LoxBerry::Web::pagestart($template_title, $helplink, $helptemplate);
 	print LoxBerry::Log::get_notifications_html($lbpplugindir);
 	print $template->output();
-	undef $template;	
 	LoxBerry::Web::lbfooter();
+	#undef $template;	
+	exit;
 	
 	# Test Print to UI
 	#my $content =  "Miniserver Nr. 1 heißt: $MiniServer und hat den Port: $MSWebPort User ist: $MSUser und PW: $MSPass.";
