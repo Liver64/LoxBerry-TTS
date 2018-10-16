@@ -1,4 +1,4 @@
-<style type="text/css">
+﻿<style type="text/css">
 
 
 .form {
@@ -72,9 +72,9 @@
 
 			</td>
 		<td valign="middle" style="height: 45px; width: 201px;" class="keylinks">
-		<font size="-1"><a id="linkvoicerss" <TMPL_VAR T2S.LINK_VOICERSS> target="_blank"><TMPL_VAR T2S.LABEL_API_KEY_VOICESS></a></font>
+		<font size="-1"><a id="linkvoicerss"<TMPL_VAR T2S.LINK_VOICERSS> target="_blank"> <TMPL_VAR T2S.LABEL_API_KEY_VOICESS></a></font>
 		<br><br>
-		<font size="-1"><a id="linkpolly" <TMPL_VAR T2S.LINK_POLLY> target="_blank"><TMPL_VAR T2S.LABEL_API_KEY_POLLY></a></font>
+		<font size="-1"><a id="linkpolly"<TMPL_VAR T2S.LINK_POLLY> target="_blank"> <TMPL_VAR T2S.LABEL_API_KEY_POLLY></a></font>
 		<font size="-1"><span><TMPL_VAR T2S.LABEL_POLLY_PRICING></span></font></td>
 		<td style="height: 13px; width: 24px;"></td>
 	</tr>
@@ -205,8 +205,9 @@
 		</td>
 		<td width="50%" style="height: 60px">
 			<table border=0 width="100%">
+			<div data-role="collapsible">
 				<tr>
-					<div data-role="collapsible">
+					
 						<td style="height: 36px; width: 294px; text-align: left;">
 							<select id='out_list' name='out_list' data-mini='true' 
 								data-validation-error-msg="<TMPL_VAR T2S.SELECT_OUTPUT_DROPDOWN>" 
@@ -215,15 +216,14 @@
 								<TMPL_VAR OUT_LIST>
 							</select>
 							<script>
-							$('#out_list').val('<TMPL_VAR SYSTEM.card>');
+								$('#out_list').val('<TMPL_VAR SYSTEM.card>');
 							</script>
-							</td>
-					<div id="loginResult" style="display:none;">
-					</div>
+						</td>
+					<div id="loginResult" style="display:none;"></div>
 					<div id="msg"></div>
-						
-					</div>
+					
 				</tr>
+				</div>
 			</table>
 		</td>
 		<td style="height: 30px; width: 201px;">
@@ -347,6 +347,7 @@
 					</div>
 				</div>
 			</td>
+			
 		
 		
 		
@@ -361,7 +362,7 @@
 	</tr>
 	<tr class="destdet">
 		<td colspan=3 valign="middle" style="height: 37px">
-			<font size="-1"><TMPL_VAR DESTINATION.NOTE><a href="<TMPL_VAR DESTINATION.LINK_GOOGLE>"<TMPL_VAR DESTINATION.LABEL_LINK_GOOGLE></font>
+			<font size="-1"><TMPL_VAR DESTINATION.NOTE><a href="<TMPL_VAR DESTINATION.LINK_GOOGLE>"<TMPL_VAR DESTINATION.LABEL_LINK_GOOGLE></a></font>
 		</td>
 	</tr>
 		
@@ -502,7 +503,9 @@
 		
 <!-- Ende-->	
 	
+	
 		</table>
+	
 			<td></td>
 			<td colspan=3>
 				<div id="form-error-message" class="form-error-message"></div>
@@ -514,6 +517,7 @@
 				<button type="submit" form="main_form" id="btnsubmit" data-role="button" data-inline="true" data-mini="true" data-icon="check"><TMPL_VAR SAVE.SAVE_BUTTON></button>
 			</center>
 		</p>
+		
 	
 	
 
@@ -848,7 +852,7 @@ function initial_lang_voice_load()  {
     // pass ISO code of selected language to field for info
     var isocode = '<TMPL_VAR CODE>'.substr(0, 2);
 	$('#langiso').val(isocode);
-	$("#langiso").textinput("refresh");
+	// $("#langiso").textinput("refresh");
 	
 	
 
@@ -930,7 +934,7 @@ function initial_lang_voice_load()  {
 		{
 			return true;
 		}
-		$("#langiso").textinput("refresh");
+		// $("#langiso").textinput("refresh");
 		
 		
 		
@@ -980,7 +984,7 @@ function initial_lang_voice_load()  {
 	// generate language ISO Code
 	var isocode = '<TMPL_VAR CODE>'.substr(0, 2);
 	$('#langiso').val(isocode);
-	$("#langiso").textinput("refresh");
+	// $("#langiso").textinput("refresh");
 }
 
  
