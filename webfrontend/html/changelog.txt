@@ -8,4 +8,5 @@
 			[Bugfix] Logging optimiert
  1.0.4		[Bugfix] HTML5 Übersetzung korrigiert
 			[Bugfix] HTML5 Code optimiert
+ 1.0.5		[Bugfix] Logging files updated	
  

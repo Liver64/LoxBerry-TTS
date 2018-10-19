@@ -2,8 +2,8 @@
 
 ##############################################################################################################################
 #
-# Version: 	1.0.4
-# Datum: 	16.10.2018
+# Version: 	1.0.5
+# Datum: 	19.10.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
 ##############################################################################################################################
@@ -42,7 +42,15 @@ $t2s_share_file = "t2s_text.json";								// filename to pass text from ext. Pro
 
 echo '<PRE>'; 
 
-global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $lbhomedir;
+global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $lbhomedir, $plugindata;
+
+$params = [	"name" => "Text2speech",
+			"filename" => "$lbplogdir/text2speech.log",
+			"append" => 1,
+			];
+LBLog::newLog($params);	
+$plugindata = LBSystem::plugindata();	
+
 
 LOGSTART("T2S PHP started");
 
@@ -404,7 +412,7 @@ function create_tts() {
     $folder->close();
     return; 	 
  }
-
+LOGEND('Logging finished');
 
 ?>
 
