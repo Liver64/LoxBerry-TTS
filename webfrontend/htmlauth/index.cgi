@@ -204,6 +204,7 @@ sub form {
 					type_local => 1, 
 					type_net => 1, 
 					readwriteonly => 1, 
+					data_mini => 1,
 					label => "$SL{'T2S.SAFE_DETAILS'}");
 					
 	$template->param("STORAGEPATH", $storage);
