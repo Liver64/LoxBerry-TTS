@@ -24,20 +24,28 @@ use LoxBerry::Web;
 use LoxBerry::Log;
 use LoxBerry::Storage;
 
-use CGI::Carp qw(fatalsToBrowser);
-use CGI qw/:standard/;
-use CGI;
-use LWP::Simple;
-use LWP::UserAgent;
-use File::HomeDir;
-use File::Copy;
-use Cwd 'abs_path';
-use JSON qw( decode_json );
-use utf8;
 use warnings;
 use strict;
+use File::Copy;
+
+#use CGI::Carp qw(fatalsToBrowser);
+#use CGI qw/:standard/;
+#use LWP::Simple;
+#use LWP::UserAgent;
+#use File::HomeDir;
+#use Cwd 'abs_path';
+#use JSON qw( decode_json );
+#use utf8;
 #use Data::Dumper;
-#no strict "refs"; # we need it for template system
+
+##########################################################################
+# Generic exception handler
+##########################################################################
+
+# Every non-handled exceptions sets the @reason variable that can
+# be written to the logfile in the END function
+
+$SIG{__DIE__} = sub { our @reason = @_ };
 
 ##########################################################################
 # Variables
@@ -55,6 +63,8 @@ my $helptemplate;
 my $storepath;
 my $fullpath;
 my $i;
+my $template;
+my %SL;
 
 my $helptemplatefilename		= "help.html";
 my $languagefile 				= "tts_all.ini";
@@ -72,12 +82,12 @@ my $mp3folder					= "mp3";
 #my $ttsinfo						= "info";
 #my $urlfile						= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
 my $log 						= LoxBerry::Log->new ( 
-												name => 'Text2Speech', 
-												filename => $lbplogdir ."/". $pluginlogfile, 
-												append => 1, 
+												name => 'Webinterface', 
+												# filename => $lbplogdir ."/". $pluginlogfile, 
+												# append => 1, 
 												addtime => 1
 												);
-#my $helplink 					= "http://www.loxwiki.eu/display/LOXBERRY/Sonos4Loxone";
+my $helplink 					= "https://www.loxwiki.eu/x/uoFYAg";
 my $pcfg 						= new Config::Simple($lbpconfigdir . "/" . $pluginconfigfile);
 my %Config 						= $pcfg->vars() if ( $pcfg );
 our $error_message				= "";
@@ -94,19 +104,10 @@ my $lblang = lblanguage();
 # Read Plugin Version
 my $sversion = LoxBerry::System::pluginversion();
 
-# Read LoxBerry Version
-my $lbversion = LoxBerry::System::lbversion();
-
 # read all POST-Parameter in namespace "R".
 my $cgi = CGI->new;
 $cgi->import_names('R');
 
-# check if logfile is empty
-if (-z $lbplogdir."/".$pluginlogfile) {
-	system("/usr/bin/date > $pluginlogfile");
-	$log->open;
-	LOGSTART "T2S UI started";
-}
 LOGSTART "T2S UI started";
 
 ##########################################################################
@@ -114,13 +115,7 @@ LOGSTART "T2S UI started";
 # deletes the log file
 if ( $R::delete_log )
 {
-	LOGDEB "Logfile will be deleted. ".$R::delete_log;
-	LOGWARN "Delete Logfile: ".$pluginlogfile;
-	my $pluginlogfile = $log->close;
-	system("/usr/bin/date > $pluginlogfile");
-	$log->open;
-	LOGSTART "Logfile restarted";
-	print "Content-Type: text/plain\n\nOK";
+	print "Content-Type: text/plain\n\nOK - In this version, this call does nothing";
 	exit;
 }
 
@@ -128,138 +123,24 @@ if ( $R::delete_log )
 # Parameter
 #########################################################################
 
-# Everything from URL
-foreach (split(/&/,$ENV{'QUERY_STRING'})){
-  ($namef,$value) = split(/=/,$_,2);
-  $namef =~ tr/+/ /;
-  $namef =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-  $value =~ tr/+/ /;
-  $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-  $query{$namef} = $value;
-}
-
-# Set parameters coming in - get over post
-if ( !$query{'saveformdata'} ) { 
-	if ( param('saveformdata') ) { 
-		$saveformdata = quotemeta(param('saveformdata')); 
-	} else { 
-		$saveformdata = 0;
-	} 
-} else { 
-	$saveformdata = quotemeta($query{'saveformdata'}); 
-}
-
-if ( !$query{'do'} ) { 
-	if ( param('do')) {
-		$do = quotemeta(param('do'));
-	} else {
-		$do = "form";
-	}
-} else {
-	$do = quotemeta($query{'do'});
-}
-
-
-# Everything we got from forms
-$saveformdata         = param('saveformdata');
-defined $saveformdata ? $saveformdata =~ tr/0-1//cd : undef;
-
+$saveformdata = defined $R::saveformdata ? $R::saveformdata : undef;
+$do = defined $R::do ? $R::do : "form";
 
 ##########################################################################
-# Various checks
+# Init Main Template
 ##########################################################################
-
-# Check, if filename for the errortemplate is readable
-stat($lbptemplatedir . "/" . $errortemplatefilename);
-if ( !-r _ )
-{
-	$error_message = $no_error_template_message;
-	LoxBerry::Web::lbheader($template_title, $helplink, $helptemplatefilename);
-	print $error_message;
-	LOGCRIT $error_message;
-	LoxBerry::Web::lbfooter();
-	LOGCRIT "Leave Plugin due to an critical error";
-	exit;
-}
-
-
-# Filename for the errortemplate is ok, preparing template";
-my $errortemplate = HTML::Template->new(
-					filename => $lbptemplatedir . "/" . $errortemplatefilename,
-					global_vars => 1,
-					loop_context_vars => 1,
-					die_on_bad_params=> 0,
-					associate => $cgi,
-					%htmltemplate_options,
-					debug => 1,
-					);
-my %ERR = LoxBerry::System::readlanguage($errortemplate, $languagefile);
-
-#**************************************************************************
-
-# Check, if filename for the successtemplate is readable
-stat($lbptemplatedir . "/" . $successtemplatefilename);
-if ( !-r _ )
-{
-	$error_message = $ERR{'ERRORS.ERR_SUCCESS_TEMPLATE_NOT_READABLE'};
-	LOGCRIT "The ".$successtemplatefilename." file could not be loaded. Abort plugin loading";
-	LOGCRIT $error_message;
-	&error;
-}
-#LOGDEB "Filename for the successtemplate is ok, preparing template";
-my $successtemplate = 	HTML::Template->new(
-						filename => $lbptemplatedir . "/" . $successtemplatefilename,
-						global_vars => 1,
-						loop_context_vars => 1,
-						die_on_bad_params=> 0,
-						associate => $cgi,
-						%htmltemplate_options,
-						debug => 1,
-						);
-my %SUC = LoxBerry::System::readlanguage($successtemplate, $languagefile);
+inittemplate();
 
 ##########################################################################
-# Logging
+# Set LoxBerry SDK to debug in plugin is in debug
 ##########################################################################
 
-if ($pcfg)
-{
-	$log->loglevel(int($Config{'SYSTEM.LOGLEVEL'}));
-	$LoxBerry::System::DEBUG 	= 1 if int($Config{'SYSTEM.LOGLEVEL'}) eq 7;
-	$LoxBerry::Web::DEBUG 		= 1 if int($Config{'SYSTEM.LOGLEVEL'}) eq 7;
-}
-else
-{
-	$log->loglevel(7);
+if($log->loglevel() eq "7") {
 	$LoxBerry::System::DEBUG 	= 1;
 	$LoxBerry::Web::DEBUG 		= 1;
-	$error_message				= $ERR{'ERRORS.ERR_NO_SONOS_CONFIG_FILE'};
-	&error;
-	exit;
+	$LoxBerry::Storage::DEBUG	= 1;
+	$LoxBerry::Log::DEBUG		= 1;
 }
-#*************************************************************************
-
-# Check, if filename for the maintemplate is readable, if not raise an error
-stat($lbptemplatedir . "/" . $maintemplatefilename);
-if ( !-r _ )
-{
-	$error_message = $ERR{'ERRORS.ERR_MAIN_TEMPLATE_NOT_READABLE'};
-	LOGCRIT "The ".$maintemplatefilename." file could not be loaded. Abort plugin loading";
-	LOGCRIT $error_message;
-	&error;
-}
-
-my $template =  HTML::Template->new(
-				filename => $lbptemplatedir . "/" . $maintemplatefilename,
-				global_vars => 1,
-				loop_context_vars => 1,
-				die_on_bad_params=> 0,
-				associate => $pcfg,
-				%htmltemplate_options,
-				debug => 1
-				);
-my %SL = LoxBerry::System::readlanguage($template, $languagefile);			
-
 
 ##########################################################################
 # Language Settings
@@ -270,8 +151,6 @@ $template->param("LBLANG", $lblang);
 $template->param("SELFURL", $ENV{REQUEST_URI});
 
 LOGDEB "Read main settings from " . $languagefile . " for language: " . $lblang;
-
-#************************************************************************
 
 # übergibt Plugin Verzeichnis an HTML
 $template->param("PLUGINDIR" => $lbpplugindir);
@@ -291,11 +170,10 @@ if (!-r $lbpconfigdir . "/" . $pluginconfigfile)
 {
 	LOGWARN "Plugin config file/directory does not exist";
 	LOGDEB "Check if config directory exists. If not, try to create it.";
-	$error_message = $ERR{'ERRORS.ERR_CREATE_CONFIG_DIRECTORY'};
+	$error_message = $SL{'ERRORS.ERR_CREATE_CONFIG_DIRECTORY'};
 	mkdir $lbpconfigdir unless -d $lbpconfigdir or &error; 
 	LOGOK "Config directory: " . $lbpconfigdir . " has been created";
 }
-
 
 ##########################################################################
 # Main program
@@ -317,6 +195,8 @@ exit;
 
 sub form {
 
+	LOGTITLE "Display form";
+	
 	my $storage = LoxBerry::Storage::get_storage_html(
 					formid => 'STORAGEPATH', 
 					currentpath => $pcfg->param("SYSTEM.path"),
@@ -351,18 +231,13 @@ sub form {
 			LOGDEB "Folders already exists.";
 		} else {
 			# Create folder
-			mkdir($storepath."/".$lbhostname, 0777);
-			mkdir($storepath."/".$lbhostname."/".$ttsfolder, 0777);
-			mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder, 0777);
-			#mkdir($storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo, 0777);
-			LOGDEB "Directory '".$storepath."/".$lbhostname."' has been created.";
-			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."' has been created.";
+			require File::Path;
+			File::Path::make_path($fullpath, { chmod => 0777 } );
 			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' has been created.";
-			#LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$ttsinfo."' has been created.";
 			
 			# Copy delivered MP3 files from local dir (source) to new created folder
 			my $source_dir = $lbpdatadir.'/mp3';
-			my $target_dir = $storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder;
+			my $target_dir = $fullpath;
 
 			opendir(my $DIRE, $source_dir) || die "Can't opendir $source_dir: $!";  
 			my @files = readdir($DIRE);
@@ -422,17 +297,15 @@ sub form {
 	close $in;
 	$template->param("OUT_LIST", $out_list);
 		
-	$log->LOGEND;
+	LOGDEB "Printing template";
 	
 	# Print Template
-	my $sversion = LoxBerry::System::pluginversion();
 	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
 	LoxBerry::Web::head();
 	LoxBerry::Web::pagestart($template_title, $helplink, $helptemplate);
 	print LoxBerry::Log::get_notifications_html($lbpplugindir);
 	print $template->output();
 	LoxBerry::Web::lbfooter();
-	#undef $template;	
 	exit;
 	
 	# Test Print to UI
@@ -450,7 +323,30 @@ sub form {
 
 sub save 
 {
-	# OK - now installing...
+	LOGTITLE "Save parameters";
+	
+	# Check, if filename for the successtemplate is readable
+	stat($lbptemplatedir . "/" . $successtemplatefilename);
+	if ( !-r _ )
+	{
+		$error_message = $SL{'ERRORS.ERR_SUCCESS_TEMPLATE_NOT_READABLE'};
+		LOGCRIT "The ".$successtemplatefilename." file could not be loaded. Abort plugin loading";
+		LOGERR $error_message;
+		&error;
+	}
+	LOGDEB "Filename for the successtemplate is ok, preparing template";
+	my $successtemplate = 	HTML::Template->new(
+							filename => $lbptemplatedir . "/" . $successtemplatefilename,
+							global_vars => 1,
+							loop_context_vars => 1,
+							die_on_bad_params=> 0,
+							associate => $cgi,
+							%htmltemplate_options,
+							debug => 1,
+							);
+	my %SUC = LoxBerry::System::readlanguage($successtemplate, $languagefile);
+
+	LOGDEB "Filling config with parameters";
 
 	# Write configuration file(s)
 	$pcfg->param("TTS.t2s_engine", "$R::t2s_engine");
@@ -472,19 +368,20 @@ sub save
 	$pcfg->param("SYSTEM.card", "$R::out_list");
 	$pcfg->param("TTS.volume", "$R::volume");
 	
+	LOGINF "Writing configuration file";
 	
-	
-	$pcfg->save() or &error;;
+	$pcfg->save() or &error;
 
 	LOGOK "All settings has been saved successful";
 
-		my $lblang = lblanguage();
+	$lblang = lblanguage();
 	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
 	LoxBerry::Web::lbheader($template_title, $helplink, $helptemplatefilename);
 	$successtemplate->param('SAVE_ALL_OK'		, $SUC{'SAVE.SAVE_ALL_OK'});
 	$successtemplate->param('SAVE_MESSAGE'		, $SUC{'SAVE.SAVE_MESSAGE'});
 	$successtemplate->param('SAVE_BUTTON_OK' 	, $SUC{'SAVE.SAVE_BUTTON_OK'});
 	$successtemplate->param('SAVE_NEXTURL'		, $ENV{REQUEST_URI});
+	LOGDEB "Printing success template";
 	print $successtemplate->output();
 	LoxBerry::Web::lbfooter();
 	exit;
@@ -506,14 +403,92 @@ sub save
 
 sub error 
 {
-	$template_title = $ERR{'ERRORS.MY_NAME'} . ": v$sversion - " . $ERR{'ERRORS.ERR_TITLE'};
+	LOGTITLE "Show error form";
+		
+	# Check, if filename for the errortemplate is readable
+	stat($lbptemplatedir . "/" . $errortemplatefilename);
+	if ( !-r _ )
+	{
+		$error_message = $no_error_template_message;
+		LoxBerry::Web::lbheader($template_title, $helplink, $helptemplatefilename);
+		print $error_message;
+		LOGCRIT $error_message;
+		LoxBerry::Web::lbfooter();
+		LOGERR "Leave Plugin due to an critical error";
+		exit;
+	}
+
+	# Filename for the errortemplate is ok, preparing template";
+	my $errortemplate = HTML::Template->new(
+						filename => $lbptemplatedir . "/" . $errortemplatefilename,
+						global_vars => 1,
+						loop_context_vars => 1,
+						die_on_bad_params=> 0,
+						associate => $cgi,
+						%htmltemplate_options,
+						# debug => 1,
+						);
+	my %ERR = LoxBerry::System::readlanguage($errortemplate, $languagefile);
+
+	#**************************************************************************
+	
+	$template_title = $SL{'ERRORS.MY_NAME'} . ": v$sversion - " . $SL{'ERRORS.ERR_TITLE'};
 	LoxBerry::Web::lbheader($template_title, $helplink, $helptemplatefilename);
 	$errortemplate->param('ERR_MESSAGE'		, $error_message);
-	$errortemplate->param('ERR_TITLE'		, $ERR{'ERRORS.ERR_TITLE'});
-	$errortemplate->param('ERR_BUTTON_BACK' , $ERR{'ERRORS.ERR_BUTTON_BACK'});
-	$successtemplate->param('ERR_NEXTURL'	, $ENV{REQUEST_URI});
+	$errortemplate->param('ERR_TITLE'		, $SL{'ERRORS.ERR_TITLE'});
+	$errortemplate->param('ERR_BUTTON_BACK' , $SL{'ERRORS.ERR_BUTTON_BACK'});
+	$errortemplate->param('ERR_NEXTURL'	, $ENV{REQUEST_URI});
 	print $errortemplate->output();
 	LoxBerry::Web::lbfooter();
+	exit;
 }
+
+
+##########################################################################
+# Init Template
+##########################################################################
+sub inittemplate
+{
+	# Check, if filename for the maintemplate is readable, if not raise an error
+	stat($lbptemplatedir . "/" . $maintemplatefilename);
+	if ( !-r _ )
+	{
+		$error_message = "Error: Main template not readable";
+		LOGCRIT "The ".$maintemplatefilename." file could not be loaded. Abort plugin loading";
+		LOGCRIT $error_message;
+		&error;
+	}
+
+	$template =  HTML::Template->new(
+				filename => $lbptemplatedir . "/" . $maintemplatefilename,
+				global_vars => 1,
+				loop_context_vars => 1,
+				die_on_bad_params=> 0,
+				associate => $pcfg,
+				%htmltemplate_options,
+				debug => 1
+				);
+	%SL = LoxBerry::System::readlanguage($template, $languagefile);			
+
+}
+
+
+sub END 
+{	
+	our @reason;
+	
+	if ($log) {
+		if (@reason) {
+			LOGCRIT "Unhandled exception catched:";
+			LOGERR @reason;
+			LOGEND "Finished with an exception";
+		} elsif ($error_message) {
+			LOGEND "Finished with handled error";
+		} else {
+			LOGEND "Finished successful";
+		}
+	}
+}
+
 
 
