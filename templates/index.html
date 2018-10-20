@@ -26,6 +26,9 @@
 
 </style>
 
+<TMPL_IF FORM>
+<!-- form 'FORM' START -->
+
 
 <form method="post" data-ajax="false" accept-charset="utf-8" name="main_form" id="main_form" action="<TMPL_VAR SELFURL>">
 	<input type="hidden" name="saveformdata" value="1">
@@ -485,8 +488,6 @@
 
 
 <script>
-
-
 	
 //***************** Functions to be executed during loading the page **********************
 
@@ -954,9 +955,14 @@ function initial_lang_voice_load()  {
 
 </script>
 
+<!-- form 'FORM' END -->
+</TMPL_IF>
 
-
-
+<TMPL_IF LOGFILES>
+<!-- form 'LOGFILES' START -->
+	<TMPL_VAR LOGLIST_HTML>
+<!-- form 'LOGFILES' END -->
+</TMPL_IF LOGFILES>
 
 
 

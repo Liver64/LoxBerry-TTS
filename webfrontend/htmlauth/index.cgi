@@ -179,13 +179,35 @@ if (!-r $lbpconfigdir . "/" . $pluginconfigfile)
 # Main program
 ##########################################################################
 
+our %navbar;
+$navbar{1}{Name} = "Text2speech settings";
+$navbar{1}{URL} = 'index.cgi';
+ 
+# $navbar{2}{Name} = "Examples and testing";
+# $navbar{2}{URL} = 't2sexamples.cgi';
+ 
+$navbar{99}{Name} = "Logfiles";
+$navbar{99}{URL} = '?do=logfiles';
+
 if ($R::saveformdata) {
   &save;
 
-} else {
-  &form;
+} 
 
+if(!defined $R::do or $R::do eq "form") {
+	$navbar{1}{active} = 1;
+	$template->param("FORM", "1");
+	&form;
+} elsif ($R::do eq "logfiles") {
+	$navbar{99}{active} = 1;
+	$template->param("LOGFILES", "1");
+	$template->param("LOGLIST_HTML", LoxBerry::Web::loglist_html());
+	printtemplate();
 }
+
+$error_message = "Invalid do parameter";
+error();
+
 exit;
 
 
@@ -194,6 +216,7 @@ exit;
 #####################################################
 
 sub form {
+
 
 	LOGTITLE "Display form";
 	
@@ -300,14 +323,7 @@ sub form {
 		
 	LOGDEB "Printing template";
 	
-	# Print Template
-	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
-	LoxBerry::Web::head();
-	LoxBerry::Web::pagestart($template_title, $helplink, $helptemplate);
-	print LoxBerry::Log::get_notifications_html($lbpplugindir);
-	print $template->output();
-	LoxBerry::Web::lbfooter();
-	exit;
+	printtemplate();
 	
 	# Test Print to UI
 	#my $content =  "Miniserver Nr. 1 heißt: $MiniServer und hat den Port: $MSWebPort User ist: $MSUser und PW: $MSPass.";
@@ -473,7 +489,24 @@ sub inittemplate
 
 }
 
+##########################################################################
+# Print Template
+##########################################################################
+sub printtemplate
+{
+	# Print Template
+	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
+	LoxBerry::Web::head();
+	LoxBerry::Web::pagestart($template_title, $helplink, $helptemplate);
+	print LoxBerry::Log::get_notifications_html($lbpplugindir);
+	print $template->output();
+	LoxBerry::Web::lbfooter();
+	exit;
+}	
 
+##########################################################################
+# END routine - is called on every exit (also on exceptions)
+##########################################################################
 sub END 
 {	
 	our @reason;
