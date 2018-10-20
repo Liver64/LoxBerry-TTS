@@ -3,7 +3,7 @@
 ##############################################################################################################################
 #
 # Version: 	1.0.5
-# Datum: 	19.10.2018
+# Datum: 	16.10.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
 ##############################################################################################################################
@@ -26,6 +26,7 @@ $lbversion = LBSystem::lbversion();								// get LoxBerry Version
 $path = LBSCONFIGDIR; 											// get path to general.cfg
 $myFolder = "$lbpdatadir";										// get data folder
 $myConfigFolder = "$lbpconfigdir";								// get config folder
+$myConfigFile = "tts_all.cfg";									// get config file
 #$MessageStorepath = "$lbpdatadir/";							// get T2S folder to store
 $pathlanguagefile = "$lbphtmldir/voice_engines/langfiles/";		// get languagefiles
 $logpath = "$lbplogdir";										// get log folder
@@ -37,20 +38,50 @@ $plugindatapath = "plugindata";									// get plugindata folder
 $MP3path = "mp3";												// path to preinstalled numeric MP3 files
 $infopath = "share";											// path to info for ext. Prog
 $Home = getcwd();												// get Plugin Pfad
-$t2s_share_file = "t2s_text.json";								// filename to pass text from ext. Prog.
+$fullfilename = "t2s_source.json";								// filename to pass info back to ext. Prog.
+$logging_config = "interface.cfg";								// fixed filename to pass log entries to ext. Prog.
 
 
 echo '<PRE>'; 
 
-global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $lbhomedir, $plugindata;
+global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config;
 
-$params = [	"name" => "Text2speech",
-			"filename" => "$lbplogdir/text2speech.log",
-			"append" => 1,
-			];
-LBLog::newLog($params);	
-$plugindata = LBSystem::plugindata();	
 
+# ** Prepare Logging **
+
+# suche nach evtl. vorhandenen Plugins die T2S nutzen
+$pluginusage = glob("$lbhomedir/config/plugins/*/".$logging_config);
+# Laden der Plugindb
+$plugindb = LBSystem::get_plugins();
+foreach($pluginusage as $plugfolder)  {
+	$folder = explode('/',$plugfolder);
+	$plugfolder = $folder[5];
+	$myFolder = $lbhomedir."/config/plugins/".$plugfolder;
+	$key = recursive_array_search($plugfolder,$plugindb);
+	if (!file_exists($myFolder.'/'.$logging_config)) {
+		LOGGING('The file '.$logging_config.' could not be opened, please try again!', 4);
+	} else {
+		$tmp_ini = parse_ini_file($myFolder.'/'.$logging_config, TRUE);
+		$folders = $lbhomedir."/log/plugins/".$plugfolder."/".$tmp_ini['SYSTEM']['NAME_LOGFILE'];
+		$params[] = array(
+							'logpath' => $folders, 
+							'name' => $tmp_ini['SYSTEM']['PLUGINDB_NAME'], 
+							'loglevel' => $plugindb[$key]['PLUGINDB_LOGLEVEL'],
+							'append' => 1
+							);
+		LOGGING("T2S Logging config '".$logging_config."' has been loaded", 5);
+	}
+}
+#print_r($params);
+
+
+#foreach ($tmp_params1 as $params)  {
+#	print_r($params);
+#	LBLog::newLog($params);	
+#	}
+	#exit;
+#LBLog::newLog($params);	
+$plugindata = LBSystem::plugindata();
 
 LOGSTART("T2S PHP started");
 
@@ -62,7 +93,7 @@ LOGSTART("T2S PHP started");
 		exit;
 	} else {
 		$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
-		LOGGING("TTS config has been loaded", 7);
+		LOGGING("T2S config has been loaded", 7);
 	}
 	
 	LOGGING("Config has been successfull loaded",6);
@@ -106,13 +137,18 @@ LOGSTART("T2S PHP started");
 
 #-- End Preparation ---------------------------------------------------------------------
 
-	global $soundcard, $config, $text, $time_start;
+	global $soundcard, $config, $text, $time_start, $decoded, $greet, $textstring, $filename, $myConfigFile;
 	
-	if ($soundcard == '013')  {
+	# Prüfen ob Request per Interface reinkommt
+	$tmp_content = file_get_contents("php://input");
+	if ($tmp_content == true)  {
 	# *** Lese Daten von ext. Call ***
-		$file = $myFolder."/".$infopath."/".$t2s_share_file;
-		$data = json_decode(file_get_contents($file), true);
-		$text = $data[0];
+		require_once('output/interface.php');
+		LOGGING("T2S Interface ** POST request has been received and will be processed!", 6);
+		receive_post_request();
+		# Deklaration der variablen
+		$text = $decoded['text'];
+		$greet = $decoded['greet'];	
 	} else {
 		create_tts();
 	}
@@ -127,7 +163,7 @@ LOGSTART("T2S PHP started");
 		(!isset($_GET['witz'])) && (!isset($_GET['pollen'])) && 
 		(!isset($_GET['warning'])) && (!isset($_GET['bauernregel'])) && 
 		(!isset($_GET['distance'])) && (!isset($_GET['clock'])) &&
-		(!isset($_GET['calendar']))&& (!isset($data))) {
+		(!isset($_GET['calendar']))&& ($text == ' ') && (!isset($data))) {
 		LOGGING("Wrong Syntax, please correct! Even '...say&text=<TEXT>' or '...say&file=<FILE>' are necessary to play an anouncement. (check Wiki)", 3);	
 		exit;
 	}
@@ -201,24 +237,27 @@ LOGSTART("T2S PHP started");
 			shell_exec("export AUDIODEV=hw:1,1");
 			usb();
 		break;
-		case '013':			// ext. Programm
-			require_once('output/ext_prog.php');
-			ext_prog($text);
-		break;
 		default;			// Soundcard bcm2835
 			require_once('output/alsa.php');
 			shell_exec("export AUDIODRIVER=alsa");
 			$output = shell_exec("export AUDIODEV=hw:0,0");
 		break;
 	}
-	if ($soundcard == '013')  {
-	 create_tts();
+	if ($tmp_content == true)  {
+		create_tts();
+		jsonfile($filename);
+		# Set Output to Interface
+		#require_once "Config/Lite.php";
+		#$cfg = new Config_Lite("$lbpconfigdir/$myConfigFile",LOCK_EX,INI_SCANNER_RAW);
+		#$cfg->set("SYSTEM","card",'013');
+		#$cfg->save();
+		#LOGGING("T2S Output has been set to 'Text2speech Interface'", 5);	
+		
 	}
 	delmp3();
 	$time_end = microtime(true);
 	$t2s_time = $time_end - $time_start;
-	LOGGING("Deletion of no longer needed MP3 files has been executed", 7);		
-	LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
+	#LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
 	LOGEND("T2S PHP finished");
 exit;
 
@@ -234,9 +273,9 @@ exit;
 
 function create_tts() {
 	
-	global $config, $filename, $MessageStorepath, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text;
+	global $config, $filename, $MessageStorepath, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet;
 	
-	if (isset($_GET['greet']))  {
+	if (isset($_GET['greet']) or ($greet == 1))  {
 		$Stunden = intval(strftime("%H"));
 		$TL = LOAD_T2S_TEXT();
 		switch ($Stunden) {
@@ -374,7 +413,7 @@ function create_tts() {
 			LOGGING("AWS Polly has been successful selected", 7);		
 		}
 		t2s($messageid, $MessageStorepath, $textstring, $filename);
-		return $messageid;
+		#return $messageid;
 	}
 	return $messageid;
 }
@@ -408,11 +447,11 @@ function create_tts() {
 			}
         }
     }
-	LOGGING("All TTS (MP3) files according to criteria were successfully deleted", 7);
+	LOGGING("All T2S (MP3) files according to criteria were successfully deleted", 7);
     $folder->close();
     return; 	 
  }
-LOGEND('Logging finished');
+
 
 ?>
 
