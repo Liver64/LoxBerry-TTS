@@ -274,83 +274,44 @@
 			<td style="height: 30px; width: 20%	;">
 		</td>
 	</tr>
-	<tr>
-		<td style="height: 60px; width: 25%;">
-		<label id="ldebug"><TMPL_VAR T2S.LABEL_DEBUGGING></label>
-	</td>
-	<td width="50%" style="height: 60px">
-		<div style="display:table; width:80%;">
-			<div style="display:table-row;">
-				<div style="display:table-cell; min-witdh:30%; width:30%;">
-						<div style="display:table; width:40%; padding:10px; border: 1px solid black; border-radius: 5px; background-color: #bebebe;">
-							 <div style="display:table-row;">
-								<div style="display:table-cell; border-radius: 5px;" id="delete_log_div">
-								 <button id="delete_log_btn" onclick="$('#delete_log_btn').html('<TMPL_VAR TEMPLATE.LOG_BUTTON_DELETE_WAIT>'); $.ajax({url: '', type: 'GET', data: { 'delete_log':1},
-								    success: function (data) {
-						                $('#delete_log_btn').html('<TMPL_VAR TEMPLATE.LOG_BUTTON_DELETE_OK>');
-						                setTimeout( function() { $('#delete_log_btn').html('<TMPL_VAR TEMPLATE.LOG_BUTTON_DELETE>'); }, 2000);
-						            },
-						            error: function (textStatus, errorThrown) {
-						                $('#delete_log_btn').html('<TMPL_VAR TEMPLATE.LOG_BUTTON_DELETE_FAIL>');
-						                setTimeout( function() { $('#delete_log_btn').html('<TMPL_VAR TEMPLATE.LOG_BUTTON_DELETE>');}, 2000);
-						
-						            }	}); return false;" data-role="button" data-inline="true" data-mini="true" data-icon="delete"><TMPL_VAR TEMPLATE.LOG_BUTTON_DELETE></button>
-								</div>
-								<div style="display:table-cell;">
-								 	<button onclick="window.open('/admin/system/tools/logfile.cgi?logfile=<TMPL_VAR LOGFILE>&amp;header=html&amp;format=template', 'log'); return false;" id="logview" data-role="button" data-inline="true" data-mini="true" data-icon="bars"><TMPL_VAR TEMPLATE.BUTTON_LOG_VIEW></button>
-								</div>
-								
-								</div>
-							 </div>
-							</div>
-						 </div>
-					</div>
-				</td>
-			<td style="height: 60px; width: 201px;">
-				<font size="-1"><TMPL_VAR T2S.NOTE_DEBUGGING></font>
-			</td>
-			<td style="height: 60px"></td>
-			<tr>
-				<td colspan=3 valign="middle" style="height: 33px">
-				<hr style="border:solid #bebebe 3px;height:2px; width: 100%;"></td>
-			</tr>
-		
-		
-		<!-- Options-->
-		<tr>
-			<td colspan=3 style="height: 30px; ">
-				<h3><TMPL_VAR TEMPLATE.MAIN_LABEL_OPTIONS></h3>
-			</td>
-		</tr>
-		<td style="height: 30px; width: 10%;">
-			<TMPL_VAR TEMPLATE.LABEL_OPTIONS>
-		</td>
-			<td colspan=3 valign="middle">
-				<div style="display:table-cell; width:60%;">
-					<div style="display:table; padding:10px; border: 1px solid black; border-radius: 5px; background-color: #6dac20;">
-						<fieldset data-role="controlgroup">
-							 <div style="display:table-row;">
-								<div style="display:table-cell;">
-									<input name="Checkbox3" type="checkbox" onclick="weatherlayout()" id="weather_det" data-icon="check" style="width: 142px">								
-									<label for="weather_det"><TMPL_VAR WEATHER.LAYOUT_CHECKBOX></label>
-								</div>
-								<div style="display:table-cell;">
-									<input name="Checkbox4" type="checkbox" onclick="destlayout()" id="dest_det" data-icon="check" style="width: 142px">								
-									<label for="dest_det"><TMPL_VAR DESTINATION.LAYOUT_CHECKBOX></label>
-								</div>
-								<div style="display:table-cell;">
-									<input name="Checkbox5" type="checkbox" onclick="callayout()" id="cal_det" data-icon="check" style="width: 142px">								
-									<label for="cal_det"><TMPL_VAR CALENDAR.LAYOUT_CHECKBOX></label>
-								</div>
-							</div>
-						</fieldset>
-					</div>
-				</div>
-			</td>
 			
+	<tr>
+		<td colspan=3 valign="middle" style="height: 33px">
+			<hr style="border:solid #bebebe 3px;height:2px; width: 100%;">
+		</td>
+	</tr>
 		
-		
-		
+	<!-- Options-->
+	<tr>
+		<td colspan=3 style="height: 30px; ">
+			<h3><TMPL_VAR TEMPLATE.MAIN_LABEL_OPTIONS></h3>
+		</td>
+	</tr>
+	<td style="height: 30px; width: 10%;">
+		<TMPL_VAR TEMPLATE.LABEL_OPTIONS>
+	</td>
+	<td colspan=3 valign="middle">
+		<div style="display:table-cell; width:60%;">
+			<div style="display:table; padding:10px; border: 1px solid black; border-radius: 5px; background-color: #6dac20;">
+				<fieldset data-role="controlgroup">
+					<div style="display:table-row;">
+						<div style="display:table-cell;">
+							<input name="Checkbox3" type="checkbox" onclick="weatherlayout()" id="weather_det" data-icon="check" style="width: 142px">								
+							<label for="weather_det"><TMPL_VAR WEATHER.LAYOUT_CHECKBOX></label>
+						</div>
+						<div style="display:table-cell;">
+							<input name="Checkbox4" type="checkbox" onclick="destlayout()" id="dest_det" data-icon="check" style="width: 142px">								
+							<label for="dest_det"><TMPL_VAR DESTINATION.LAYOUT_CHECKBOX></label>
+						</div>
+						<div style="display:table-cell;">
+							<input name="Checkbox5" type="checkbox" onclick="callayout()" id="cal_det" data-icon="check" style="width: 142px">								
+							<label for="cal_det"><TMPL_VAR CALENDAR.LAYOUT_CHECKBOX></label>
+						</div>
+					</div>
+				</fieldset>
+			</div>
+		</div>
+	</td>
 	
 	
 	<!-- Start Destination -->
