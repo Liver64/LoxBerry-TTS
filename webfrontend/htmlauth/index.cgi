@@ -199,6 +199,7 @@ if(!defined $R::do or $R::do eq "form") {
 	$template->param("FORM", "1");
 	&form;
 } elsif ($R::do eq "logfiles") {
+	LOGTITLE "Show logfiles";
 	$navbar{99}{active} = 1;
 	$template->param("LOGFILES", "1");
 	$template->param("LOGLIST_HTML", LoxBerry::Web::loglist_html());
@@ -501,6 +502,7 @@ sub printtemplate
 	print LoxBerry::Log::get_notifications_html($lbpplugindir);
 	print $template->output();
 	LoxBerry::Web::lbfooter();
+	LOGOK "Website printed";
 	exit;
 }	
 
