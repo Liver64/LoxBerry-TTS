@@ -46,42 +46,12 @@ echo '<PRE>';
 
 global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config;
 
-
-# ** Prepare Logging **
-
-# suche nach evtl. vorhandenen Plugins die T2S nutzen
-$pluginusage = glob("$lbhomedir/config/plugins/*/".$logging_config);
-# Laden der Plugindb
-$plugindb = LBSystem::get_plugins();
-foreach($pluginusage as $plugfolder)  {
-	$folder = explode('/',$plugfolder);
-	$plugfolder = $folder[5];
-	$myFolder = $lbhomedir."/config/plugins/".$plugfolder;
-	$key = recursive_array_search($plugfolder,$plugindb);
-	if (!file_exists($myFolder.'/'.$logging_config)) {
-		LOGGING('The file '.$logging_config.' could not be opened, please try again!', 4);
-	} else {
-		$tmp_ini = parse_ini_file($myFolder.'/'.$logging_config, TRUE);
-		$folders = $lbhomedir."/log/plugins/".$plugfolder."/".$tmp_ini['SYSTEM']['NAME_LOGFILE'];
-		$params[] = array(
-							'logpath' => $folders, 
-							'name' => $tmp_ini['SYSTEM']['PLUGINDB_NAME'], 
-							'loglevel' => $plugindb[$key]['PLUGINDB_LOGLEVEL'],
-							'append' => 1
-							);
-		LOGGING("T2S Logging config '".$logging_config."' has been loaded", 5);
-	}
-}
-#print_r($params);
-
-
-#foreach ($tmp_params1 as $params)  {
-#	print_r($params);
-#	LBLog::newLog($params);	
-#	}
-	#exit;
-#LBLog::newLog($params);	
-$plugindata = LBSystem::plugindata();
+$params = [	"name" => "Text2speech",
+			"filename" => "$lbplogdir/text2speech.log",
+			"append" => 1,
+			];
+LBLog::newLog($params);	
+$plugindata = LBSystem::plugindata();	
 
 LOGSTART("T2S PHP started");
 
