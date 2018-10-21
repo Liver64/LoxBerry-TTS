@@ -10,9 +10,9 @@ $log = LBLog::newLog( [ "name" => "Cleanup", "stderr" => 1, "addtime" => 1 ] );
 
 LOGSTART("Cleanup MP3 files");
 
-
 $myConfigFolder = "$lbpconfigdir";								// get config folder
 $myConfigFile = "tts_all.cfg";									// get config file
+$hostname = lbhostname();
 
 // Parsen der Konfigurationsdatei
 if (!file_exists($myConfigFolder.'/tts_all.cfg')) {
@@ -32,22 +32,17 @@ if ($folderpeace[3] != "data") {
 	$MessageStorepath = $config['SYSTEM']['path']."/";
 }
 
-$storageinterval = !empty($config['MP3']['MP3store']) ? trim($config['MP3']['MP3store']) : "7";
-
-// Check if we need to cleanup by time or by size
-if(substr($storageinterval, -1) == "M") {
-	$tosize = substr($storageinterval, 0, -1) * 1024*1024;
-	if(empty($tosize)) {
-		LOGCRIT("The size limit is not valid - stopping operation");
-		LOGDEB("Config parameter MP3/MP3Store is {$config['MP3']['MP3store']}, tosize is '$tosize'");
-		exit;
-	}
-	$storageinterval = null;
-	delmp3();
-	
-} else {
-	delmp3();
+// Set defaults if needed
+$storageinterval = trim($config['MP3']['MP3store']);
+$cachesize = !empty($config['MP3']['cachesize']) ? trim($config['MP3']['cachesize']) : "100";
+$tosize = $cachesize * 1024 * 1024;
+if(empty($tosize)) {
+	LOGCRIT("The size limit is not valid - stopping operation");
+	LOGDEB("Config parameter MP3/cachesize is {$config['MP3']['cachesize']}, tosize is '$tosize'");
+	exit;
 }
+
+delmp3();
 
 exit;
 
@@ -60,15 +55,10 @@ exit;
 **/
 
 function delmp3() {
-	global $config, $MessageStorepath, $storageinterval, $tosize;
+	global $config, $MessageStorepath, $storageinterval, $tosize, $cachesize, $storageinterval;
 		
-	if($tosize) {
-		LOGINF("Deleting oldest files to reach {$config['MP3']['MP3store']}B...");
-		LOGTITLE("Cleanup to {$config['MP3']['MP3store']}B");
-	} else {
-		LOGINF("Deleting files older than {$config['MP3']['MP3store']} days...");
-	}
-	
+	LOGINF("Deleting oldest files to reach $cachesize MB...");
+
 	$dir = $MessageStorepath;
     
 	// $folder = dir($dir);
@@ -91,46 +81,27 @@ function delmp3() {
 	usort($files, function($a, $b) {
 		return @filemtime($a) > @filemtime($b);
 	});
-	
-	
-	if (empty($tosize)) {
-		/******************/
-		/* Delete to time */
-		$deltime = time() - $storageinterval * 24 * 60 * 60;
-		foreach($files as $key => $file){
-			if(!is_file($file)) {
-				unset($files[$key]);
-				continue;
-			}
-			$filetime = @filemtime($file);
-			LOGDEB("Checking file ".basename($file)." (".date(DATE_ATOM, $filetime).")");
-			if($filetime < $deltime && strlen($file) == 36) {
-				if ( @unlink($file) != false )
-					LOGINF(basename($file).' has been deleted');
-				else
-					LOGWARN(basename($file).' could not be deleted');
-			}
-		}
-	} else { 
-		/******************/
-		/* Delete to size */
-		// First get full size
-		$fullsize = 0;
-		foreach($files as $file){
-			if(!is_file($file)) {
-				unset($files[$key]);
-				continue;
-			}
-			$fullsize += filesize($file);
-		}
-		
-		// Are we below the limit? Then nothing to do
-		if ($fullsize < $tosize) {
-			LOGINF("Current size $fullsize is below destination size $tosize");
-			LOGOK ("Nothing to do, quitting");
-			exit;
-		}
 
+	/******************/
+	/* Delete to size */
+	// First get full size
+	$fullsize = 0;
+	foreach($files as $file){
+		if(!is_file($file)) {
+			unset($files[$key]);
+			continue;
+		}
+		$fullsize += filesize($file);
+	}
+	
+	// Are we below the limit? Then nothing to do
+	if ($fullsize < $tosize) {
+
+		LOGINF("Current size $fullsize is below destination size $tosize");
+		LOGOK ("Nothing to do, quitting");
+
+	} else {
+		
 		// We need to delete
 		$newsize = $fullsize;
 		foreach($files as $file){
@@ -153,7 +124,36 @@ function delmp3() {
 		if ($newsize > $tosize) {
 			LOGERR("Used size $newsize is still greater than destination size $tosize - Something is strange.");
 		}
+			
+	}
 		
+	LOGINF("Now check if files older x days should be deleted, too...");
+
+	if ($storageinterval != "0") {
+
+		LOGINF("Deleting files older than $storageinterval days...");
+
+		/******************/
+		/* Delete to time */
+		$deltime = time() - $storageinterval * 24 * 60 * 60;
+		foreach($files as $key => $file){
+			if(!is_file($file)) {
+				unset($files[$key]);
+				continue;
+			}
+			$filetime = @filemtime($file);
+			LOGDEB("Checking file ".basename($file)." (".date(DATE_ATOM, $filetime).")");
+			if($filetime < $deltime && strlen($file) == 36) {
+				if ( @unlink($file) != false )
+					LOGINF(basename($file).' has been deleted');
+				else
+					LOGWARN(basename($file).' could not be deleted');
+			}
+		}
+	} else { 
+
+		LOGINF("Files should be stored forever. Nothing to do here.");
+
 	}
 		
 	LOGOK("T2S file reduction has completed");

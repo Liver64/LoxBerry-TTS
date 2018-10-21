@@ -93,9 +93,10 @@ my %Config 				= $pcfg->vars() if ( $pcfg );
 our $error_message			= "";
 
 # Set new config options for upgrade installations
-#if (!defined $pcfg->param("MP3.cachesize") {
-#	$pcfg->param("MP3.cachesize", "100");
-#}
+if (!defined $pcfg->param("MP3.cachesize")) {
+	$pcfg->param("MP3.cachesize", "100");
+}
+$pcfg->save() or &error;
 
 ##########################################################################
 # Read Settings

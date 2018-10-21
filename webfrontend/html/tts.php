@@ -100,8 +100,9 @@ LOGSTART("T2S PHP started");
 	}
 	$time_start = microtime(true);
 	# checking size of LoxBerry logfile
-	LOGGING("Perform Logfile size check",7);
-	check_size_logfile();
+	#LOGGING("Perform Logfile size check",7);
+	#check_size_logfile();
+	get_interface_config();
 	
 	
 
@@ -347,9 +348,13 @@ function create_tts() {
 		}
 	elseif ((empty($messageid)) && ($text <> '')) {
 		// prepares the T2S message
-		$textstring = $greet." ".$text;
+		if (empty($greet))  {
+			$textstring = $text;
+		} else {
+			$textstring = $greet.". ".$text;
 		LOGGING("Textstring has been entered", 7);		
 		}	
+	}
 	// encrypt MP3 file as MD5 Hash
 	#echo 'messageid: '.$messageid.'<br>';
 	#echo 'textstring: '.$textstring.'<br>';
