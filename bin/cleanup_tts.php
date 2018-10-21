@@ -10,7 +10,6 @@ $log = LBLog::newLog( [ "name" => "Cleanup", "stderr" => 1, "addtime" => 1 ] );
 
 LOGSTART("Cleanup MP3 files");
 
-
 $myConfigFolder = "$lbpconfigdir";								// get config folder
 $myConfigFile = "tts_all.cfg";									// get config file
 
