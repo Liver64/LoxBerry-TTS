@@ -224,7 +224,7 @@ LOGSTART("T2S PHP started");
 		#LOGGING("T2S Output has been set to 'Text2speech Interface'", 5);	
 		
 	}
-	delmp3();
+	// delmp3();
 	$time_end = microtime(true);
 	$t2s_time = $time_end - $time_start;
 	#LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
@@ -389,38 +389,6 @@ function create_tts() {
 }
 
 
-
-
-/**
-/* Funktion : delmp3 --> löscht die hash5 codierten MP3 Dateien aus dem Verzeichnis 'messageStorePath'
-/*
-/* @param:  nichts
-/* @return: nichts
-**/
-
- function delmp3() {
-	global $config, $debug, $time_start, $MessageStorepath;
-	
-	# http://www.php-space.info/php-tutorials/75-datei,nach,alter,loeschen.html	
-	$dir = $MessageStorepath;
-    $folder = dir($dir);
-	$store = '-'.$config['MP3']['MP3store'].' days';
-	while ($dateiname = $folder->read()) {
-	    if (filetype($dir.$dateiname) != "dir") {
-            if (strtotime($store) > @filemtime($dir.$dateiname)) {
-					if (strlen($dateiname) == 36) {
-						if (@unlink($dir.$dateiname) != false)
-							LOGGING($dateiname.' has been deleted', 7);
-						else
-							LOGGING($dateiname.' could not be deleted', 7);
-					}
-			}
-        }
-    }
-	LOGGING("All T2S (MP3) files according to criteria were successfully deleted", 7);
-    $folder->close();
-    return; 	 
- }
 
 
 ?>

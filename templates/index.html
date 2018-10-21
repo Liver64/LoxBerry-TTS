@@ -157,16 +157,15 @@
 			<tr>
 				<td width="19%">
 					<select id="mp3store" name="mp3store" data-mini="true" data-native-menu="false" width="50%">
-						<option value="1" <TMPL_VAR MP3STORE1>><TMPL_VAR T2S.1DAY_MP3_STORE></option>
-						<option value="2" <TMPL_VAR MP3STORE2>><TMPL_VAR T2S.2DAY_MP3_STORE></option>
-						<option value="3" <TMPL_VAR MP3STORE3>><TMPL_VAR T2S.3DAY_MP3_STORE></option>
-						<option value="4" <TMPL_VAR MP3STORE4>><TMPL_VAR T2S.4DAY_MP3_STORE></option>
-						<option value="5" <TMPL_VAR MP3STORE5>><TMPL_VAR T2S.5DAY_MP3_STORE></option>
-						<option value="6" <TMPL_VAR MP3STORE6>><TMPL_VAR T2S.6DAY_MP3_STORE></option>
-						<option value="7" <TMPL_VAR MP3STORE7>><TMPL_VAR T2S.7DAY_MP3_STORE></option>
+						<option value="1"><TMPL_VAR T2S.1DAY_MP3_STORE></option>
+						<option value="7"><TMPL_VAR T2S.7DAY_MP3_STORE></option>
+						<option value="30"><TMPL_VAR T2S.30DAY_MP3_STORE></option>
+						<option value="365"><TMPL_VAR T2S.365DAY_MP3_STORE></option>
+						<option value="100M"><TMPL_VAR T2S.100M_MP3_STORE></option>
+						<option value="1000M"><TMPL_VAR T2S.1000M_MP3_STORE></option>
 					</select>
 					<script>
-					$('#mp3store').val('<TMPL_VAR MP3.MP3store>');
+						$('#mp3store option[value="<TMPL_VAR MP3.MP3store>"').prop('selected', 'selected');
 					</script>
 				</td>
 			<td>
