@@ -351,7 +351,6 @@ function create_tts() {
 		LOGGING("Textstring has been entered", 7);		
 		}	
 	// encrypt MP3 file as MD5 Hash
-	$filename  = md5($textstring);
 	#echo 'messageid: '.$messageid.'<br>';
 	#echo 'textstring: '.$textstring.'<br>';
 	#echo 'filename: '.$filename.'<br>';
@@ -382,8 +381,67 @@ function create_tts() {
 			include_once("voice_engines/Polly.php");
 			LOGGING("AWS Polly has been successful selected", 7);		
 		}
-		t2s($messageid, $MessageStorepath, $textstring, $filename);
-		#return $messageid;
+		
+		// The original text is set in a one-element array as default
+		$textstrings = array ( $textstring );
+		
+		// Christians sentence splitter
+		// The splitter splits up by sentence and fills the $textstrings array
+		
+		// The sentence recognition tendends to false-positives with abbreviations
+		if(is_enabled($config['MP3']['splitsentences'])) {
+			LOGINF("Splitting sentences");
+			$textstring = trim($textstring); // . ' ';
+			$textstrings = array ( );
+			$tempstrings = preg_split( '/(?<!\.\.\.)(?<!Dr\.)(?<=[.?!]|\.\)|\.")\s+(?=[a-zA-Z"\(])/i', $textstring, -1);
+			
+			// Handle corner cases
+			$merge = FALSE;
+			foreach($tempstrings as $key => $text) {
+				$dont_push = FALSE;
+				if($merge == TRUE) {
+					$textstrings[count($textstrings)-1] .= " " . $text;
+					$dont_push = TRUE;
+					$merge = FALSE;
+				}
+				
+				// get last char
+				$last_char = substr($text, -1, 1);
+				//echo "Last char: '$last_char'<br>";
+				
+				if($last_char == ".") {
+					// Get last word
+					$last_word_start = strrpos($text, ' '); // +1 so we don't include the space in our result
+					$last_word = substr($text, $last_word_start); 
+					echo "Last word: '$last_word'<br>\n";
+					
+					// Handle: 21. Oktober
+					if(is_numeric($last_word)) { $merge = TRUE; LOGDEB("Last word is numeric - merge"); }
+				}
+				
+				if (!$dont_push) array_push($textstrings, " " . $text);
+			}
+		}
+		
+		// Loop the T2S request 
+		
+		foreach($textstrings as $text) {
+			$text = trim($text);
+			if(empty($text)) continue;
+			echo "'$text' <br>\n";
+			LOGDEB("T2S will be called with '$text'");
+			$filename  = md5($text);
+			t2s($messageid, $MessageStorepath, $text, $filename);
+			#return $messageid;
+		}
+		/* Sentence split ToDo:
+			What does the caller need?
+			Possible we need to merge the MP3s here, create an md5 for the full sentence and 
+			return the resulting file
+			
+			Polly performance issue: 
+			Polly is fully initialized before cache is checked
+		*/
 	}
 	return $messageid;
 }
