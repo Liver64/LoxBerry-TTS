@@ -161,8 +161,7 @@
 						<option value="7"><TMPL_VAR T2S.7DAY_MP3_STORE></option>
 						<option value="30"><TMPL_VAR T2S.30DAY_MP3_STORE></option>
 						<option value="365"><TMPL_VAR T2S.365DAY_MP3_STORE></option>
-						<option value="100M"><TMPL_VAR T2S.100M_MP3_STORE></option>
-						<option value="1000M"><TMPL_VAR T2S.1000M_MP3_STORE></option>
+						<option value="0"><TMPL_VAR T2S.ENDLESS_MP3_STORE></option>
 					</select>
 					<script>
 						$('#mp3store option[value="<TMPL_VAR MP3.MP3store>"').prop('selected', 'selected');
@@ -199,6 +198,18 @@
 		&nbsp;
 		</td>
 		<td style="height: 60px; width: 24px;">
+		</td>
+	</tr>
+	<tr>
+	<td style="height: 60px; width: 25%;">
+			<label id="lcachesize"><TMPL_VAR T2S.LABEL_CACHESIZE></label>
+		</td>
+		<td width="50%" style="height: 60px">
+			<input type="range" name="cachesize" id="cachesize" value="<TMPL_VAR MP3.cachesize>" min="100" max="5000" step="100">
+		</td>
+		<td style="height: 30px; width: 201px;">
+		</td>
+		<td style="height: 30px; width: 201px;">
 		</td>
 	</tr>
 	<tr>

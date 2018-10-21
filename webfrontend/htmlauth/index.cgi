@@ -67,31 +67,35 @@ my $template;
 my %SL;
 
 my $helptemplatefilename		= "help.html";
-my $languagefile 				= "tts_all.ini";
+my $languagefile 			= "tts_all.ini";
 my $maintemplatefilename	 	= "index.html";
-my $successtemplatefilename 	= "success.html";
+my $successtemplatefilename 		= "success.html";
 my $errortemplatefilename 		= "error.html";
 my $noticetemplatefilename 		= "notice.html";
-my $no_error_template_message	= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
+my $no_error_template_message		= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
 my $pluginconfigfile 			= "tts_all.cfg";
-my $outputfile 					= 'output.cfg';
-my $pluginlogfile				= "text2speech.log";
-my $lbhostname 					= lbhostname();
-my $ttsfolder					= "tts";
-my $mp3folder					= "mp3";
-#my $ttsinfo						= "info";
-#my $urlfile						= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
-my $log 						= LoxBerry::Log->new ( 
-												name => 'Webinterface', 
-												# filename => $lbplogdir ."/". $pluginlogfile, 
-												# append => 1, 
-												addtime => 1
-												);
-my $helplink 					= "https://www.loxwiki.eu/x/uoFYAg";
-my $pcfg 						= new Config::Simple($lbpconfigdir . "/" . $pluginconfigfile);
-my %Config 						= $pcfg->vars() if ( $pcfg );
-our $error_message				= "";
+my $outputfile 				= 'output.cfg';
+my $pluginlogfile			= "text2speech.log";
+my $lbhostname 				= lbhostname();
+my $ttsfolder				= "tts";
+my $mp3folder				= "mp3";
+#my $ttsinfo				= "info";
+#my $urlfile				= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
+my $log 				= LoxBerry::Log->new ( 
+						name => 'Webinterface', 
+						# filename => $lbplogdir ."/". $pluginlogfile, 
+						# append => 1, 
+						addtime => 1
+					);
+my $helplink 				= "https://www.loxwiki.eu/x/uoFYAg";
+my $pcfg 				= new Config::Simple($lbpconfigdir . "/" . $pluginconfigfile);
+my %Config 				= $pcfg->vars() if ( $pcfg );
+our $error_message			= "";
 
+# Set new config options for upgrade installations
+#if (!defined $pcfg->param("MP3.cachesize") {
+#	$pcfg->param("MP3.cachesize", "100");
+#}
 
 ##########################################################################
 # Read Settings
@@ -374,6 +378,7 @@ sub save
 	$pcfg->param("TTS.voice", "$R::voice");
 	$pcfg->param("MP3.file_gong", "$R::file_gong");
 	$pcfg->param("MP3.MP3store", "$R::mp3store");
+	$pcfg->param("MP3.cachesize", "$R::cachesize");
 	$pcfg->param("LOCATION.town", "\"$R::town\"");
 	$pcfg->param("LOCATION.region", "$R::region");
 	$pcfg->param("LOCATION.googlekey", "$R::googlekey");
