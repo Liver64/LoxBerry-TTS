@@ -418,7 +418,7 @@ function create_tts() {
 					// Get last word
 					$last_word_start = strrpos($text, ' '); // +1 so we don't include the space in our result
 					$last_word = substr($text, $last_word_start); 
-					echo "Last word: '$last_word'<br>\n";
+					// echo "Last word: '$last_word'<br>\n";
 					
 					// Handle: 21. Oktober
 					if(is_numeric($last_word)) { $merge = TRUE; LOGDEB("Last word is numeric - merge"); }
@@ -433,7 +433,7 @@ function create_tts() {
 		foreach($textstrings as $text) {
 			$text = trim($text);
 			if(empty($text)) continue;
-			echo "'$text' <br>\n";
+			// echo "'$text' <br>\n";
 			LOGDEB("T2S will be called with '$text'");
 			$filename  = md5($text);
 			t2s($messageid, $MessageStorepath, $text, $filename);
@@ -452,7 +452,4 @@ function create_tts() {
 }
 
 
-
-
-?>
 
