@@ -12,6 +12,7 @@ LOGSTART("Cleanup MP3 files");
 
 $myConfigFolder = "$lbpconfigdir";								// get config folder
 $myConfigFile = "tts_all.cfg";									// get config file
+$hostname = lbhostname();
 
 // Parsen der Konfigurationsdatei
 if (!file_exists($myConfigFolder.'/tts_all.cfg')) {
