@@ -32,9 +32,9 @@ if ($folderpeace[3] != "data") {
 }
 
 // Set defaults if needed
-$storageinterval = !empty($config['MP3']['MP3store']) ? trim($config['MP3']['MP3store']) : "7";
+$storageinterval = trim($config['MP3']['MP3store']);
 $cachesize = !empty($config['MP3']['cachesize']) ? trim($config['MP3']['cachesize']) : "100";
-$tosize = $storageinterval * 1024 * 1024;
+$tosize = $cachesize * 1024 * 1024;
 if(empty($tosize)) {
 	LOGCRIT("The size limit is not valid - stopping operation");
 	LOGDEB("Config parameter MP3/cachesize is {$config['MP3']['cachesize']}, tosize is '$tosize'");
@@ -54,7 +54,7 @@ exit;
 **/
 
 function delmp3() {
-	global $config, $MessageStorepath, $storageinterval, $tosize, $cachesize;
+	global $config, $MessageStorepath, $storageinterval, $tosize, $cachesize, $storageinterval;
 		
 	LOGINF("Deleting oldest files to reach $cachesize MB...");
 
@@ -95,40 +95,42 @@ function delmp3() {
 	
 	// Are we below the limit? Then nothing to do
 	if ($fullsize < $tosize) {
+
 		LOGINF("Current size $fullsize is below destination size $tosize");
 		LOGOK ("Nothing to do, quitting");
-		exit;
-	}
 
-	// We need to delete
-	$newsize = $fullsize;
-	foreach($files as $file){
-		$filesize = filesize($file);
-		if ( @unlink($file) != false ) {
-			LOGDEB(basename($file).' has been deleted');
-			$newsize -= $filesize;
-		} else {
-			LOGWARN(basename($file).' could not be deleted');
+	} else {
+		
+		// We need to delete
+		$newsize = $fullsize;
+		foreach($files as $file){
+			$filesize = filesize($file);
+			if ( @unlink($file) != false ) {
+				LOGDEB(basename($file).' has been deleted');
+				$newsize -= $filesize;
+			} else {
+				LOGWARN(basename($file).' could not be deleted');
+			}
+		
+			// Check again after each file
+			if ($newsize < $tosize) {
+				LOGOK("New size $newsize reached destination size $tosize");
+				break;
+			}
 		}
-	
-		// Check again after each file
-		if ($newsize < $tosize) {
-			LOGOK("New size $newsize reached destination size $tosize");
-			break;
+		
+		// Check after all files
+		if ($newsize > $tosize) {
+			LOGERR("Used size $newsize is still greater than destination size $tosize - Something is strange.");
 		}
-	}
-	
-	// Check after all files
-	if ($newsize > $tosize) {
-		LOGERR("Used size $newsize is still greater than destination size $tosize - Something is strange.");
+			
 	}
 		
-	
 	LOGINF("Now check if files older x days should be deleted, too...");
 
-	if ($config['MP3']['MP3store'] != "0") {
+	if ($storageinterval != "0") {
 
-		LOGINF("Deleting files older than {$config['MP3']['MP3store']} days...");
+		LOGINF("Deleting files older than $storageinterval days...");
 
 		/******************/
 		/* Delete to time */
