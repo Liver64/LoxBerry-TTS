@@ -361,11 +361,14 @@ function create_tts() {
 	// Get md5 of full text
 	$textstring = trim($textstring);
 	$fullmessageid = md5($textstring);
+	LOGDEB("fullmessageid: $fullmessageid textstring: $textstring");
 	
 	// if full text is cached, directly return the md5
 	if(file_exists($MessageStorepath.$fullmessageid.".mp3")) {
 		LOGINF("Grabbed from cache: '$textstring' ");
 		LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+		$messageid = $fullmessageid;
+		$filename = $messageid;
 		return ($fullmessageid);
 	}
 	
@@ -470,15 +473,19 @@ function create_tts() {
 			if(!file_exists($MessageStorepath.$filename.".mp3")) {
 				LOGCRIT ("Merged MP3 file $fullmessageid.mp3 could not be found");
 				LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+				$messageid = null;
+				$filename = null;
 				return;
 			} else {
 				LOGDEB ("File $fullmessageid.mp3 created");
 			}
 			// The $messageid is set to the $fullmessageid from the top 
 			$messageid = $fullmessageid;
+			$filename = $messageid;
 		}
 	}
 	LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+	
 	return $messageid;
 }
 
