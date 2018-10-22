@@ -246,6 +246,8 @@ function create_tts() {
 	
 	global $config, $filename, $MessageStorepath, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet;
 	
+	$start_create_tts = microtime(true);
+	
 	if (isset($_GET['greet']) or ($greet == 1))  {
 		$Stunden = intval(strftime("%H"));
 		$TL = LOAD_T2S_TEXT();
@@ -355,6 +357,21 @@ function create_tts() {
 		LOGGING("Textstring has been entered", 7);		
 		}	
 	}
+	
+	// Get md5 of full text
+	$textstring = trim($textstring);
+	$fullmessageid = md5($textstring);
+	
+	// if full text is cached, directly return the md5
+	if(file_exists($MessageStorepath.$fullmessageid.".mp3")) {
+		LOGINF("Grabbed from cache: '$textstring' ");
+		LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+		return ($fullmessageid);
+	}
+	
+	// The original text is set in a one-element array as default
+	$textstrings = array ( $textstring );
+	
 	// encrypt MP3 file as MD5 Hash
 	#echo 'messageid: '.$messageid.'<br>';
 	#echo 'textstring: '.$textstring.'<br>';
@@ -386,9 +403,6 @@ function create_tts() {
 			include_once("voice_engines/Polly.php");
 			LOGGING("AWS Polly has been successful selected", 7);		
 		}
-		
-		// The original text is set in a one-element array as default
-		$textstrings = array ( $textstring );
 		
 		// Christians sentence splitter
 		// The splitter splits up by sentence and fills the $textstrings array
@@ -429,25 +443,42 @@ function create_tts() {
 		}
 		
 		// Loop the T2S request 
-		
+		$filenames = array ( );
+		$messageids = array ( );
 		foreach($textstrings as $text) {
 			$text = trim($text);
 			if(empty($text)) continue;
 			// echo "'$text' <br>\n";
 			LOGDEB("T2S will be called with '$text'");
-			$filename  = md5($text);
+			$messageid  = md5($text);
+			$filename = $messageid;
 			t2s($messageid, $MessageStorepath, $text, $filename);
-			#return $messageid;
+			if(!file_exists($MessageStorepath.$filename.".mp3")) {
+				LOGERR("File $filename.mp3 was not created (Text: '$text')");
+			}
+			array_push($filenames, $MessageStorepath.$filename.".mp3");
+			array_push($messageids, $messageid);
 		}
-		/* Sentence split ToDo:
-			What does the caller need?
-			Possible we need to merge the MP3s here, create an md5 for the full sentence and 
-			return the resulting file
-			
-			Polly performance issue: 
-			Polly is fully initialized before cache is checked
-		*/
+		
+		// In the case we have splitted the text, we have to merge the result
+		if(count($textstrings)>1) {
+			LOGINF ("More than one sentence: Merging mp3's");
+			$mergecommand = "sox " . implode(" ", $filenames) . $MessageStorepath.$filename.".mp3";
+			LOGDEB ("Mergecommand: '$mergecommand'");
+			$output = shell_exec($mergecommand);
+			LOGDEB ($output);
+			if(!file_exists($MessageStorepath.$filename.".mp3")) {
+				LOGCRIT ("Merged MP3 file $fullmessageid.mp3 could not be found");
+				LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+				return;
+			} else {
+				LOGDEB ("File $fullmessageid.mp3 created");
+			}
+			// The $messageid is set to the $fullmessageid from the top 
+			$messageid = $fullmessageid;
+		}
 	}
+	LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
 	return $messageid;
 }
 
