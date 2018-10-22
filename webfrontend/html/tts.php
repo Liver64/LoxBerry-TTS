@@ -465,8 +465,10 @@ function create_tts() {
 		
 		// In the case we have splitted the text, we have to merge the result
 		if(count($textstrings)>1) {
+			$messageid = $fullmessageid;
+			$filename = $fullmessageid;
 			LOGINF ("More than one sentence: Merging mp3's");
-			$mergecommand = "sox " . implode(" ", $filenames) . $MessageStorepath.$filename.".mp3";
+			$mergecommand = "sox " . implode(" ", $filenames) . " " . $MessageStorepath.$filename.".mp3";
 			LOGDEB ("Mergecommand: '$mergecommand'");
 			$output = shell_exec($mergecommand);
 			LOGDEB ($output);
@@ -477,17 +479,12 @@ function create_tts() {
 				$filename = null;
 				return;
 			} else {
-				LOGDEB ("File $fullmessageid.mp3 created");
+				LOGDEB ("Created merged file $filename.mp3");
 			}
 			// The $messageid is set to the $fullmessageid from the top 
-			$messageid = $fullmessageid;
-			$filename = $messageid;
 		}
 	}
 	LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
 	
 	return $messageid;
 }
-
-
-
