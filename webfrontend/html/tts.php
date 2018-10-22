@@ -394,7 +394,7 @@ function create_tts() {
 		// The splitter splits up by sentence and fills the $textstrings array
 		
 		// The sentence recognition tendends to false-positives with abbreviations
-		if(is_enabled($config['MP3']['splitsentences'])) {
+		if(!empty($config['MP3']['splitsentences']) && is_enabled($config['MP3']['splitsentences'])) {
 			LOGINF("Splitting sentences");
 			$textstring = trim($textstring); // . ' ';
 			$textstrings = array ( );
