@@ -7,6 +7,15 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 	set_include_path(__DIR__ . '/polly_tts');
 	
 	global $config, $messageid, $voice, $accesskey, $secretkey, $MessageStorepath, $pathlanguagefile;
+		
+		# Speicherort der MP3 Datei
+		$file = $MessageStorepath . $filename . ".mp3";
+		if (file_exists($file)) {
+			LOGGING('Requested T2s has been grabbed from cache',6);
+			$messageid = $filename;
+			return ($messageid);
+		}
+		
 		include_once 'polly_tts/polly.php';
 		
 		$voicefile = "polly_voices.json";
@@ -36,19 +45,11 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		# $textstring = str_replace($search,$replace,$textstring);
 		#####################################################################################################################
 		
-		# Speicherort der MP3 Datei
-		$file = $MessageStorepath . $filename . ".mp3";
-			
-		if (!file_exists($file)) 
-		{
-			#-- Aufruf der POLLY Class zum generieren der t2s --
-			$a = new POLLY_TTS();
-			$a->save_mp3($textstring, $MessageStorepath."/".$filename.".mp3", $language, $voice);
-			LOGGING('The text has been passed to Polly engine for MP3 creation',5);
-			LOGGING("MP3 file has been sucesfully saved.", 6);	
-		} else {
-			LOGGING('Requested T2s has been grabbed from cache',6);
-		}
+		#-- Aufruf der POLLY Class zum generieren der t2s --
+		$a = new POLLY_TTS();
+		$a->save_mp3($textstring, $MessageStorepath."/".$filename.".mp3", $language, $voice);
+		LOGGING('The text has been passed to Polly engine for MP3 creation',5);
+		LOGGING("MP3 file has been sucesfully saved.", 6);	
 		$messageid = $filename;
 		return ($messageid);
 }
