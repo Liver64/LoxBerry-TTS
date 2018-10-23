@@ -27,6 +27,7 @@ use LoxBerry::Storage;
 use warnings;
 use strict;
 use File::Copy;
+use Config::Simple '-strict';
 
 #use CGI::Carp qw(fatalsToBrowser);
 #use CGI qw/:standard/;
@@ -380,13 +381,13 @@ sub save
 	$pcfg->param("MP3.file_gong", "$R::file_gong");
 	$pcfg->param("MP3.MP3store", "$R::mp3store");
 	$pcfg->param("MP3.cachesize", "$R::cachesize");
-	$pcfg->param("LOCATION.town", "\"$R::town\"");
+	$pcfg->param("LOCATION.town", "$R::town");
 	$pcfg->param("LOCATION.region", "$R::region");
 	$pcfg->param("LOCATION.googlekey", "$R::googlekey");
 	$pcfg->param("LOCATION.googletown", "$R::googletown");
 	$pcfg->param("LOCATION.googlestreet", "$R::googlestreet");
-	$pcfg->param("VARIOUS.CALDavMuell", "\"$R::wastecal\"");
-	$pcfg->param("VARIOUS.CALDav2", "\"$R::cal\"");
+	$pcfg->param("VARIOUS.CALDavMuell", "$R::wastecal");
+	$pcfg->param("VARIOUS.CALDav2", "$R::cal");
 	$pcfg->param("SYSTEM.LOGLEVEL", "$R::LOGLEVEL");
 	$pcfg->param("SYSTEM.path", "$R::STORAGEPATH");
 	$pcfg->param("SYSTEM.card", "$R::out_list");
