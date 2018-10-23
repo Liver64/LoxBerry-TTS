@@ -246,6 +246,8 @@ function create_tts() {
 	
 	global $config, $filename, $MessageStorepath, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet;
 	
+	$start_create_tts = microtime(true);
+	
 	if (isset($_GET['greet']) or ($greet == 1))  {
 		$Stunden = intval(strftime("%H"));
 		$TL = LOAD_T2S_TEXT();
@@ -355,8 +357,25 @@ function create_tts() {
 		LOGGING("Textstring has been entered", 7);		
 		}	
 	}
+	
+	// Get md5 of full text
+	$textstring = trim($textstring);
+	$fullmessageid = md5($textstring);
+	LOGDEB("fullmessageid: $fullmessageid textstring: $textstring");
+	
+	// if full text is cached, directly return the md5
+	if(file_exists($MessageStorepath.$fullmessageid.".mp3")) {
+		LOGINF("Grabbed from cache: '$textstring' ");
+		LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+		$messageid = $fullmessageid;
+		$filename = $messageid;
+		return ($fullmessageid);
+	}
+	
+	// The original text is set in a one-element array as default
+	$textstrings = array ( $textstring );
+	
 	// encrypt MP3 file as MD5 Hash
-	$filename  = md5($textstring);
 	#echo 'messageid: '.$messageid.'<br>';
 	#echo 'textstring: '.$textstring.'<br>';
 	#echo 'filename: '.$filename.'<br>';
@@ -387,14 +406,85 @@ function create_tts() {
 			include_once("voice_engines/Polly.php");
 			LOGGING("AWS Polly has been successful selected", 7);		
 		}
-		t2s($messageid, $MessageStorepath, $textstring, $filename);
-		#return $messageid;
+		
+		// Christians sentence splitter
+		// The splitter splits up by sentence and fills the $textstrings array
+		
+		// The sentence recognition tendends to false-positives with abbreviations
+		if(!empty($config['MP3']['splitsentences']) && is_enabled($config['MP3']['splitsentences'])) {
+			LOGINF("Splitting sentences");
+			$textstring = trim($textstring); // . ' ';
+			$textstrings = array ( );
+			$tempstrings = preg_split( '/(?<!\.\.\.)(?<!Dr\.)(?<=[.?!]|\.\)|\.")\s+(?=[a-zA-Z"\(])/i', $textstring, -1);
+			
+			// Handle corner cases
+			$merge = FALSE;
+			foreach($tempstrings as $key => $text) {
+				$dont_push = FALSE;
+				if($merge == TRUE) {
+					$textstrings[count($textstrings)-1] .= " " . $text;
+					$dont_push = TRUE;
+					$merge = FALSE;
+				}
+				
+				// get last char
+				$last_char = substr($text, -1, 1);
+				//echo "Last char: '$last_char'<br>";
+				
+				if($last_char == ".") {
+					// Get last word
+					$last_word_start = strrpos($text, ' '); // +1 so we don't include the space in our result
+					$last_word = substr($text, $last_word_start); 
+					// echo "Last word: '$last_word'<br>\n";
+					
+					// Handle: 21. Oktober
+					if(is_numeric($last_word)) { $merge = TRUE; LOGDEB("Last word is numeric - merge"); }
+				}
+				
+				if (!$dont_push) array_push($textstrings, " " . $text);
+			}
+		}
+		
+		// Loop the T2S request 
+		$filenames = array ( );
+		$messageids = array ( );
+		foreach($textstrings as $text) {
+			$text = trim($text);
+			if(empty($text)) continue;
+			// echo "'$text' <br>\n";
+			LOGDEB("T2S will be called with '$text'");
+			$messageid  = md5($text);
+			$filename = $messageid;
+			t2s($messageid, $MessageStorepath, $text, $filename);
+			if(!file_exists($MessageStorepath.$filename.".mp3")) {
+				LOGERR("File $filename.mp3 was not created (Text: '$text')");
+			}
+			array_push($filenames, $MessageStorepath.$filename.".mp3");
+			array_push($messageids, $messageid);
+		}
+		
+		// In the case we have splitted the text, we have to merge the result
+		if(count($textstrings)>1) {
+			$messageid = $fullmessageid;
+			$filename = $fullmessageid;
+			LOGINF ("More than one sentence: Merging mp3's");
+			$mergecommand = "sox " . implode(" ", $filenames) . " " . $MessageStorepath.$filename.".mp3";
+			LOGDEB ("Mergecommand: '$mergecommand'");
+			$output = shell_exec($mergecommand);
+			LOGDEB ($output);
+			if(!file_exists($MessageStorepath.$filename.".mp3")) {
+				LOGCRIT ("Merged MP3 file $fullmessageid.mp3 could not be found");
+				LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+				$messageid = null;
+				$filename = null;
+				return;
+			} else {
+				LOGDEB ("Created merged file $filename.mp3");
+			}
+			// The $messageid is set to the $fullmessageid from the top 
+		}
 	}
+	LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+	
 	return $messageid;
 }
-
-
-
-
-?>
-
