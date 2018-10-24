@@ -30,8 +30,8 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		$file = $MessageStorepath . $filename . ".wav";
 					
 		# Prüfung ob die Voice Datei bereits vorhanden ist
-		if (!file_exists($file)) 
-		{
+		#if (!file_exists($file)) 
+		#{
 			# Übermitteln des Strings an Pico und lame zu MP3
 			try {
 				exec('/usr/bin/pico2wave -l=' . $ttslanguage . ' -w=' . $file . ' "'.$textstring.'"');
@@ -43,7 +43,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 			} catch(Exception $e) {
 				LOGGING("The T2S could not be created! Please try again.",4);
 			}
-		}
+		#}
 	
 	# Ersetze die messageid durch die von TTS gespeicherte Datei
 	$messageid = $filename;

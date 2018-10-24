@@ -9,13 +9,14 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 	global $config, $messageid, $voice, $accesskey, $secretkey, $MessageStorepath, $pathlanguagefile;
 		
 		# Speicherort der MP3 Datei
-		$file = $MessageStorepath . $filename . ".mp3";
-		if (file_exists($file)) {
-			LOGGING('Requested T2s has been grabbed from cache',6);
-			$messageid = $filename;
-			return ($messageid);
-		}
-		
+		#$file = $MessageStorepath . $filename . ".mp3";
+		#echo $file;
+		#if (file_exists($file)) {
+		#	LOGGING('Requested T2s has been grabbed from cache',6);
+		#	$messageid = $filename;
+		#	return ($messageid);
+		#}
+				
 		include_once 'polly_tts/polly.php';
 		
 		$voicefile = "polly_voices.json";

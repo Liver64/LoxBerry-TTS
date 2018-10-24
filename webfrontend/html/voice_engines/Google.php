@@ -47,16 +47,16 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		$inlay = "ie=UTF-8&total=1&idx=0&textlen=100&client=tw-ob&q=$textstring&tl=$language";	
 					
 		# Prüfung ob die MP3 Datei bereits vorhanden ist
-		if (!file_exists($file)) 
-		{
+		#if (!file_exists($file)) 
+		#{
 			# Übermitteln des strings an Google.com
 			$mp3 = file_get_contents("http://translate.google.com/translate_tts?".$inlay);
 			file_put_contents($file, $mp3);
 			LOGGING('The text has been passed to google engine for MP3 creation',5);
 			LOGGING("MP3 file has been sucesfully saved.", 6);	
-		} else {
-			LOGGING('Requested T2s has been grabbed from cache',6);
-		}
+		#} else {
+		#	LOGGING('Requested T2s has been grabbed from cache',6);
+		#}
 	$messageid = $filename;
 	return ($messageid);
 }
