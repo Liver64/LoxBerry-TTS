@@ -58,7 +58,7 @@ function process_post_request() {
 /**/	
 
 function jsonfile($filename)  {
-	global $volume, $MessageStorepath, $MP3path, $messageid, $time_start, $filename, $infopath, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $MessageStorepath, $MP3path, $messageid, $time_start, $filename, $infopath, $myFolder, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$filenamebatch = $ttsinfopath."".$fullfilename;
 	$ttspath = $MessageStorepath;
@@ -98,6 +98,8 @@ function jsonfile($filename)  {
 	$split = explode("/", $StorePath);
 	#print_r($split);
 	if ($split[3] == "data") {
+		// local datadir selected
+		LOGINF("User selected Localdir to store MP3 files");
 		$files = array(
 						'full-path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3",
 						'path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/",
@@ -109,8 +111,9 @@ function jsonfile($filename)  {
 						'sample-rate' => $sample_rate,
 						'text' => $textstring
 						);
-	} else {
-		if ($split[5] == "smb") {
+	} elseif ($split[5] == "smb") {
+			// NAS or Server selected
+			LOGINF("User selected Server to store MP3 files");
 			$files = array(
 						'full-path' => $StorePath."/".$hostname."/tts/".$filename.".mp3",
 						'path' => $StorePath."/".$hostname."/tts/",
@@ -122,10 +125,26 @@ function jsonfile($filename)  {
 						'sample-rate' => $sample_rate,
 						'text' => $textstring
 						);
-		} else {
-			LOGGING("USB devices could not be interfaced!", 3);
-			exit;
-		}
+	} elseif ($split[5] == "usb") {
+			// USB device
+			$source = $StorePath."/".$hostname."/tts/".$filename.".mp3";
+			$destination = $myFolder."/".$filename.".mp3";
+			if (!rename($source, $destination)) {
+				LOGERR("The file could not be copied from '".$source."' to destination '".$destination."'");
+				exit;
+			}
+			LOGINF("User selected USB to store MP3 files which could not be accessed from Interface. Therefore the file moved to '".$destination."'");
+			$files = array(
+						'full-path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3",
+						'path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/",
+						'full-server-URL' => $myIP."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3",
+						'server-URL' => $myIP."/".$plugindatapath."/".$psubfolder."/",
+						'mp3-filename-MD5' => $filename,
+						'duration-ms' => $duration,
+						'bitrate' => $bitrate,
+						'sample-rate' => $sample_rate,
+						'text' => $textstring
+						);
 	}
 	try {
 		File_Put_Array_As_JSON($filenamebatch, $files, $zip=false);
@@ -135,8 +154,8 @@ function jsonfile($filename)  {
 		exit;
 	}
 	LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
-	LOGGING("JSON file '".$fullfilename."' has been successful saved in 'share' folder", 5);
-	#print_r($files);
+	LOGGING("file '".$fullfilename."' has been successful saved in 'share' folder", 5);
+	print_r($files);
 	return $files;
 	
 }
