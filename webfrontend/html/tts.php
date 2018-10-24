@@ -116,7 +116,7 @@ LOGSTART("T2S PHP started");
 	# *** Lese Daten von ext. Call ***
 		require_once('output/interface.php');
 		LOGGING("T2S Interface ** POST request has been received and will be processed!", 6);
-		receive_post_request();
+		process_post_request();
 		# Deklaration der variablen
 		$text = $decoded['text'];
 		$greet = $decoded['greet'];	
@@ -371,7 +371,7 @@ function create_tts() {
 		$filename = $messageid;
 		return ($fullmessageid);
 	}
-	
+		
 	// The original text is set in a one-element array as default
 	$textstrings = array ( $textstring );
 	
