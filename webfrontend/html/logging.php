@@ -115,8 +115,8 @@ foreach($pluginusage as $plugfolder)  {
 		LOGGING("TTS Logging config '".$logging_config."' has been loaded", 5);
 	}
 }
-print_r($pluginusage);
-print_r($alldata);
+#print_r($pluginusage);
+#print_r($alldata);
 return $alldata;
 }
 
