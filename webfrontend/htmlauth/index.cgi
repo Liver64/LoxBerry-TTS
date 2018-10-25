@@ -78,6 +78,8 @@ my $pluginconfigfile 			= "tts_all.cfg";
 my $outputfile 				= 'output.cfg';
 my $pluginlogfile			= "text2speech.log";
 my $lbhostname 				= lbhostname();
+my $lbip 				= LoxBerry::System::get_localip();
+my $interfacefolder			= "interface";
 my $ttsfolder				= "tts";
 my $mp3folder				= "mp3";
 #my $ttsinfo				= "info";
@@ -230,9 +232,8 @@ sub form {
 	my $storage = LoxBerry::Storage::get_storage_html(
 					formid => 'STORAGEPATH', 
 					currentpath => $pcfg->param("SYSTEM.path"),
-					type_usb => 1, 
-					type_local => 1, 
-					type_net => 1, 
+					custom_folder => 1,
+					type_all => 1, 
 					readwriteonly => 1, 
 					data_mini => 1,
 					label => "$SL{'T2S.SAFE_DETAILS'}");
@@ -251,40 +252,40 @@ sub form {
 	$storepath = $pcfg->param("SYSTEM.path"),
 	
 	# Full path to check if folders already there
-	$fullpath = $storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder;
+	#$fullpath = $storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder;
 	
 	# Split path
-	my @fields = split /\//, $storepath;
-	my $folder = $fields[3];
+	#my @fields = split /\//, $storepath;
+	#my $folder = $fields[3];
 	
-	if ($folder ne "data")  {	
-		if(-d $fullpath)  {
-			LOGDEB "Folders already exists.";
-		} else {
-			# Create folder
-			require File::Path;
-			File::Path::make_path($fullpath, { chmod => 0777 } );
-			LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' has been created.";
+	#if ($folder ne "data")  {	
+	#	if(-d $fullpath)  {
+	#		LOGDEB "Folders already exists.";
+	#	} else {
+	#		# Create folder
+	#		require File::Path;
+	#		File::Path::make_path($fullpath, { chmod => 0777 } );
+	#		LOGDEB "Directory '".$storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder."' has been created.";
 			
-			# Copy delivered MP3 files from local dir (source) to new created folder
-			my $source_dir = $lbpdatadir.'/mp3';
-			my $target_dir = $fullpath;
+	# Copy delivered MP3 files from local dir (source) to new created folder
+	# my $source_dir = $lbpdatadir.'/mp3';
+	#my $target_dir = $fullpath;
 
-			opendir(my $DIRE, $source_dir) || die "Can't opendir $source_dir: $!";  
-			my @files = readdir($DIRE);
+	#opendir(my $DIRE, $source_dir) || die "Can't opendir $source_dir: $!";  
+	#my @files = readdir($DIRE);
 
-			foreach my $t (@files)	{
-			   if(-f "$source_dir/$t" )  {
-				  #Check with -f only for files (no directories)
-				  copy "$source_dir/$t", "$target_dir/$t";
-			   }
-			}
-			closedir($DIRE);
-			LOGINF "All MP3 files has been copied successful to target location.";
-		}
-	} else {
-		LOGINF "Local directory has been selected.";
-	}
+	#foreach my $t (@files)	{
+	#   if(-f "$source_dir/$t" )  {
+	#	  #Check with -f only for files (no directories)
+	#	  copy "$source_dir/$t", "$target_dir/$t";
+	#   }
+	#}
+	#closedir($DIRE);
+	#LOGINF "All MP3 files has been copied successful to target location.";
+	#}
+	#} else {
+	#LOGINF "Local directory has been selected.";
+	#}
 	
 	# Load saved values for "select"
 	my $t2s_engine	= $pcfg->param("TTS.t2s_engine");
@@ -390,6 +391,11 @@ sub save
 	$pcfg->param("VARIOUS.CALDav2", "$R::cal");
 	$pcfg->param("SYSTEM.LOGLEVEL", "$R::LOGLEVEL");
 	$pcfg->param("SYSTEM.path", "$R::STORAGEPATH");
+	$pcfg->param("SYSTEM.mp3path", "$R::STORAGEPATH/$mp3folder");
+	$pcfg->param("SYSTEM.ttspath", "$R::STORAGEPATH/$ttsfolder");
+	$pcfg->param("SYSTEM.interfacepath", "$R::STORAGEPATH/$interfacefolder");
+	$pcfg->param("SYSTEM.httpinterface", "http://$lbip/plugins/$lbpplugindir/interfacedownload");
+	$pcfg->param("SYSTEM.cifsinterface", "\\$lbip\\plugindata\$lbpplugindir\interfacedownload");
 	$pcfg->param("SYSTEM.card", "$R::out_list");
 	$pcfg->param("TTS.volume", "$R::volume");
 	
@@ -398,6 +404,27 @@ sub save
 	$pcfg->save() or &error;
 
 	LOGOK "All settings has been saved successful";
+
+	# If storage folders do not exist, copy default mp3 files
+	my $copy = 0;
+	if (!-e "$R::STORAGEPATH/$mp3folder") {
+		$copy = 1;
+	}
+
+	LOGINF "Creating folders and symlinks";
+	system ("mkdir -p $R::STORAGEPATH/$mp3folder");
+	system ("mkdir -p $R::STORAGEPATH/$ttsfolder");
+	system ("mkdir -p $R::STORAGEPATH/$interfacefolder");
+	system ("rm $lbpdatadir/interfacedownload");
+	system ("rm $lbphtmldir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$interfacefolder $lbpdatadir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$interfacefolder $lbphtmldir/interfacedownload");
+	LOGOK "All folders and symlinks created successfully.";
+
+	if ($copy) {
+		LOGINF "Copy existing mp3 files from $lbpdatadir/$mp3folder to $R::STORAGEPATH/$mp3folder";
+		system ("cp -r $lbpdatadir/$mp3folder/* $R::STORAGEPATH/$mp3folder");
+	}
 
 	$lblang = lblanguage();
 	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
