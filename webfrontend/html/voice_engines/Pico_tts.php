@@ -27,7 +27,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 			$ttslanguage = $config['TTS']['messageLang'];
 		}	
 		
-		$file = $MessageStorepath . $filename . ".wav";
+		$file = $MessageStorepath ."/". $filename . ".wav";
 					
 		# Prüfung ob die Voice Datei bereits vorhanden ist
 		#if (!file_exists($file)) 

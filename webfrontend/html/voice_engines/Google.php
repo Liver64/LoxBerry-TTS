@@ -40,7 +40,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 								  
 		# Speicherort der MP3 Datei
 		$mpath = $MessageStorepath;
-		$file = $MessageStorepath . $filename . ".mp3";
+		$file = $MessageStorepath ."/". $filename . ".mp3";
 		$textstring = urlencode($textstring);
 		
 		#Generieren des strings der an Google geschickt wird.

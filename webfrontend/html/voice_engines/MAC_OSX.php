@@ -36,14 +36,14 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 					$valid_voice = array_multi_search($tmp_voice, $voices);
 					if (!empty($valid_voice)) {
 						$voice = $valid_voice[0]['voice'];
-						shell_exec("say -v $voice $textstring -o $messageStorePath$filename.aiff; ".$lamePath."lame $MessageStorepath$filename.aiff 2>&1");
+						shell_exec("say -v $voice $textstring -o $messageStorePath/$filename.aiff; ".$lamePath."lame $MessageStorepath/$filename.aiff 2>&1");
 						LOGGING('T2S language/voice has been successful entered',5);
 					} else {
 						LOGGING("The entered OSX Voice is not supported. Please correct (see Wiki)!!",3);
 						exit;
 					}
 			} else {
-				shell_exec("say $textstring -o $messageStorePath$filename.aiff; ".$lamePath."lame $mpath$filename.aiff 2>&1");
+				shell_exec("say $textstring -o $messageStorePath/$filename.aiff; ".$lamePath."lame $mpath/$filename.aiff 2>&1");
 				LOGGING('The text has been passed to OSX engine for MP3 creation',5);
 				LOGGING("MP3 file has been sucesfully saved.", 6);	
 			}

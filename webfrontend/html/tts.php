@@ -27,7 +27,6 @@ $path = LBSCONFIGDIR; 											// get path to general.cfg
 $myFolder = "$lbpdatadir";										// get data folder
 $myConfigFolder = "$lbpconfigdir";								// get config folder
 $myConfigFile = "tts_all.cfg";									// get config file
-#$MessageStorepath = "$lbpdatadir/";							// get T2S folder to store
 $pathlanguagefile = "$lbphtmldir/voice_engines/langfiles/";		// get languagefiles
 $logpath = "$lbplogdir";										// get log folder
 $templatepath = "$lbptemplatedir";								// get templatedir
@@ -36,7 +35,7 @@ $sambaini = $lbhomedir.'/system/samba/smb.conf';				// path to Samba file smb.co
 $searchfor = '[plugindata]';									// search for already existing Samba share
 $plugindatapath = "plugindata";									// get plugindata folder
 $MP3path = "mp3";												// path to preinstalled numeric MP3 files
-$infopath = "share";											// path to info for ext. Prog
+$infopath = "interface";											// path to info for ext. Prog
 $Home = getcwd();												// get Plugin Pfad
 $fullfilename = "t2s_source.json";								// filename to pass info back to ext. Prog.
 $logging_config = "interface.cfg";								// fixed filename to pass log entries to ext. Prog.
@@ -44,7 +43,7 @@ $logging_config = "interface.cfg";								// fixed filename to pass log entries 
 
 echo '<PRE>'; 
 
-global $text, $messageid, $MessageStorepath, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config;
+global $text, $messageid, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config;
 
 $params = [	"name" => "Text2speech",
 			"filename" => "$lbplogdir/text2speech.log",
@@ -65,22 +64,14 @@ LOGSTART("T2S PHP started");
 		$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
 		LOGGING("T2S config has been loaded", 7);
 	}
-	
+	#print_r($config);
 	LOGGING("Config has been successfull loaded",6);
-	$folderpeace = explode("/",$config['SYSTEM']['path']);
-	if ($folderpeace[3] != "data") {
-		// wenn NICHT local dir als Speichermedium selektiert wurde
-		$MessageStorepath = $config['SYSTEM']['path']."/".$hostname."/tts/";
-	} else {
-		// wenn local dir als Speichermedium selektiert wurde
-		$MessageStorepath = $config['SYSTEM']['path']."/";
-	}
 		
 	# wählt Sprachdatei für hinterlegte Texte für add-on's
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
 	LOGGING("All variables has been collected",6);
 	$soundcard = $config['SYSTEM']['card'];
-	if ($soundcard != "013")  {			
+	#if ($soundcard != "013")  {			
 		# prüfen ob Volume in syntax, wenn nicht Std. von Config
 		if (!isset($_GET["volume"])) {
 			$volume = $config['TTS']['volume'];
@@ -97,11 +88,8 @@ LOGSTART("T2S PHP started");
 		}
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
-	}
-	$time_start = microtime(true);
-	# checking size of LoxBerry logfile
-	#LOGGING("Perform Logfile size check",7);
-	#check_size_logfile();
+	#}
+	#$time_start = microtime(true);
 	get_interface_config();
 	
 	
@@ -217,17 +205,9 @@ LOGSTART("T2S PHP started");
 	if ($tmp_content == true)  {
 		create_tts();
 		jsonfile($filename);
-		# Set Output to Interface
-		#require_once "Config/Lite.php";
-		#$cfg = new Config_Lite("$lbpconfigdir/$myConfigFile",LOCK_EX,INI_SCANNER_RAW);
-		#$cfg->set("SYSTEM","card",'013');
-		#$cfg->save();
-		#LOGGING("T2S Output has been set to 'Text2speech Interface'", 5);	
-		
 	}
-	// delmp3();
-	$time_end = microtime(true);
-	$t2s_time = $time_end - $time_start;
+	#$time_end = microtime(true);
+	#$t2s_time = $time_end - $time_start;
 	#LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
 	LOGEND("T2S PHP finished");
 exit;
@@ -244,7 +224,7 @@ exit;
 
 function create_tts() {
 	
-	global $config, $filename, $MessageStorepath, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet;
+	global $config, $filename, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet;
 	
 	$start_create_tts = microtime(true);
 	
@@ -341,7 +321,7 @@ function create_tts() {
 	elseif (!empty($messageid)) { # && ($rawtext != '')) {
 		// takes the messageid
 		$messageid = $_GET['file'];
-		if (file_exists($MessageStorepath."".$MP3path."/".$messageid.".mp3") === true)  {
+		if (file_exists($config['SYSTEM']['mp3path']."/".$messageid.".mp3") === true)  {
 			LOGGING("File '".$messageid."' has been entered", 7);
 		} else {
 			LOGGING("The corrosponding file '".$messageid.".mp3' does not exist or could not be played. Please check your directory or syntax!", 3);
@@ -364,7 +344,7 @@ function create_tts() {
 	LOGDEB("fullmessageid: $fullmessageid textstring: $textstring");
 	
 	// if full text is cached, directly return the md5
-	if(file_exists($MessageStorepath.$fullmessageid.".mp3")) {
+	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3")) {
 		LOGINF("Grabbed from cache: '$textstring' ");
 		LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
 		$messageid = $fullmessageid;
@@ -455,11 +435,11 @@ function create_tts() {
 			LOGDEB("T2S will be called with '$text'");
 			$messageid  = md5($text);
 			$filename = $messageid;
-			t2s($messageid, $MessageStorepath, $text, $filename);
-			if(!file_exists($MessageStorepath.$filename.".mp3")) {
+			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename);
+			if(!file_exists($config['SYSTEM']['ttspath'].$filename.".mp3")) {
 				LOGERR("File $filename.mp3 was not created (Text: '$text')");
 			}
-			array_push($filenames, $MessageStorepath.$filename.".mp3");
+			array_push($filenames, $config['SYSTEM']['ttspath']."/".$filename.".mp3");
 			array_push($messageids, $messageid);
 		}
 		
@@ -468,11 +448,11 @@ function create_tts() {
 			$messageid = $fullmessageid;
 			$filename = $fullmessageid;
 			LOGINF ("More than one sentence: Merging mp3's");
-			$mergecommand = "sox " . implode(" ", $filenames) . " " . $MessageStorepath.$filename.".mp3";
+			$mergecommand = "sox " . implode(" ", $filenames) . " " . $config['SYSTEM']['ttspath']."/".$filename.".mp3";
 			LOGDEB ("Mergecommand: '$mergecommand'");
 			$output = shell_exec($mergecommand);
 			LOGDEB ($output);
-			if(!file_exists($MessageStorepath.$filename.".mp3")) {
+			if(!file_exists($config['SYSTEM']['ttspath']."/".$filename.".mp3")) {
 				LOGCRIT ("Merged MP3 file $fullmessageid.mp3 could not be found");
 				LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
 				$messageid = null;

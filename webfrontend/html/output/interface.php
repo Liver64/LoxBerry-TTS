@@ -58,25 +58,25 @@ function process_post_request() {
 /**/	
 
 function jsonfile($filename)  {
-	global $volume, $MessageStorepath, $MP3path, $messageid, $time_start, $filename, $infopath, $myFolder, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $MP3path, $messageid, $time_start, $filename, $infopath, $myFolder, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
-	$filenamebatch = $ttsinfopath."".$fullfilename;
-	$ttspath = $MessageStorepath;
-	$filepath = $MessageStorepath."".$MP3path;
-	$ttsinfopath = LBPDATADIR."/".$infopath."/";
+	$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
+	$ttspath = $config['SYSTEM']['ttspath'];
+	$filepath = $config['SYSTEM']['mp3path'];
+	$ttsinfopath = $config['SYSTEM']['interfacepath']."/";
 	
-	// get details of MP3
+	
+	// ** get details of MP3
 	// https://github.com/JamesHeinrich/getID3/archive/master.zip
 	require_once("bin/getid3/getid3.php");
-    $MP3filename = $MessageStorepath.$messageid.".mp3";
+    $MP3filename = $ttspath."/".$messageid.".mp3";
 	$getID3 = new getID3;
     $file = $getID3->analyze($MP3filename);
 	#print_r($file);
 	$duration = round($file['playtime_seconds'] * 1000, 0);
 	$bitrate = $file['bitrate'];
 	$sample_rate = $file['mpeg']['audio']['sample_rate'];
-    #echo gmdate("H:i:s", $duration);
-	
+    	
 	LOGGING("filename of MP3 file: '".$filename."'", 5);
 	# prüft ob Verzeichnis für Übergabe existiert
 	$is_there = file_exists($ttsinfopath);
@@ -93,59 +93,19 @@ function jsonfile($filename)  {
 		LOGGING("File: '".$file."' has been deleted from '".$infopath."' folder",5);
 		#unlink($file);
 	}
-	$files = array();
-	$StorePath = $config['SYSTEM']['path'];
-	$split = explode("/", $StorePath);
-	#print_r($split);
-	if ($split[3] == "data") {
-		// local datadir selected
-		LOGINF("User selected Localdir to store MP3 files");
 		$files = array(
-						'full-path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3",
-						'path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/",
-						'full-server-URL' => $myIP."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3",
-						'server-URL' => $myIP."/".$plugindatapath."/".$psubfolder."/",
+						'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
+						'path' => $config['SYSTEM']['path']."/",
+						'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
+						'cifsinterface' => $config['SYSTEM']['cifsinterface']."/",
+						'full-httpinterface' => $config['SYSTEM']['httpinterface']."/".$filename.".mp3",
+						'httpinterface' => $config['SYSTEM']['httpinterface']."/",
 						'mp3-filename-MD5' => $filename,
 						'duration-ms' => $duration,
 						'bitrate' => $bitrate,
 						'sample-rate' => $sample_rate,
 						'text' => $textstring
 						);
-	} elseif ($split[5] == "smb") {
-			// NAS or Server selected
-			LOGINF("User selected Server to store MP3 files");
-			$files = array(
-						'full-path' => $StorePath."/".$hostname."/tts/".$filename.".mp3",
-						'path' => $StorePath."/".$hostname."/tts/",
-						'full-server-URL' => $split[6]."/".$split[7]."/".$hostname."/tts/".$filename.".mp3",
-						'server-URL' => $split[6]."/".$split[7]."/".$hostname."/tts/",
-						'mp3-filename-MD5' => $filename,
-						'duration-ms' => $duration,
-						'bitrate' => $bitrate,
-						'sample-rate' => $sample_rate,
-						'text' => $textstring
-						);
-	} elseif ($split[5] == "usb") {
-			// USB device
-			$source = $StorePath."/".$hostname."/tts/".$filename.".mp3";
-			$destination = $myFolder."/".$filename.".mp3";
-			if (!rename($source, $destination)) {
-				LOGERR("The file could not be copied from '".$source."' to destination '".$destination."'");
-				exit;
-			}
-			LOGINF("User selected USB to store MP3 files which could not be accessed from Interface. Therefore the file moved to '".$destination."'");
-			$files = array(
-						'full-path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3",
-						'path' => $lbhomedir."/".$plugindatapath."/".$psubfolder."/",
-						'full-server-URL' => $myIP."/".$plugindatapath."/".$psubfolder."/".$filename.".mp3",
-						'server-URL' => $myIP."/".$plugindatapath."/".$psubfolder."/",
-						'mp3-filename-MD5' => $filename,
-						'duration-ms' => $duration,
-						'bitrate' => $bitrate,
-						'sample-rate' => $sample_rate,
-						'text' => $textstring
-						);
-	}
 	try {
 		File_Put_Array_As_JSON($filenamebatch, $files, $zip=false);
 		LOGGING("Information of processed T2S has been added to JSON file", 7);
@@ -154,8 +114,8 @@ function jsonfile($filename)  {
 		exit;
 	}
 	LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
-	LOGGING("file '".$fullfilename."' has been successful saved in 'share' folder", 5);
-	print_r($files);
+	LOGGING("file '".$fullfilename."' has been successful saved in 'interface' folder", 5);
+	#print_r($files);
 	return $files;
 	
 }

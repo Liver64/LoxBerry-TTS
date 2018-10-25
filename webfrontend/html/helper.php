@@ -145,9 +145,9 @@ function load_t2s_text(){
 **/
 
 function mp3_files($playgongfile) {
-	global $MessageStorepath;
+	global $MessageStorepath, $config;
 	
-	$scanned_directory = array_diff(scandir($MessageStorepath.'/mp3/', SCANDIR_SORT_DESCENDING), array('..', '.'));
+	$scanned_directory = array_diff(scandir($config['SYSTEM']['mp3path'], SCANDIR_SORT_DESCENDING), array('..', '.'));
 	$file_only = array();
 	foreach ($scanned_directory as $file) {
 		$extension = pathinfo($file, PATHINFO_EXTENSION);
