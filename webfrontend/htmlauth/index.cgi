@@ -395,7 +395,7 @@ sub save
 	$pcfg->param("SYSTEM.ttspath", "$R::STORAGEPATH/$ttsfolder");
 	$pcfg->param("SYSTEM.interfacepath", "$R::STORAGEPATH/$interfacefolder");
 	$pcfg->param("SYSTEM.httpinterface", "http://$lbip/plugins/$lbpplugindir/interfacedownload");
-	$pcfg->param("SYSTEM.cifsinterface", "\x5c$lbip\x5cplugindata\x5c$lbpplugindir\x5cinterfacedownload");
+	$pcfg->param("SYSTEM.cifsinterface", "\x5c\x5c$lbip\x5cplugindata\x5c$lbpplugindir\x5cinterfacedownload");
 	$pcfg->param("SYSTEM.card", "$R::out_list");
 	$pcfg->param("TTS.volume", "$R::volume");
 	
