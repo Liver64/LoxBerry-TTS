@@ -417,8 +417,8 @@ sub save
 	system ("mkdir -p $R::STORAGEPATH/$interfacefolder");
 	system ("rm $lbpdatadir/interfacedownload");
 	system ("rm $lbphtmldir/interfacedownload");
-	system ("ln -s $R::STORAGEPATH/$interfacefolder $lbpdatadir/interfacedownload");
-	system ("ln -s $R::STORAGEPATH/$interfacefolder $lbphtmldir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbpdatadir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbphtmldir/interfacedownload");
 	LOGOK "All folders and symlinks created successfully.";
 
 	if ($copy) {
