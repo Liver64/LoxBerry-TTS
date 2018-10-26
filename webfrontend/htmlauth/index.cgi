@@ -395,7 +395,7 @@ sub save
 	$pcfg->param("SYSTEM.ttspath", "$R::STORAGEPATH/$ttsfolder");
 	$pcfg->param("SYSTEM.interfacepath", "$R::STORAGEPATH/$interfacefolder");
 	$pcfg->param("SYSTEM.httpinterface", "http://$lbip/plugins/$lbpplugindir/interfacedownload");
-	$pcfg->param("SYSTEM.cifsinterface", "//$lbip/plugins/$lbpplugindir/interfacedownload");
+	$pcfg->param("SYSTEM.cifsinterface", "//$lbip/plugindata/$lbpplugindir/interfacedownload");
 	$pcfg->param("SYSTEM.card", "$R::out_list");
 	$pcfg->param("TTS.volume", "$R::volume");
 	
@@ -417,8 +417,8 @@ sub save
 	system ("mkdir -p $R::STORAGEPATH/$interfacefolder");
 	system ("rm $lbpdatadir/interfacedownload");
 	system ("rm $lbphtmldir/interfacedownload");
-	system ("ln -s $R::STORAGEPATH/$interfacefolder $lbpdatadir/interfacedownload");
-	system ("ln -s $R::STORAGEPATH/$interfacefolder $lbphtmldir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbpdatadir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbphtmldir/interfacedownload");
 	LOGOK "All folders and symlinks created successfully.";
 
 	if ($copy) {
