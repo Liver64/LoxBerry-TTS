@@ -18,7 +18,7 @@ function process_post_request() {
 	
 	// http://thisinterestsme.com/receiving-json-post-data-via-php/
 	// http://thisinterestsme.com/sending-json-via-post-php/
-	global $text, $decoded, $time_start;
+	global $text, $decoded, $time_start, $level;
 	
 	// Make sure that it is a POST request.
 	if(strcasecmp($_SERVER['REQUEST_METHOD'], 'POST') != 0){
@@ -45,6 +45,15 @@ function process_post_request() {
 		exit;
 	}
 	LOGOK("T2S Interface ** POST request has been successful processed!");
+	$level = LBSystem::pluginloglevel();
+	if ($level >= 7) {
+		echo '***********************************************************************<br>';
+		echo ' Data Import from incoming http Request (Array)<br>';
+		echo '***********************************************************************<br>';
+		echo '<br>';
+		print_r($decoded);
+		echo '<br>';
+	}
 	return ($decoded);
 }
 
@@ -58,7 +67,7 @@ function process_post_request() {
 /**/	
 
 function jsonfile($filename)  {
-	global $volume, $config, $MP3path, $messageid, $time_start, $filename, $infopath, $myFolder, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $MP3path, $messageid, $level, $time_start, $filename, $infopath, $myFolder, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
 	$ttspath = $config['SYSTEM']['ttspath'];
@@ -72,7 +81,6 @@ function jsonfile($filename)  {
     $MP3filename = $ttspath."/".$messageid.".mp3";
 	$getID3 = new getID3;
     $file = $getID3->analyze($MP3filename);
-	#print_r($file);
 	$duration = round($file['playtime_seconds'] * 1000, 0);
 	$bitrate = $file['bitrate'];
 	$sample_rate = $file['mpeg']['audio']['sample_rate'];
@@ -106,6 +114,20 @@ function jsonfile($filename)  {
 						'sample-rate' => $sample_rate,
 						'text' => $textstring
 						);
+	if ($level >= 7) {
+		echo '***********************************************************************<br>';
+		echo ' Return Source Data post T2S processing (Array)<br>';
+		echo '***********************************************************************<br>';
+		echo '<br>';
+		print_r($files);
+		echo '<br>';
+		echo '***********************************************************************<br>';
+		echo ' Return Source Data post T2S processing (JSON)<br>';
+		echo '***********************************************************************<br>';
+		echo '<br>';
+		$json = json_encode($files);
+		print_r($json);
+	}
 	try {
 		File_Put_Array_As_JSON($filenamebatch, $files, $zip=false);
 		LOGGING("Information of processed T2S has been added to JSON file", 7);
@@ -115,7 +137,6 @@ function jsonfile($filename)  {
 	}
 	LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
 	LOGGING("file '".$fullfilename."' has been successful saved in 'interface' folder", 5);
-	#print_r($files);
 	return $files;
 	
 }

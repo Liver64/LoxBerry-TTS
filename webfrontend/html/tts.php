@@ -43,7 +43,7 @@ $logging_config = "interface.cfg";								// fixed filename to pass log entries 
 
 echo '<PRE>'; 
 
-global $text, $messageid, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config;
+global $text, $messageid, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config, $jsonfile;
 
 $params = [	"name" => "Text2speech",
 			"filename" => "$lbplogdir/text2speech.log",
@@ -108,6 +108,18 @@ LOGSTART("T2S PHP started");
 		# Deklaration der variablen
 		$text = $decoded['text'];
 		$greet = $decoded['greet'];	
+	#} elseif (isset($_GET['json']))  {
+	# *** Lese Daten von URL ***
+	#	require_once('output/interface.php');
+	#	LOGGING("T2S Interface ** JSON=1 is set and will be processed!", 6);
+#		process_post_request();
+		# Deklaration der variablen
+	#	$text = $_GET['text'];
+	#	if (isset($_GET['greet'])) {
+	#		$greet = $_GET['greet'];
+	#	} else {
+	#		$greet = "";
+	#	}
 	} else {
 		create_tts();
 	}
@@ -123,7 +135,7 @@ LOGSTART("T2S PHP started");
 		(!isset($_GET['warning'])) && (!isset($_GET['bauernregel'])) && 
 		(!isset($_GET['distance'])) && (!isset($_GET['clock'])) &&
 		(!isset($_GET['calendar']))&& ($text == ' ') && (!isset($data))) {
-		LOGGING("Wrong Syntax, please correct! Even '...say&text=<TEXT>' or '...say&file=<FILE>' are necessary to play an anouncement. (check Wiki)", 3);	
+		LOGGING("Something went wrong. Please try again and check your syntax. (check Wiki)", 3);
 		exit;
 	}
 	#create_tts();
@@ -202,10 +214,14 @@ LOGSTART("T2S PHP started");
 			$output = shell_exec("export AUDIODEV=hw:0,0");
 		break;
 	}
-	if ($tmp_content == true)  {
+	if ($tmp_content == true || isset($_GET['json']))  {
 		create_tts();
 		jsonfile($filename);
 	}
+	#if (isset($_GET['json'])) {
+	#	$jsonfile = file_get_contents($config['SYSTEM']['interfacepath'] . '/t2s_source.json');
+	#	echo $jsonfile;
+	#}
 	#$time_end = microtime(true);
 	#$t2s_time = $time_end - $time_start;
 	#LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
