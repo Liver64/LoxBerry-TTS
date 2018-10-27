@@ -107,19 +107,18 @@ LOGSTART("T2S PHP started");
 		process_post_request();
 		# Deklaration der variablen
 		$text = $decoded['text'];
-		$greet = $decoded['greet'];	
-	#} elseif (isset($_GET['json']))  {
-	# *** Lese Daten von URL ***
-	#	require_once('output/interface.php');
-	#	LOGGING("T2S Interface ** JSON=1 is set and will be processed!", 6);
-#		process_post_request();
+	} elseif (isset($_GET['json']))  {
+	 # *** Lese Daten von URL ***
+		require_once('output/interface.php');
+		LOGGING("T2S Interface ** JSON=1 is set and will be processed!", 6);
+		process_post_request();
 		# Deklaration der variablen
-	#	$text = $_GET['text'];
-	#	if (isset($_GET['greet'])) {
-	#		$greet = $_GET['greet'];
-	#	} else {
-	#		$greet = "";
-	#	}
+		$text = $_GET['text'];
+		if (isset($_GET['greet'])) {
+			$greet = $_GET['greet'];
+		} else {
+			$greet = "";
+		}
 	} else {
 		create_tts();
 	}
@@ -218,10 +217,10 @@ LOGSTART("T2S PHP started");
 		create_tts();
 		jsonfile($filename);
 	}
-	#if (isset($_GET['json'])) {
-	#	$jsonfile = file_get_contents($config['SYSTEM']['interfacepath'] . '/t2s_source.json');
-	#	echo $jsonfile;
-	#}
+	if (isset($_GET['json'])) {
+		$jsonfile = file_get_contents($config['SYSTEM']['interfacepath'] . '/t2s_source.json');
+		echo $jsonfile;
+	}
 	#$time_end = microtime(true);
 	#$t2s_time = $time_end - $time_start;
 	#LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
