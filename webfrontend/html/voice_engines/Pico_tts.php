@@ -27,7 +27,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 			$ttslanguage = $config['TTS']['messageLang'];
 		}	
 		
-		$file = $MessageStorepath ."/". $filename . ".wav";
+		$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".wav";
 					
 		# Prüfung ob die Voice Datei bereits vorhanden ist
 		#if (!file_exists($file)) 
@@ -36,10 +36,10 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 			try {
 				exec('/usr/bin/pico2wave -l=' . $ttslanguage . ' -w=' . $file . ' "'.$textstring.'"');
 				#exit;
-				exec('/usr/bin/lame '.$MessageStorepath . $filename . ".wav".' '.$MessageStorepath . $filename . ".mp3");
+				exec('/usr/bin/lame '.$config['SYSTEM']['ttspath'] . $filename . ".wav".' '.$config['SYSTEM']['ttspath'] . $filename . ".mp3");
 				LOGGING('The text has been passed to Pico engine for MP3 creation',5);
 				LOGGING("MP3 file has been sucesfully saved.", 6);	
-				unlink($MessageStorepath . $filename . ".wav");
+				unlink($config['SYSTEM']['ttspath'] . $filename . ".wav");
 			} catch(Exception $e) {
 				LOGGING("The T2S could not be created! Please try again.",4);
 			}
