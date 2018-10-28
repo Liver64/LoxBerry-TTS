@@ -16,21 +16,41 @@
 
 function process_post_request() {
 	
+	#$level = LBSystem::pluginloglevel();
+	
 	// http://thisinterestsme.com/receiving-json-post-data-via-php/
 	// http://thisinterestsme.com/sending-json-via-post-php/
 	global $text, $decoded, $time_start, $level;
 	
+	print_r('');
+	if ($level == 7) {
+		print '***********************************************************************<br>';
+		print ' Details of incoming http Request<br>';
+		print '***********************************************************************<br>';
+		print '<br>';
+	}
 	// Make sure that it is a POST request.
 	if(strcasecmp($_SERVER['REQUEST_METHOD'], 'POST') != 0){
 		LOGERR("T2S Interface ** Request method must be POST!");
+		if ($level == 7) {
+			print "Error: T2S Interface ** Request method must be POST!<br>";
+		}
 		exit;
 	}
-	
+	if ($level == 7) {
+		print "Success: T2S Interface ** Request method is POST!<br>";
+	}
 	// Make sure that the content type of the POST request has been set to application/json
 	$contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
 	if(strcasecmp($contentType, 'application/json') != 0){
 		LOGERR("T2S Interface ** Content type must be: application/json");
+		if ($level == 7) {
+			print "Error: T2S Interface ** Content type must be: application/json!<br>";
+		}
 		exit;
+	}
+	if ($level == 7) {
+		print "Success: T2S Interface ** Content type is: application/json!<br>";
 	}
 	
 	// Receive the RAW post data.
@@ -42,17 +62,27 @@ function process_post_request() {
 	// If json_decode failed, the JSON is invalid.
 	if(!is_array($decoded)){
 		LOGERR("T2S Interface ** Received content contained invalid JSON!");
+		if ($level == 7) {
+			print "Error: T2S Interface ** Received content contained invalid JSON!<br>";
+		}
 		exit;
 	}
+	if ($level == 7) {
+		print "Success: T2S Interface ** Received content contained valid JSON!<br>";
+	}
 	LOGOK("T2S Interface ** POST request has been successful processed!");
-	$level = LBSystem::pluginloglevel();
-	if ($level >= 7) {
-		echo '***********************************************************************<br>';
-		echo ' Data Import from incoming http Request (Array)<br>';
-		echo '***********************************************************************<br>';
-		echo '<br>';
+	if ($level == 7) {
+		print "Success: T2S Interface ** POST request has been successful processed!<br>";
+		print '<br>';
+	}
+	
+	if ($level == 7) {
+		print '***********************************************************************<br>';
+		print ' Data Import from incoming http Request (Array)<br>';
+		print '***********************************************************************<br>';
+		print '<br>';
 		print_r($decoded);
-		echo '<br>';
+		print '<br>';
 	}
 	return ($decoded);
 }
@@ -67,7 +97,7 @@ function process_post_request() {
 /**/	
 
 function jsonfile($filename)  {
-	global $volume, $config, $MP3path, $messageid, $level, $time_start, $filename, $infopath, $myFolder, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $MP3path, $messageid, $level, $time_start, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
 	$ttspath = $config['SYSTEM']['ttspath'];
@@ -107,6 +137,7 @@ function jsonfile($filename)  {
 						'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
 						'cifsinterface' => $config['SYSTEM']['cifsinterface']."/",
 						'full-httpinterface' => $config['SYSTEM']['httpinterface']."/".$filename.".mp3",
+						#'sonosinterface' => $config['SYSTEM']['sonosinterface']."/".$filename.".mp3",
 						'httpinterface' => $config['SYSTEM']['httpinterface']."/",
 						'mp3-filename-MD5' => $filename,
 						'duration-ms' => $duration,
@@ -114,17 +145,18 @@ function jsonfile($filename)  {
 						'sample-rate' => $sample_rate,
 						'text' => $textstring
 						);
-	if ($level >= 7) {
-		echo '***********************************************************************<br>';
-		echo ' Return Source Data post T2S processing (Array)<br>';
-		echo '***********************************************************************<br>';
-		echo '<br>';
+	if ($level == 7) {
+		print '***********************************************************************<br>';
+		print ' Return Source Data post T2S processing (Array)<br>';
+		print '***********************************************************************<br>';
+		print '<br>';
 		print_r($files);
-		echo '<br>';
-		echo '***********************************************************************<br>';
-		echo ' Return Source Data post T2S processing (JSON)<br>';
-		echo '***********************************************************************<br>';
-		echo '<br>';
+		print '<br>';
+		print '**********************************************************************************************<br>';
+		print ' Return Source Data post T2S processing (JSON)<br>';
+		print " saved in: '".$config['SYSTEM']['path']."/interface/".$fullfilename."'<br>";
+		print '**********************************************************************************************<br>';
+		print '<br>';
 		$json = json_encode($files);
 		print_r($json);
 	}
@@ -137,9 +169,51 @@ function jsonfile($filename)  {
 	}
 	LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
 	LOGGING("file '".$fullfilename."' has been successful saved in 'interface' folder", 5);
+	#get_results();
 	return $files;
 	
 }
+
+
+function get_results() {
+	 
+	global $myIP, $files, $json;
+	
+	// API Url
+	$url = 'http://'.$myIP.'/plugins/sonos4lox_tts/index.php';
+	
+	// Initiate cURL.
+	$ch = curl_init($url);
+	 
+	// Encode the array into JSON.
+	$jsonDataEncoded = json_encode($files);
+		 
+	// Tell cURL that we want to send a POST request.
+	curl_setopt($ch, CURLOPT_POST, 1);
+	 
+	// Attach our encoded JSON string to the POST fields.
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonDataEncoded);
+	 
+	// Set the content type to application/json
+	curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json')); 
+		 
+	// Execute the request
+	$result = curl_exec($ch);
+
+	// was the request successful?
+	if($result === false)  {
+		print "Der POST Request war nicht erfolgreich!";
+		echo'<br>';
+		echo'<br>';
+	} else {
+		print "Der POST Request war erfolgreich!";
+		echo'<br>';
+		echo'<br>';
+	}
+	// close cURL
+	curl_close($ch);
+}
+
 
 	
 

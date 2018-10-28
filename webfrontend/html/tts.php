@@ -43,14 +43,15 @@ $logging_config = "interface.cfg";								// fixed filename to pass log entries 
 
 echo '<PRE>'; 
 
-global $text, $messageid, $LOGGING, $textstring, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config, $jsonfile;
+global $text, $messageid, $LOGGING, $textstring, $level, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config, $jsonfile;
 
 $params = [	"name" => "Text2speech",
 			"filename" => "$lbplogdir/text2speech.log",
 			"append" => 1,
 			];
 LBLog::newLog($params);	
-$plugindata = LBSystem::plugindata();	
+$plugindata = LBSystem::plugindata();
+$level = LBSystem::pluginloglevel();	
 
 LOGSTART("T2S PHP started");
 
@@ -110,8 +111,8 @@ LOGSTART("T2S PHP started");
 	} elseif (isset($_GET['json']))  {
 	 # *** Lese Daten von URL ***
 		require_once('output/interface.php');
-		LOGGING("T2S Interface ** JSON=1 is set and will be processed!", 6);
-		process_post_request();
+		LOGGING("T2S Interface ** JSON is set and will be processed!", 6);
+		#process_post_request();
 		# Deklaration der variablen
 		$text = $_GET['text'];
 		if (isset($_GET['greet'])) {
@@ -119,6 +120,7 @@ LOGSTART("T2S PHP started");
 		} else {
 			$greet = "";
 		}
+		echo $greet;
 	} else {
 		create_tts();
 	}
@@ -218,8 +220,15 @@ LOGSTART("T2S PHP started");
 		jsonfile($filename);
 	}
 	if (isset($_GET['json'])) {
-		$jsonfile = file_get_contents($config['SYSTEM']['interfacepath'] . '/t2s_source.json');
-		echo $jsonfile;
+		if ($level < 7) {
+			$jsonfile = file_get_contents($config['SYSTEM']['interfacepath'] . '/t2s_source.json');
+			print '**********************************************************************************************<br>';
+			print ' Return Source Data post T2S processing (JSON)<br>';
+			print " saved in: '".$config['SYSTEM']['path']."/interface/".$fullfilename."'<br>";
+			print '**********************************************************************************************<br>';
+			print '<br>';
+			print_r($jsonfile);
+		}
 	}
 	#$time_end = microtime(true);
 	#$t2s_time = $time_end - $time_start;
@@ -479,7 +488,7 @@ function create_tts() {
 			// The $messageid is set to the $fullmessageid from the top 
 		}
 	}
-	LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+	#LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
 	
 	return $messageid;
 }

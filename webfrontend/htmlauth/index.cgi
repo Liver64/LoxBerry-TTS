@@ -96,8 +96,13 @@ my %Config 				= $pcfg->vars() if ( $pcfg );
 our $error_message			= "";
 
 # Set new config options for upgrade installations
+# cachsize
 if (!defined $pcfg->param("MP3.cachesize")) {
 	$pcfg->param("MP3.cachesize", "100");
+}
+# splitsentence
+if (!defined $pcfg->param("MP3.splitsentences")) {
+	$pcfg->param("MP3.splitsentences=", "");
 }
 $pcfg->save() or &error;
 
@@ -192,8 +197,8 @@ $navbar{1}{Name} = "$SL{'T2S.MENU_SETTINGS'}";
 $navbar{1}{URL} = './index.cgi';
 # $navbar{2}{Name} = "Examples and testing";
 # $navbar{2}{URL} = 't2sexamples.cgi';
-$navbar{3}{Name} = "$SL{'T2S.MENU_WIZARD'}";
-$navbar{3}{URL} = './index.cgi?do=wizard';
+# $navbar{3}{Name} = "$SL{'T2S.MENU_WIZARD'}";
+# $navbar{3}{URL} = './index.cgi?do=wizard';
 $navbar{99}{Name} = "$SL{'T2S.MENU_LOGFILES'}";
 $navbar{99}{URL} = './index.cgi?do=logfiles';
 
