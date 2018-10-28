@@ -197,8 +197,8 @@ $navbar{1}{Name} = "$SL{'T2S.MENU_SETTINGS'}";
 $navbar{1}{URL} = './index.cgi';
 # $navbar{2}{Name} = "Examples and testing";
 # $navbar{2}{URL} = 't2sexamples.cgi';
-# $navbar{3}{Name} = "$SL{'T2S.MENU_WIZARD'}";
-# $navbar{3}{URL} = './index.cgi?do=wizard';
+$navbar{3}{Name} = "$SL{'T2S.MENU_WIZARD'}";
+$navbar{3}{URL} = './index.cgi?do=wizard';
 $navbar{99}{Name} = "$SL{'T2S.MENU_LOGFILES'}";
 $navbar{99}{URL} = './index.cgi?do=logfiles';
 
@@ -211,6 +211,11 @@ if(!defined $R::do or $R::do eq "form") {
 	$navbar{1}{active} = 1;
 	$template->param("FORM", "1");
 	&form;
+} elsif ($R::do eq "wizard") {
+	LOGTITLE "Show logfiles";
+	$navbar{3}{active} = 1;
+	$template->param("WIZARD", "1");
+	printtemplate();
 } elsif ($R::do eq "logfiles") {
 	LOGTITLE "Show logfiles";
 	$navbar{99}{active} = 1;

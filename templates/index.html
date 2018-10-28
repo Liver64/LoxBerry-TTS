@@ -968,6 +968,34 @@ function initial_lang_voice_load()  {
 <!-- form 'FORM' END -->
 </TMPL_IF>
 
+<TMPL_IF WIZARD>
+
+<button id="pressme">Drück mich!</button>
+<p id="buttonresponse"></p>
+
+<script>
+
+$("#pressme").click(function(){
+	$("#buttonresponse").html("Hör mal...");
+	$.ajax("http://192.168.50.95/plugins/text2speech/index.php?text=Hallo+wie+gehts+dir&volume=60")
+	.done(function(data){
+		$("#buttonresponse").html("Fertig - ich habe " + data.text + " abgespielt");
+	})
+	.fail(function(dataobj, textStatus){
+		$("#buttonresponse").html("Fehler! " + textStatus);
+	
+	});
+});
+
+
+</script>
+
+
+
+
+</TMPL_IF>
+
+
 <TMPL_IF LOGFILES>
 <!-- form 'LOGFILES' START -->
 	<TMPL_VAR LOGLIST_HTML>
