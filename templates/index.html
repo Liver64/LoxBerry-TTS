@@ -971,17 +971,26 @@ function initial_lang_voice_load()  {
 <TMPL_IF WIZARD>
 <p>Test TTS</p>
 <textarea id="testbox"></textarea>
-<button id="testbox_submit">Sprich!</button>
-<p id="testbox_response"></p>
+<div>
+	<div style="float: left; width: 50%; padding:5px;">
+	<button id="testbox_submit">Sprich!</button>
+	</div>
+	<div style="float: right; padding:5px;">
+	<label><input type="checkbox" id="testbox_nocache" data-mini="true">Disable caching</label>
+	</div>
+
+</div>
+<div style="clear: left;" id="testbox_response"></div>
 
 <script>
 
 $("#testbox_submit").click(function(){
 	$("#testbox_response").html("Hör mal...");
 	var text = $("#testbox").val();
-	console.log("TTS-Text", text);
+	var nocache = $("#testbox_nocache").is(":checked") == true ? 1 : 0;
+	console.log("TTS-Text", text, "Nocache", nocache);
 	$.get("/plugins/<TMPL_VAR LBPPLUGINDIR>/index.php",
-		{ nocache: 1,
+		{ nocache: nocache,
 		  text: text
 		})
 	.done(function(data){
