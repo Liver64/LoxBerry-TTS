@@ -969,20 +969,32 @@ function initial_lang_voice_load()  {
 </TMPL_IF>
 
 <TMPL_IF WIZARD>
-
-<button id="pressme">Drück mich!</button>
-<p id="buttonresponse"></p>
+<p>Test TTS</p>
+<textarea id="testbox"></textarea>
+<button id="testbox_submit">Sprich!</button>
+<p id="testbox_response"></p>
 
 <script>
 
-$("#pressme").click(function(){
-	$("#buttonresponse").html("Hör mal...");
-	$.ajax("http://192.168.50.95/plugins/text2speech/index.php?text=Hallo+wie+gehts+dir&volume=60")
+$("#testbox_submit").click(function(){
+	$("#testbox_response").html("Hör mal...");
+	var text = $("#testbox").val();
+	console.log("TTS-Text", text);
+	$.get("/plugins/<TMPL_VAR LBPPLUGINDIR>/index.php",
+		{ nocache: 1,
+		  text: text
+		})
 	.done(function(data){
-		$("#buttonresponse").html("Fertig - ich habe " + data.text + " abgespielt");
+		if(data.success == 1) 
+			$("#testbox_response").html("Fertig - ich habe \"" + data.text + "\" abgespielt");
+		else if (data.errortext) 
+			$("#testbox_response").html("Fehler: "+data.errortext);
+		else 
+			$("#testbox_response").html("Fehler: Unbekannter Fehler");
+		
 	})
 	.fail(function(dataobj, textStatus){
-		$("#buttonresponse").html("Fehler! " + textStatus);
+		$("#buttonresponse").html("Fehler: " + textStatus);
 	
 	});
 });

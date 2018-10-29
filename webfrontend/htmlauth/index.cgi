@@ -162,6 +162,7 @@ if($log->loglevel() eq "7") {
 $template->param("LBHOSTNAME", lbhostname());
 $template->param("LBLANG", $lblang);
 $template->param("SELFURL", $ENV{REQUEST_URI});
+$template->param("LBPPLUGINDIR", $lbpplugindir);
 
 LOGDEB "Read main settings from " . $languagefile . " for language: " . $lblang;
 
