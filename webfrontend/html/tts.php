@@ -61,7 +61,6 @@ $params = [	"name" => "Text2speech",
 LBLog::newLog($params);	
 $plugindata = LBSystem::plugindata();
 
-
 LOGSTART("T2S PHP started");
 
 $time_start_total = microtime(true);
@@ -83,7 +82,6 @@ $time_start_total = microtime(true);
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
 	LOGGING("All variables has been collected",6);
 	$soundcard = $config['SYSTEM']['card'];
-	#if ($soundcard != "013")  {			
 		# prüfen ob Volume in syntax, wenn nicht Std. von Config
 		if (!isset($_GET["volume"])) {
 			$volume = $config['TTS']['volume'];
@@ -100,8 +98,6 @@ $time_start_total = microtime(true);
 		}
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
-	#}
-	
 	get_interface_config();
 	
 	
@@ -366,10 +362,12 @@ function create_tts() {
 	// if full text is cached, directly return the md5
 	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3") && empty($_GET['nocache'])) {
 		LOGINF("Grabbed from cache: '$textstring' ");
-		LOGINF("Processing time just of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
+		#LOGINF("Processing time just of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 		$messageid = $fullmessageid;
 		$filename = $messageid;
 		return ($fullmessageid);
+	} else {
+		LOGINF("Processing time of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 	}
 	
 	if (!empty($_GET['nocache'])) {
