@@ -56,6 +56,7 @@ $level = LBSystem::pluginloglevel();
 $params = [	"name" => "Text2speech",
 			"filename" => "$lbplogdir/text2speech.log",
 			"append" => 1,
+			"addtime" => 1,
 			];
 LBLog::newLog($params);	
 $plugindata = LBSystem::plugindata();
@@ -363,14 +364,18 @@ function create_tts() {
 	LOGDEB("fullmessageid: $fullmessageid textstring: $textstring");
 	
 	// if full text is cached, directly return the md5
-	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3")) {
+	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3") && empty($_GET['nocache'])) {
 		LOGINF("Grabbed from cache: '$textstring' ");
 		LOGINF("Processing time just of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 		$messageid = $fullmessageid;
 		$filename = $messageid;
 		return ($fullmessageid);
 	}
-		
+	
+	if (!empty($_GET['nocache'])) {
+		LOGINF("Overriding cache because 'nocache' parameter was given");
+	}
+	
 	// The original text is set in a one-element array as default
 	$textstrings = array ( $textstring );
 	
@@ -451,14 +456,21 @@ function create_tts() {
 			$text = trim($text);
 			if(empty($text)) continue;
 			// echo "'$text' <br>\n";
-			LOGDEB("T2S will be called with '$text'");
 			$messageid  = md5($text);
 			$filename = $messageid;
-			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename);
-			if(!file_exists($config['SYSTEM']['ttspath'].$filename.".mp3")) {
-				LOGERR("File $filename.mp3 was not created (Text: '$text')");
+			$resultmp3 = $config['SYSTEM']['ttspath']."/".$filename.".mp3";
+			LOGDEB("Expected filename: $resultmp3");
+			if(file_exists($resultmp3) && empty($_GET['nocache'])) {
+				LOGINF("Text in cache: $text");
+				next;
 			}
-			array_push($filenames, $config['SYSTEM']['ttspath']."/".$filename.".mp3");
+			LOGDEB("T2S will be called with '$text'");
+			
+			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename);
+			if(!file_exists($resultmp3)) {
+				LOGERR("File $filename.mp3 was not created (Text: '$text' Path: $resultmp3)");
+			}
+			array_push($filenames, $resultmp3);
 			array_push($messageids, $messageid);
 		}
 		
@@ -545,7 +557,8 @@ function json($filename)  {
 					'duration-ms' => $duration,
 					'bitrate' => $bitrate,
 					'sample-rate' => $sample_rate,
-					'text' => $textstring
+					'text' => $textstring,
+					'success' => 1
 					);
 	$json = json_encode($files);
 	header('Content-Type: application/json');
