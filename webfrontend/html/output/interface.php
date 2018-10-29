@@ -16,43 +16,22 @@
 
 function process_post_request() {
 	
-	#$level = LBSystem::pluginloglevel();
-	
 	// http://thisinterestsme.com/receiving-json-post-data-via-php/
 	// http://thisinterestsme.com/sending-json-via-post-php/
-	global $text, $decoded, $time_start, $level;
+	global $text, $decoded, $time_start_total, $level;
 	
-	#print_r('');
-	if ($level == 7) {
-		#print '***********************************************************************<br>';
-		#print ' Details of incoming http Request<br>';
-		#print '***********************************************************************<br>';
-		#print '<br>';
-	}
 	// Make sure that it is a POST request.
 	if(strcasecmp($_SERVER['REQUEST_METHOD'], 'POST') != 0){
-		LOGERR("T2S Interface ** Request method must be POST!");
-		if ($level == 7) {
-			#print "Error: T2S Interface ** Request method must be POST!<br>";
-		}
+		LOGGING("T2S Interface ** Request method must be POST!", 3);
 		exit;
-	}
-	if ($level == 7) {
-		#print "Success: T2S Interface ** Request method is POST!<br>";
-	}
-	// Make sure that the content type of the POST request has been set to application/json
-	$contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
-	if(strcasecmp($contentType, 'application/json') != 0){
-		LOGERR("T2S Interface ** Content type must be: application/json");
-		if ($level == 7) {
-			#print "Error: T2S Interface ** Content type must be: application/json!<br>";
-		}
-		exit;
-	}
-	if ($level == 7) {
-		#print "Success: T2S Interface ** Content type is: application/json!<br>";
 	}
 	
+	// Make sure that the content type of the POST request has been set to application/json
+	$contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
+	if(strcasecmp($contentType, 'application/json') != 0)  {
+		LOGGING("T2S Interface ** Content type must be: application/json", 3);
+		exit;
+	}
 	// Receive the RAW post data.
 	$content = trim(file_get_contents("php://input"));
 	
@@ -61,30 +40,10 @@ function process_post_request() {
 	
 	// If json_decode failed, the JSON is invalid.
 	if(!is_array($decoded)){
-		LOGERR("T2S Interface ** Received content contained invalid JSON!");
-		if ($level == 7) {
-			#print "Error: T2S Interface ** Received content contained invalid JSON!<br>";
-		}
+		LOGGING("T2S Interface ** Received content contained invalid JSON!", 3);
 		exit;
 	}
-	if ($level == 7) {
-		#print "Success: T2S Interface ** Received content contained valid JSON!<br>";
-	}
-	LOGOK("T2S Interface ** POST request has been successful processed!");
-	if ($level == 7) {
-		#print "Success: T2S Interface ** POST request has been successful processed!<br>";
-		#print '<br>';
-	}
-	
-	if ($level == 7) {
-		#print '***********************************************************************<br>';
-		#print ' Data Import from incoming http Request (Array)<br>';
-		#print '***********************************************************************<br>';
-		#print '<br>';
-		#print_r($decoded);
-		#print '<br>';
-	}
-	#print_r($decoded);
+	LOGGING("T2S Interface ** Incoming POST request has been successful processed!", 5);
 	return ($decoded);
 }
 

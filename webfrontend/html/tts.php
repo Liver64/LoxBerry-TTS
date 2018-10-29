@@ -63,6 +63,8 @@ $plugindata = LBSystem::plugindata();
 
 LOGSTART("T2S PHP started");
 
+$time_start_total = microtime(true);
+
 #-- Start Preparation ------------------------------------------------------------------
 	LOGGING("called syntax: ".$myIP."".urldecode($syntax),5);
 	// Parsen der Konfigurationsdatei
@@ -98,17 +100,17 @@ LOGSTART("T2S PHP started");
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
 	#}
-	#$time_start = microtime(true);
+	
 	get_interface_config();
 	
 	
 
 #-- End Preparation ---------------------------------------------------------------------
 
-	global $soundcard, $config, $text, $time_start, $decoded, $greet, $textstring, $filename, $myConfigFile;
+	global $soundcard, $config, $text, $time_start_total, $decoded, $greet, $textstring, $filename, $myConfigFile;
 	
 	# Prüfen ob Request per Interface reinkommt
-	($tmp_content = file_get_contents("php://input"));
+	$tmp_content = file_get_contents("php://input");
 	if ($tmp_content == true)  {
 	# *** Lese Daten von ext. Call ***
 		require_once('output/interface.php');
@@ -121,7 +123,6 @@ LOGSTART("T2S PHP started");
 	 # *** Lese Daten von URL ***
 		require_once('output/interface.php');
 		LOGGING("T2S Interface ** JSON is set and will be processed!", 6);
-		#process_post_request();
 		# Deklaration der variablen
 		$text = $_GET['text'];
 		if (isset($_GET['greet'])) {
@@ -129,7 +130,6 @@ LOGSTART("T2S PHP started");
 		} else {
 			$greet = "";
 		}
-		#echo $greet;
 	} else {
 		create_tts();
 	}
@@ -146,9 +146,8 @@ LOGSTART("T2S PHP started");
 		(!isset($_GET['distance'])) && (!isset($_GET['clock'])) &&
 		(!isset($_GET['calendar']))&& ($text == ' ') && (!isset($data))) {
 		LOGGING("Something went wrong. Please try again and check your syntax. (check Wiki)", 3);
-		#exit;
+		exit;
 	}
-	#create_tts();
 	switch ($soundcard) {
 		case '001':			// NULL
 			exit;
@@ -224,28 +223,12 @@ LOGSTART("T2S PHP started");
 			$output = shell_exec("export AUDIODEV=hw:0,0");
 		break;
 	}
-	#echo $tmp_content;
 	if ($tmp_content == true || isset($_GET['json']))  {
 		create_tts();
 	}
-	if (isset($_GET['json'])) {
-		if ($level < 7) {
-			#$jsonfile = file_get_contents($config['SYSTEM']['interfacepath'] . '/t2s_source.json');
-			#print '**********************************************************************************************<br>';
-			#print ' Return Source Data post T2S processing (JSON)<br>';
-			#print " saved in: '".$config['SYSTEM']['path']."/interface/".$fullfilename."'<br>";
-			#print '**********************************************************************************************<br>';
-			#print '<br>';
-			#print_r($jsonfile);
-		}
-	}
-	#$time_end = microtime(true);
-	#$t2s_time = $time_end - $time_start;
-	#LOGGING("The requested single T2S tooks ".round($t2s_time, 2)." seconds to be processed.", 5);	
-	
-	jsonfile($filename);	
-	
-	LOGEND("T2S PHP finished");
+	LOGGING("Processing time of the complete T2S request tooks: " . (microtime(true)-$time_start_total)*1000 . " ms", 6);
+	json($filename);	
+	LOGEND("T2S PHP finished"); 
 exit;
 
 
@@ -260,7 +243,7 @@ exit;
 
 function create_tts() {
 	
-	global $config, $filename, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet;
+	global $config, $filename, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
 	
 	$start_create_tts = microtime(true);
 	
@@ -382,7 +365,7 @@ function create_tts() {
 	// if full text is cached, directly return the md5
 	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3")) {
 		LOGINF("Grabbed from cache: '$textstring' ");
-		LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+		LOGINF("Processing time just of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 		$messageid = $fullmessageid;
 		$filename = $messageid;
 		return ($fullmessageid);
@@ -490,7 +473,7 @@ function create_tts() {
 			LOGDEB ($output);
 			if(!file_exists($config['SYSTEM']['ttspath']."/".$filename.".mp3")) {
 				LOGCRIT ("Merged MP3 file $fullmessageid.mp3 could not be found");
-				LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
+				LOGINF("Processing time of create_tts() (merging) tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 				$messageid = null;
 				$filename = null;
 				return;
@@ -500,8 +483,6 @@ function create_tts() {
 			// The $messageid is set to the $fullmessageid from the top 
 		}
 	}
-	#LOGINF("Processing time of create_tts(): " . (microtime(true)-$start_create_tts)*1000 . " ms");
-	
 	return $messageid;
 }
 
@@ -515,16 +496,15 @@ function create_tts() {
 /* @return: JSON file für weitere Verwendung
 /**/	
 
-function jsonfile($filename)  {
-	global $volume, $config, $MP3path, $messageid, $level, $time_start, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+function json($filename)  {
+	global $volume, $config, $MP3path, $messageid, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
-	$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
+	#$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
 	$ttspath = $config['SYSTEM']['ttspath'];
-	$filepath = $config['SYSTEM']['mp3path'];
-	$ttsinfopath = $config['SYSTEM']['interfacepath']."/";
+	#$filepath = $config['SYSTEM']['mp3path'];
+	#$ttsinfopath = $config['SYSTEM']['interfacepath']."/";
 	
-	
-	// ** get details of MP3
+	// ** get details of MP3 **
 	// https://github.com/JamesHeinrich/getID3/archive/master.zip
 	require_once("bin/getid3/getid3.php");
     $MP3filename = $ttspath."/".$messageid.".mp3";
@@ -533,59 +513,46 @@ function jsonfile($filename)  {
 	$duration = round($file['playtime_seconds'] * 1000, 0);
 	$bitrate = $file['bitrate'];
 	$sample_rate = $file['mpeg']['audio']['sample_rate'];
+	// ** End MP3 details **
     	
 	LOGGING("filename of MP3 file: '".$filename."'", 5);
-	# prüft ob Verzeichnis für Übergabe existiert
-	$is_there = file_exists($ttsinfopath);
-	if ($is_there === false)  {
-		LOGGING("The interface folder seems not to be available!! System now try to create the 'share' folder", 4);
-		mkdir($ttsinfopath);
-		LOGGING("Folder '".$ttsinfopath."' has been succesful created.", 5);
-	} else {
-		LOGGING("Folder '".$infopath."' to pass over audio infos is already there (".$ttsinfopath.")", 5);
-	}
-	# Löschen alle vorhandenen Dateien aus dem info folder
-	chdir($ttsinfopath);
-	foreach (glob("*.*") as $file) {
-		LOGGING("File: '".$file."' has been deleted from '".$infopath."' folder",5);
-		#unlink($file);
-	}
-		$files = array(
-						'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
-						'path' => $config['SYSTEM']['path']."/",
-						'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
-						'cifsinterface' => $config['SYSTEM']['cifsinterface']."/",
-						'full-httpinterface' => $config['SYSTEM']['httpinterface']."/".$filename.".mp3",
-						'httpinterface' => $config['SYSTEM']['httpinterface']."/",
-						'mp3-filename-MD5' => $filename,
-						'duration-ms' => $duration,
-						'bitrate' => $bitrate,
-						'sample-rate' => $sample_rate,
-						'text' => $textstring
-						);
-	if ($level == 7) {
-		#print '***********************************************************************<br>';
-		#print ' Return Source Data post T2S processing (Array)<br>';
-		#print '***********************************************************************<br>';
-		#print '<br>';
-		#print_r($files);
-		#print '<br>';
-		#print '**********************************************************************************************<br>';
-		#print ' Return Source Data post T2S processing (JSON)<br>';
-		#print " saved in: '".$config['SYSTEM']['path']."/interface/".$fullfilename."'<br>";
-		#print '**********************************************************************************************<br>';
-		#print '<br>';
-		$json = json_encode($files);
-		#print_r($json);
-		
-	}
 	
+	// OLD: process ing of request via file
+	
+	# prüft ob Verzeichnis für Übergabe existiert
+	#$is_there = file_exists($ttsinfopath);
+	#if ($is_there === false)  {
+	#	LOGGING("The interface folder seems not to be available!! System now try to create the 'share' folder", 4);
+	#	mkdir($ttsinfopath);
+	#	LOGGING("Folder '".$ttsinfopath."' has been succesful created.", 5);
+	#} else {
+	#	LOGGING("Folder '".$infopath."' to pass over audio infos is already there (".$ttsinfopath.")", 5);
+	#}
+	# Löschen alle vorhandenen Dateien aus dem info folder
+	#chdir($ttsinfopath);
+	#foreach (glob("*.*") as $file) {
+	#	LOGGING("File: '".$file."' has been deleted from '".$infopath."' folder",5);
+	#	#unlink($file);
+	#}
+	$files = array(
+					'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
+					'path' => $config['SYSTEM']['path']."/",
+					'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
+					'cifsinterface' => $config['SYSTEM']['cifsinterface']."/",
+					'full-httpinterface' => $config['SYSTEM']['httpinterface']."/".$filename.".mp3",
+					'httpinterface' => $config['SYSTEM']['httpinterface']."/",
+					'mp3-filename-MD5' => $filename,
+					'duration-ms' => $duration,
+					'bitrate' => $bitrate,
+					'sample-rate' => $sample_rate,
+					'text' => $textstring
+					);
+	$json = json_encode($files);
 	header('Content-Type: application/json');
 	echo $json;
-	LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
-	LOGGING("file '".$fullfilename."' has been successful saved in 'interface' folder", 5);
-	#get_results();
-	return $files;
-	
+	LOGGING("JSON has been successfully responded to Requester",5);
+	#LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
+	return $files;	
 }
 
+?>
