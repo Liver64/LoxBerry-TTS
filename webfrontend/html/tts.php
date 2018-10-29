@@ -2,17 +2,17 @@
 
 ##############################################################################################################################
 #
-# Version: 	1.0.5
-# Datum: 	16.10.2018
+# Version: 	1.0.6
+# Datum: 	29.10.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
 ##############################################################################################################################
 
 // ToDo
 //
-// clean tts folder when User switch the T2S engine
+// clean cache when User switch the T2S engine --> jquery in index.html
 // syntax wizard
-// multi logging for Plugins
+// interfacefolder is only available post saving --> issue: after updating Plugin the folder 'interfacefolder' is not available
 
 ini_set('max_execution_time', 90); 								// Max. Skriptlaufzeit auf 90 Sekunden
 
@@ -45,6 +45,10 @@ $infopath = "interface";											// path to info for ext. Prog
 $Home = getcwd();												// get Plugin Pfad
 $fullfilename = "t2s_source.json";								// filename to pass info back to ext. Prog#.
 $logging_config = "interface.cfg";								// fixed filename to pass log entries to ext. Prog.
+#$interfacefolder = "interface";
+$ttsfolder = "tts";
+$mp3folder = "mp3";
+$lbphtmldir = LBPHTMLDIR;
 
 
 #echo '<PRE>'; 
@@ -59,6 +63,8 @@ $params = [	"name" => "Text2speech",
 			"addtime" => 1,
 			];
 LBLog::newLog($params);	
+
+// used for single logging
 $plugindata = LBSystem::plugindata();
 
 LOGSTART("T2S PHP started");
@@ -76,6 +82,7 @@ $time_start_total = microtime(true);
 		LOGGING("T2S config has been loaded", 7);
 	}
 	#print_r($config);
+	create_symlinks();
 	LOGGING("Config has been successfull loaded",6);
 		
 	# wählt Sprachdatei für hinterlegte Texte für add-on's
@@ -98,7 +105,8 @@ $time_start_total = microtime(true);
 		}
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
-	get_interface_config();
+	$multilog = get_interface_config();
+	#print_r($multilog);
 	
 	
 
@@ -223,7 +231,7 @@ $time_start_total = microtime(true);
 	if ($tmp_content == true || isset($_GET['json']))  {
 		create_tts();
 	}
-	LOGGING("Processing time of the complete T2S request tooks: " . (microtime(true)-$time_start_total)*1000 . " ms", 6);
+	LOGGING("Processing time of the complete T2S request tooks: " . round((microtime(true)-$time_start_total), 2) . " Sek.", 6);
 	json($filename);	
 	LOGEND("T2S PHP finished"); 
 exit;
@@ -357,21 +365,21 @@ function create_tts() {
 	// Get md5 of full text
 	$textstring = trim($textstring);
 	$fullmessageid = md5($textstring);
-	LOGDEB("fullmessageid: $fullmessageid textstring: $textstring");
+	LOGGING("fullmessageid: $fullmessageid textstring: $textstring", 7);
 	
 	// if full text is cached, directly return the md5
 	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3") && empty($_GET['nocache'])) {
-		LOGINF("Grabbed from cache: '$textstring' ");
+		LOGGING("Grabbed from cache: '$textstring' ", 6);
 		#LOGINF("Processing time just of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 		$messageid = $fullmessageid;
 		$filename = $messageid;
 		return ($fullmessageid);
 	} else {
-		LOGINF("Processing time of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
+		LOGGING("Processing time of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
 	}
 	
 	if (!empty($_GET['nocache'])) {
-		LOGINF("Overriding cache because 'nocache' parameter was given");
+		LOGGING("Overriding cache because 'nocache' parameter was given", 6);
 	}
 	
 	// The original text is set in a one-element array as default
@@ -414,7 +422,7 @@ function create_tts() {
 		
 		// The sentence recognition tendends to false-positives with abbreviations
 		if(!empty($config['MP3']['splitsentences']) && is_enabled($config['MP3']['splitsentences'])) {
-			LOGINF("Splitting sentences");
+			LOGGING("Splitting sentences", 6);
 			$textstring = trim($textstring); // . ' ';
 			$textstrings = array ( );
 			$tempstrings = preg_split( '/(?<!\.\.\.)(?<!Dr\.)(?<=[.?!]|\.\)|\.")\s+(?=[a-zA-Z"\(])/i', $textstring, -1);
@@ -457,38 +465,37 @@ function create_tts() {
 			$messageid  = md5($text);
 			$filename = $messageid;
 			$resultmp3 = $config['SYSTEM']['ttspath']."/".$filename.".mp3";
-			LOGDEB("Expected filename: $resultmp3");
+			LOGGING("Expected filename: $resultmp3", 7);
 			if(file_exists($resultmp3) && empty($_GET['nocache'])) {
-				LOGINF("Text in cache: $text");
+				LOGGING("Text in cache: $text", 6);
 				next;
 			}
-			LOGDEB("T2S will be called with '$text'");
+			LOGGING("T2S will be called with '$text'", 7);
 			
 			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename);
 			if(!file_exists($resultmp3)) {
-				LOGERR("File $filename.mp3 was not created (Text: '$text' Path: $resultmp3)");
+				LOGGING("File $filename.mp3 was not created (Text: '$text' Path: $resultmp3)", 3);
 			}
 			array_push($filenames, $resultmp3);
 			array_push($messageids, $messageid);
 		}
-		
 		// In the case we have splitted the text, we have to merge the result
 		if(count($textstrings)>1) {
 			$messageid = $fullmessageid;
 			$filename = $fullmessageid;
-			LOGINF ("More than one sentence: Merging mp3's");
+			LOGGING ("More than one sentence: Merging mp3's", 6);
 			$mergecommand = "sox " . implode(" ", $filenames) . " " . $config['SYSTEM']['ttspath']."/".$filename.".mp3";
-			LOGDEB ("Mergecommand: '$mergecommand'");
+			LOGGING ("Mergecommand: '$mergecommand'", 7);
 			$output = shell_exec($mergecommand);
-			LOGDEB ($output);
+			LOGGING (($output), 7);
 			if(!file_exists($config['SYSTEM']['ttspath']."/".$filename.".mp3")) {
-				LOGCRIT ("Merged MP3 file $fullmessageid.mp3 could not be found");
-				LOGINF("Processing time of create_tts() (merging) tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
+				LOGGING ("Merged MP3 file $fullmessageid.mp3 could not be found", 2);
+				LOGGING("Processing time of create_tts() (merging) tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
 				$messageid = null;
 				$filename = null;
 				return;
 			} else {
-				LOGDEB ("Created merged file $filename.mp3");
+				LOGGING ("Created merged file $filename.mp3", 7);
 			}
 			// The $messageid is set to the $fullmessageid from the top 
 		}
@@ -509,8 +516,8 @@ function create_tts() {
 function json($filename)  {
 	global $volume, $config, $MP3path, $messageid, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
-	#$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
 	$ttspath = $config['SYSTEM']['ttspath'];
+	#$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
 	#$filepath = $config['SYSTEM']['mp3path'];
 	#$ttsinfopath = $config['SYSTEM']['interfacepath']."/";
 	
@@ -527,7 +534,7 @@ function json($filename)  {
     	
 	LOGGING("filename of MP3 file: '".$filename."'", 5);
 	
-	// OLD: process ing of request via file
+	// OLD: processing of request via file
 	
 	# prüft ob Verzeichnis für Übergabe existiert
 	#$is_there = file_exists($ttsinfopath);

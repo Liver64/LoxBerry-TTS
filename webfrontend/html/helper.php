@@ -159,6 +159,89 @@ function mp3_files($playgongfile) {
 	return (in_array($playgongfile, $file_only));
 }
 
- 
+
+
+/**
+* Function : create_symlinks() --> check if symlinks for interface are there, if not create them
+*
+* @param: empty
+* @return: symlinks created 
+**/
+
+function create_symlinks()  {
+	
+	global $config, $ttsfolder, $mp3folder, $myFolder, $lbphtmldir;
+	
+	$symcurr_path = $config['SYSTEM']['path'];
+	$symttsfolder = $config['SYSTEM']['ttspath'];
+	$symmp3folder = $config['SYSTEM']['mp3path'];
+	$copy = false;
+	if (!is_dir($symmp3folder)) {
+		$copy = true;
+	}
+	LOGGING("check if folder/symlinks exists, if not create", 5);
+	if (!is_dir($symttsfolder)) {
+		mkdir($symttsfolder, 0755);
+		LOGGING("Folder: '".$symttsfolder."' has been created", 7);
+	}
+	if (!is_dir($symmp3folder)) {
+		mkdir($symmp3folder, 0755);
+		LOGGING("Folder: '".$symmp3folder."' has been created", 7);
+	}
+	if (!is_dir($myFolder."/interfacedownload")) {
+		symlink($symttsfolder, $myFolder."/interfacedownload");
+		LOGGING("Symlink: '".$myFolder.'/interfacedownload'."' has been created", 7);
+	}
+	if (!is_dir($lbphtmldir."/interfacedownload")) {
+		symlink($symttsfolder, $lbphtmldir."/interfacedownload");
+		LOGGING("Symlink: '".$lbphtmldir.'/interfacedownload'."' has been created", 7);
+	}
+	if ($copy === true) {
+		LOGGING("Copy existing mp3 files from $myFolder/$mp3folder to $symcurr_path/$mp3folder", 6);
+		xcopy($myFolder."/".$mp3folder, $symcurr_path."/".$mp3folder);
+		LOGGING("All files has been copied from: '".$myFolder."/".$mp3folder."' to: '".$symcurr_path."/".$mp3folder."'", 5);
+	}
+	
+}
+
+
+/**
+ * Copy a file, or recursively copy a folder and its contents
+ * @author      Aidan Lister <aidan@php.net>
+ * @version     1.0.1
+ * @link        http://aidanlister.com/2004/04/recursively-copying-directories-in-php/
+ * @param       string   $source    Source path
+ * @param       string   $dest      Destination path
+ * @param       int      $permissions New folder creation permissions
+ * @return      bool     Returns true on success, false on failure
+ */
+function xcopy($source, $dest, $permissions = 0755)
+{
+    // Check for symlinks
+    if (is_link($source)) {
+        return symlink(readlink($source), $dest);
+    }
+    // Simple copy for a file
+    if (is_file($source)) {
+        return copy($source, $dest);
+    }
+    // Make destination directory
+    if (!is_dir($dest)) {
+        mkdir($dest, $permissions);
+    }
+    // Loop through the folder
+    $dir = dir($source);
+    while (false !== $entry = $dir->read()) {
+        // Skip pointers
+        if ($entry == '.' || $entry == '..') {
+            continue;
+        }
+        // Deep copy directories
+        xcopy("$source/$entry", "$dest/$entry", $permissions);
+    }
+    // Clean up
+    $dir->close();
+    return true;
+}
  
 ?>
