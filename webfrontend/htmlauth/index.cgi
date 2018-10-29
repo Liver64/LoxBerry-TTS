@@ -262,6 +262,33 @@ sub form {
 	# Get current storage folder
 	$storepath = $pcfg->param("SYSTEM.path"),
 	
+	
+	
+	# If storage folders do not exist, copy default mp3 files
+	my $copy = 0;
+	if (!-e "$R::STORAGEPATH/$mp3folder") {
+		$copy = 1;
+	}
+
+	LOGINF "Creating folders and symlinks";
+	system ("mkdir -p $R::STORAGEPATH/$mp3folder");
+	system ("mkdir -p $R::STORAGEPATH/$ttsfolder");
+	system ("mkdir -p $R::STORAGEPATH/$interfacefolder");
+	system ("rm $lbpdatadir/interfacedownload");
+	system ("rm $lbphtmldir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbpdatadir/interfacedownload");
+	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbphtmldir/interfacedownload");
+	LOGOK "All folders and symlinks created successfully.";
+
+	if ($copy) {
+		LOGINF "Copy existing mp3 files from $lbpdatadir/$mp3folder to $R::STORAGEPATH/$mp3folder";
+		system ("cp -r $lbpdatadir/$mp3folder/* $R::STORAGEPATH/$mp3folder");
+	}
+	
+	
+	
+	
+	
 	# Full path to check if folders already there
 	#$fullpath = $storepath."/".$lbhostname."/".$ttsfolder."/".$mp3folder;
 	
@@ -417,25 +444,25 @@ sub save
 	LOGOK "All settings has been saved successful";
 
 	# If storage folders do not exist, copy default mp3 files
-	my $copy = 0;
-	if (!-e "$R::STORAGEPATH/$mp3folder") {
-		$copy = 1;
-	}
+	#my $copy = 0;
+	#if (!-e "$R::STORAGEPATH/$mp3folder") {
+	#	$copy = 1;
+	#}
 
-	LOGINF "Creating folders and symlinks";
-	system ("mkdir -p $R::STORAGEPATH/$mp3folder");
-	system ("mkdir -p $R::STORAGEPATH/$ttsfolder");
-	system ("mkdir -p $R::STORAGEPATH/$interfacefolder");
-	system ("rm $lbpdatadir/interfacedownload");
-	system ("rm $lbphtmldir/interfacedownload");
-	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbpdatadir/interfacedownload");
-	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbphtmldir/interfacedownload");
-	LOGOK "All folders and symlinks created successfully.";
+	#LOGINF "Creating folders and symlinks";
+	#system ("mkdir -p $R::STORAGEPATH/$mp3folder");
+	#system ("mkdir -p $R::STORAGEPATH/$ttsfolder");
+	#system ("mkdir -p $R::STORAGEPATH/$interfacefolder");
+	#system ("rm $lbpdatadir/interfacedownload");
+	#system ("rm $lbphtmldir/interfacedownload");
+	#system ("ln -s $R::STORAGEPATH/$ttsfolder $lbpdatadir/interfacedownload");
+	#system ("ln -s $R::STORAGEPATH/$ttsfolder $lbphtmldir/interfacedownload");
+	#LOGOK "All folders and symlinks created successfully.";
 
-	if ($copy) {
-		LOGINF "Copy existing mp3 files from $lbpdatadir/$mp3folder to $R::STORAGEPATH/$mp3folder";
-		system ("cp -r $lbpdatadir/$mp3folder/* $R::STORAGEPATH/$mp3folder");
-	}
+	#if ($copy) {
+	#	LOGINF "Copy existing mp3 files from $lbpdatadir/$mp3folder to $R::STORAGEPATH/$mp3folder";
+	#	system ("cp -r $lbpdatadir/$mp3folder/* $R::STORAGEPATH/$mp3folder");
+	#}
 
 	$lblang = lblanguage();
 	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
