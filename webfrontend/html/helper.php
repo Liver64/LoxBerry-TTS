@@ -197,7 +197,7 @@ function create_symlinks()  {
 		LOGGING("Symlink: '".$lbphtmldir.'/interfacedownload'."' has been created", 7);
 	}
 	if ($copy === true) {
-		LOGGING("Copy existing mp3 files from $myFolder/$mp3folder to $symcurr_path/$mp3folder", 6);
+		#LOGGING("Copy existing mp3 files from $myFolder/$mp3folder to $symcurr_path/$mp3folder", 6);
 		xcopy($myFolder."/".$mp3folder, $symcurr_path."/".$mp3folder);
 		LOGGING("All files has been copied from: '".$myFolder."/".$mp3folder."' to: '".$symcurr_path."/".$mp3folder."'", 5);
 	}

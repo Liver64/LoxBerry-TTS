@@ -1,6 +1,6 @@
 <?php
 /**
-* Submodul: bidirectonal Interface
+* Submodul: Interface
 *
 **/
 
@@ -12,7 +12,7 @@
 /* @return: array (
 /*			[0] Text for T2S (string)
 /*			[1] greet=0 w/o greeting, greet=1 with greeting (bolean)
-/**/
+**/
 
 function process_post_request() {
 	

@@ -3,16 +3,14 @@
 ##############################################################################################################################
 #
 # Version: 	1.0.6
-# Datum: 	29.10.2018
+# Datum: 	30.10.2018
 # veröffentlicht in: https://github.com/Liver64/LoxBerry-TTS/releases
 # 
 ##############################################################################################################################
 
 // ToDo
 //
-// clean cache when User switch the T2S engine --> jquery in index.html
 // syntax wizard
-// interfacefolder is only available post saving --> issue: after updating Plugin the folder 'interfacefolder' is not available
 
 ini_set('max_execution_time', 90); 								// Max. Skriptlaufzeit auf 90 Sekunden
 
@@ -85,7 +83,7 @@ $time_start_total = microtime(true);
 	create_symlinks();
 	LOGGING("Config has been successfull loaded",6);
 		
-	# wählt Sprachdatei für hinterlegte Texte für add-on's
+	# wählt Sprachdatei für hinterlegte Texte der Add-on's
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
 	LOGGING("All variables has been collected",6);
 	$soundcard = $config['SYSTEM']['card'];
@@ -105,7 +103,7 @@ $time_start_total = microtime(true);
 		}
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
-	$multilog = get_interface_config();
+	#$multilog = get_interface_config();
 	#print_r($multilog);
 	
 	
@@ -130,11 +128,7 @@ $time_start_total = microtime(true);
 		LOGGING("T2S Interface ** JSON is set and will be processed!", 6);
 		# Deklaration der variablen
 		$text = $_GET['text'];
-		if (isset($_GET['greet'])) {
-			$greet = $_GET['greet'];
-		} else {
-			$greet = "";
-		}
+		isset($_GET['greet']) ?	$greet = $_GET['greet'] : $greet = " ";
 	} else {
 		create_tts();
 	}
