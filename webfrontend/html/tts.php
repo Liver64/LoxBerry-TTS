@@ -65,7 +65,7 @@ LBLog::newLog($params);
 // used for single logging
 $plugindata = LBSystem::plugindata();
 
-LOGSTART("T2S PHP started");
+LOGSTART("PHP started");
 
 $time_start_total = microtime(true);
 
@@ -227,7 +227,7 @@ $time_start_total = microtime(true);
 	}
 	LOGGING("Processing time of the complete T2S request tooks: " . round((microtime(true)-$time_start_total), 2) . " Sek.", 6);
 	json($filename);	
-	LOGEND("T2S PHP finished"); 
+	LOGEND("PHP finished"); 
 exit;
 
 
@@ -521,9 +521,9 @@ function json($filename)  {
     $MP3filename = $ttspath."/".$messageid.".mp3";
 	$getID3 = new getID3;
     $file = $getID3->analyze($MP3filename);
-	$duration = round($file['playtime_seconds'] * 1000, 0);
-	$bitrate = $file['bitrate'];
-	$sample_rate = $file['mpeg']['audio']['sample_rate'];
+	$duration = @round($file['playtime_seconds'] * 1000, 0);
+	$bitrate = @$file['bitrate'];
+	$sample_rate = @$file['mpeg']['audio']['sample_rate'];
 	// ** End MP3 details **
     	
 	LOGGING("filename of MP3 file: '".$filename."'", 5);
