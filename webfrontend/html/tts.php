@@ -508,22 +508,33 @@ function create_tts() {
 /**/	
 
 function json($filename)  {
-	global $volume, $config, $MP3path, $messageid, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $MP3path, $messageid, $warning, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$ttspath = $config['SYSTEM']['ttspath'];
 	#$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
 	#$filepath = $config['SYSTEM']['mp3path'];
 	#$ttsinfopath = $config['SYSTEM']['interfacepath']."/";
-	
+		
 	// ** get details of MP3 **
 	// https://github.com/JamesHeinrich/getID3/archive/master.zip
 	require_once("bin/getid3/getid3.php");
     $MP3filename = $ttspath."/".$messageid.".mp3";
+	$warning = "";
+	
+	#$duration = @round($file['playtime_seconds'] * 1000, 0);
+	#$bitrate = @$file['bitrate'];
+	#$sample_rate = @$file['mpeg']['audio']['sample_rate'];
+	
+	set_error_handler("warning_handler", E_WARNING);
+	
 	$getID3 = new getID3;
-    $file = $getID3->analyze($MP3filename);
-	$duration = @round($file['playtime_seconds'] * 1000, 0);
-	$bitrate = @$file['bitrate'];
-	$sample_rate = @$file['mpeg']['audio']['sample_rate'];
+    $file = @$getID3->analyze($MP3filename);
+	$duration = round($file['playtime_seconds'] * 1000, 0);
+	$bitrate = $file['bitrate'];
+	$sample_rate = $file['mpeg']['audio']['sample_rate'];
+	
+	restore_error_handler();
+	
 	// ** End MP3 details **
     	
 	LOGGING("filename of MP3 file: '".$filename."'", 5);
@@ -557,6 +568,7 @@ function json($filename)  {
 					'bitrate' => $bitrate,
 					'sample-rate' => $sample_rate,
 					'text' => $textstring,
+					'warning' => $warning,
 					'success' => 1
 					);
 	$json = json_encode($files);
@@ -566,5 +578,15 @@ function json($filename)  {
 	#LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
 	return $files;	
 }
+
+
+function warning_handler($errno, $errstr) { 
+	global $warning;
+	
+	$warning = "Even duration, sample rate or bit rate could not be determined.";
+	LOGGINE("Even duration, sample rate or bit rate could not be determined.", 4);
+	return $warning;
+	
+	}
 
 ?>
