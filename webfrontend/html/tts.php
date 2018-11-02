@@ -10,7 +10,10 @@
 
 // ToDo
 //
-// syntax wizard
+// syntax wizard, add Loxone Template
+// add debug switch to frontend
+
+
 
 ini_set('max_execution_time', 90); 								// Max. Skriptlaufzeit auf 90 Sekunden
 
@@ -39,7 +42,7 @@ $sambaini = $lbhomedir.'/system/samba/smb.conf';				// path to Samba file smb.co
 $searchfor = '[plugindata]';									// search for already existing Samba share
 $plugindatapath = "plugindata";									// get plugindata folder
 $MP3path = "mp3";												// path to preinstalled numeric MP3 files
-$infopath = "interface";											// path to info for ext. Prog
+#$infopath = "interface";										// path to info for ext. Prog
 $Home = getcwd();												// get Plugin Pfad
 $fullfilename = "t2s_source.json";								// filename to pass info back to ext. Prog#.
 $logging_config = "interface.cfg";								// fixed filename to pass log entries to ext. Prog.
@@ -78,6 +81,12 @@ $time_start_total = microtime(true);
 	} else {
 		$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
 		LOGGING("T2S config has been loaded", 7);
+	}
+	// Zum debuggen alle Fehler reporten
+	if ($config['SYSTEM']['debug'] == "1")  {
+		error_reporting(E_ALL);						
+		ini_set('display_errors', true);
+		ini_set('html_errors', true);	
 	}
 	#print_r($config);
 	create_symlinks();
