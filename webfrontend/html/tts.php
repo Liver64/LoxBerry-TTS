@@ -501,62 +501,34 @@ function create_tts() {
 
 
 /**
-/* Funktion : jsonfile --> Erstellt ein JSON file mit den notwenigen Infos
+/* Funktion : jsonfile --> Erstellt ein JSON mit den notwenigen Infos
 /* @param: 	leer
 /*
-/* @return: JSON file für weitere Verwendung
+/* @return: JSON für weitere Verwendung
 /**/	
 
 function json($filename)  {
-	global $volume, $config, $MP3path, $messageid, $warning, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $MP3path, $messageid, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$ttspath = $config['SYSTEM']['ttspath'];
-	#$filenamebatch = $config['SYSTEM']['interfacepath']."/".$fullfilename;
-	#$filepath = $config['SYSTEM']['mp3path'];
-	#$ttsinfopath = $config['SYSTEM']['interfacepath']."/";
-		
+			
 	// ** get details of MP3 **
 	// https://github.com/JamesHeinrich/getID3/archive/master.zip
 	require_once("bin/getid3/getid3.php");
     $MP3filename = $ttspath."/".$messageid.".mp3";
-	$warning = "";
-	
-	#$duration = @round($file['playtime_seconds'] * 1000, 0);
-	#$bitrate = @$file['bitrate'];
-	#$sample_rate = @$file['mpeg']['audio']['sample_rate'];
-	
-	set_error_handler("warning_handler", E_WARNING);
-	
+	$notice = "";
+		
+	// Exception handler for E_NOTICE Meldungen
+	set_error_handler("notice_handler", E_NOTICE);
 	$getID3 = new getID3;
-    $file = @$getID3->analyze($MP3filename);
+    $file = $getID3->analyze($MP3filename);
 	$duration = round($file['playtime_seconds'] * 1000, 0);
 	$bitrate = $file['bitrate'];
 	$sample_rate = $file['mpeg']['audio']['sample_rate'];
-	
 	restore_error_handler();
-	
 	// ** End MP3 details **
-    	
-	LOGGING("filename of MP3 file: '".$filename."'", 5);
-	
-	// OLD: processing of request via file
-	
-	# prüft ob Verzeichnis für Übergabe existiert
-	#$is_there = file_exists($ttsinfopath);
-	#if ($is_there === false)  {
-	#	LOGGING("The interface folder seems not to be available!! System now try to create the 'share' folder", 4);
-	#	mkdir($ttsinfopath);
-	#	LOGGING("Folder '".$ttsinfopath."' has been succesful created.", 5);
-	#} else {
-	#	LOGGING("Folder '".$infopath."' to pass over audio infos is already there (".$ttsinfopath.")", 5);
-	#}
-	# Löschen alle vorhandenen Dateien aus dem info folder
-	#chdir($ttsinfopath);
-	#foreach (glob("*.*") as $file) {
-	#	LOGGING("File: '".$file."' has been deleted from '".$infopath."' folder",5);
-	#	#unlink($file);
-	#}
-	$files = array(
+    	LOGGING("filename of MP3 file: '".$filename."'", 5);
+		$files = array(
 					'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
 					'path' => $config['SYSTEM']['path']."/",
 					'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
@@ -568,24 +540,30 @@ function json($filename)  {
 					'bitrate' => $bitrate,
 					'sample-rate' => $sample_rate,
 					'text' => $textstring,
-					'warning' => $warning,
+					'warning' => $notice,
 					'success' => 1
 					);
 	$json = json_encode($files);
 	header('Content-Type: application/json');
 	echo $json;
 	LOGGING("JSON has been successfully responded to Requester",5);
-	#LOGGING("MP3 file has been saved successful at '".$files['path']."'.", 6);
 	return $files;	
 }
 
 
-function warning_handler($errno, $errstr) { 
-	global $warning;
+/**
+/* Funktion : notice_handler --> E_NOTICE Handler um Fehler abzufangen und an JSON zu übergeben
+/* @param: 	leer
+/*
+/* @return: Message
+/**/
+
+function notice_handler($errno, $errstr) { 
+	global $notice;
 	
-	$warning = "Even duration, sample rate or bit rate could not be determined.";
-	LOGGINE("Even duration, sample rate or bit rate could not be determined.", 4);
-	return $warning;
+	$notice = "Even duration, sample rate or bit rate from T2S MP3 could not be determined.";
+	LOGGINE("Even duration, sample rate or bit rate from T2S MP3 could not be determined.", 4);
+	return $notice;
 	
 	}
 
