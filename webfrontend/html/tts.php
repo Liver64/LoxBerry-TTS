@@ -54,7 +54,7 @@ $lbphtmldir = LBPHTMLDIR;
 
 #echo '<PRE>'; 
 
-global $text, $messageid, $LOGGING, $textstring, $level, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config, $jsonfile;
+global $text, $messageid, $LOGGING, $data, $textstring, $level, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config, $jsonfile;
 
 $level = LBSystem::pluginloglevel();
 	
@@ -81,12 +81,6 @@ $time_start_total = microtime(true);
 	} else {
 		$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
 		LOGGING("T2S config has been loaded", 7);
-	}
-	// Zum debuggen alle Fehler reporten
-	if ($config['SYSTEM']['debug'] == "1")  {
-		error_reporting(E_ALL);						
-		ini_set('display_errors', true);
-		ini_set('html_errors', true);	
 	}
 	#print_r($config);
 	create_symlinks();
@@ -119,7 +113,7 @@ $time_start_total = microtime(true);
 
 #-- End Preparation ---------------------------------------------------------------------
 
-	global $soundcard, $config, $text, $time_start_total, $decoded, $greet, $textstring, $filename, $myConfigFile;
+	global $soundcard, $config, $text, $data, $time_start_total, $decoded, $greet, $textstring, $filename, $myConfigFile;
 	
 	# Prüfen ob Request per Interface reinkommt
 	$tmp_content = file_get_contents("php://input");
@@ -251,7 +245,7 @@ exit;
 
 function create_tts() {
 	
-	global $config, $filename, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
+	global $config, $filename, $data, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
 	
 	$start_create_tts = microtime(true);
 	
@@ -451,9 +445,11 @@ function create_tts() {
 					// echo "Last word: '$last_word'<br>\n";
 					
 					// Handle: 21. Oktober
-					if(is_numeric($last_word)) { $merge = TRUE; LOGDEB("Last word is numeric - merge"); }
+					if(is_numeric($last_word)) { 
+						$merge = TRUE; 
+						LOGDEB("Last word is numeric - merge"); 
+					}
 				}
-				
 				if (!$dont_push) array_push($textstrings, " " . $text);
 			}
 		}
@@ -474,11 +470,16 @@ function create_tts() {
 				next;
 			}
 			LOGGING("T2S will be called with '$text'", 7);
-			
+				
 			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename);
 			if(!file_exists($resultmp3)) {
 				LOGGING("File $filename.mp3 was not created (Text: '$text' Path: $resultmp3)", 3);
+				exit;
 			}
+			require_once("bin/getid3/getid3.php");
+			$getID3 = new getID3;
+			write_MP3_IDTag($text);
+						
 			array_push($filenames, $resultmp3);
 			array_push($messageids, $messageid);
 		}
@@ -498,6 +499,7 @@ function create_tts() {
 				$filename = null;
 				return;
 			} else {
+				write_MP3_IDTag($textstring);
 				LOGGING ("Created merged file $filename.mp3", 7);
 			}
 			// The $messageid is set to the $fullmessageid from the top 
@@ -517,7 +519,7 @@ function create_tts() {
 /**/	
 
 function json($filename)  {
-	global $volume, $config, $MP3path, $messageid, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $data, $MP3path, $messageid, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$ttspath = $config['SYSTEM']['ttspath'];
 			
@@ -525,16 +527,17 @@ function json($filename)  {
 	// https://github.com/JamesHeinrich/getID3/archive/master.zip
 	require_once("bin/getid3/getid3.php");
     $MP3filename = $ttspath."/".$messageid.".mp3";
-	$notice = "";
-		
-	// Exception handler for E_NOTICE Meldungen
-	set_error_handler("notice_handler", E_NOTICE);
 	$getID3 = new getID3;
     $file = $getID3->analyze($MP3filename);
 	$duration = round($file['playtime_seconds'] * 1000, 0);
 	$bitrate = $file['bitrate'];
 	$sample_rate = $file['mpeg']['audio']['sample_rate'];
-	restore_error_handler();
+		if ($data['message'] === null)  {
+		$notice = "";
+	} else {
+		$notice = $data['message'];
+	}
+	#write_MP3_IDTag();
 	// ** End MP3 details **
     	LOGGING("filename of MP3 file: '".$filename."'", 5);
 		$files = array(
@@ -560,20 +563,61 @@ function json($filename)  {
 }
 
 
+
 /**
-/* Funktion : notice_handler --> E_NOTICE Handler um Fehler abzufangen und an JSON zu übergeben
+/* Funktion : write_MP3_IDTag --> write MP3-ID Tags to file
 /* @param: 	leer
 /*
 /* @return: Message
-/**/
+/**/	
 
-function notice_handler($errno, $errstr) { 
-	global $notice;
+function write_MP3_IDTag($income_text) {
 	
-	$notice = "Even duration, sample rate or bit rate from T2S MP3 could not be determined.";
-	LOGGINE("Even duration, sample rate or bit rate from T2S MP3 could not be determined.", 4);
-	return $notice;
+	global $config, $data, $textstring, $filename, $TextEncoding, $text;
 	
+	require_once("bin/getid3/getid3.php");
+	// Initialize getID3 engine
+	$getID3 = new getID3;
+	$getID3->setOption(array('encoding' => $TextEncoding));
+	 
+	require_once('bin/getid3/write.php');	
+	// Initialize getID3 tag-writing module
+	$tagwriter = new getid3_writetags;
+	$tagwriter->filename = $config['SYSTEM']['ttspath']."/".$filename.".mp3";
+	$tagwriter->tagformats = array('id3v2.3');
+
+	// set various options (optional)
+	$tagwriter->overwrite_tags    = true;  // if true will erase existing tag data and write only passed data; if false will merge passed data with existing tag data (experimental)
+	$tagwriter->remove_other_tags = false; // if true removes other tag formats (e.g. ID3v1, ID3v2, APE, Lyrics3, etc) that may be present in the file and only write the specified tag format(s). If false leaves any unspecified tag formats as-is.
+	$tagwriter->tag_encoding      = $TextEncoding;
+	$tagwriter->remove_other_tags = true;
+
+	// populate data array
+	$TagData = array(
+					'title'                  => array("$income_text"),
+					'artist'                 => array('text2speech'),
+					'album'                  => array(''),
+					'year'                   => array(date("Y")),
+					'genre'                  => array('text'),
+					'comment'                => array('generated by LoxBerry Plugin'),
+					'track'                  => array(''),
+					#'popularimeter'          => array('email'=>'user@example.net', 'rating'=>128, 'data'=>0),
+					#'unique_file_identifier' => array('ownerid'=>'user@example.net', 'data'=>md5(time())),
+				);
+	
+	$tagwriter->tag_data = $TagData;
+	
+	// write tags
+	if ($tagwriter->WriteTags()) {
+	LOGDEB("Successfully wrote id3v2.3 tags");
+		if (!empty($tagwriter->warnings)) {
+			LOGWARN('There were some warnings:<br>'.implode($tagwriter->warnings));
+		}
+	} else {
+		LOGERR('Failed to write tags!<br>'.implode($tagwriter->errors));
 	}
+	return ($TagData);
+}	
+
 
 ?>
