@@ -18,15 +18,21 @@ function alsa_ob() {
 	
 	$mp3path = $config['SYSTEM']['mp3path'];
 	$ttspath = $config['SYSTEM']['ttspath'];
+	
+	# Umgebungsvariablen für task-spooler setzen (z.B. Socket für eigene Queue)
+	putenv("TS_SOCKET=/dev/shm/ttsplugin.sock");
+	putenv("TS_MAXFINISHED=10");
+	putenv("TS_MAXCONN=10");
+	putenv("TS_MAILTO=\"\"");
 		
 	# wenn MP3 file ohne jingle
 	if ((isset($_GET['file'])) and (!isset($_GET['jingle'])))  {
-		$sox = shell_exec("sox -v $volume $mp3path/$messageid.mp3 -t alsa");
+		$sox = shell_exec("tsp -n sox -v $volume $mp3path/$messageid.mp3 -t alsa");
 		LOGGING("SoX command has been executed: 'sox -v $volume $mp3path/$messageid.mp3 -t alsa -d'", 7);
 	}
 	# wenn TTS ohne jingle
 	elseif ((isset($_GET['text'])) and (!isset($_GET['jingle'])))  {
-		$sox = shell_exec("sox -v $volume $ttspath/$filename.mp3 -t alsa -d");
+		$sox = shell_exec("tsp -n sox -v $volume $ttspath/$filename.mp3 -t alsa -d");
 		LOGGING("SoX command has been executed: 'sox -v $volume $ttspath/$filename.mp3 -t alsa -d'", 7);
 	}
 	# wenn TTS mit jingle
@@ -40,8 +46,8 @@ function alsa_ob() {
 		# prüft ob jingle vorhanden ist
 		$valid = mp3_files($jingle);
 		if ($valid === true) {
-			$sox = shell_exec("sox -v $volume $mp3path/$jingle -t alsa -d");
-			$sox = shell_exec("sox -v $volume $ttspath/$filename.mp3 -t alsa -d");
+			$sox = shell_exec("tsp -n sox -v $volume $mp3path/$jingle -t alsa -d");
+			$sox = shell_exec("tsp -n sox -v $volume $ttspath/$filename.mp3 -t alsa -d");
 			LOGGING("first SoX command (jingle) has been executed: 'sox -v $volume $mp3path/$jingle -t alsa -d'", 7);
 			LOGGING("second SoX command has been executed: 'sox -v $volume $ttspath/$filename.mp3 -t alsa -d'", 7);
 		} else {
@@ -59,8 +65,8 @@ function alsa_ob() {
 		# prüft ob jingle vorhanden ist
 		$valid = mp3_files($jingle);
 		if ($valid === true) {
-			$sox = shell_exec("sox -v $volume $mp3path/$jingle -t alsa -d");
-			$sox = shell_exec("sox -v $volume $mp3path/$messageid.mp3 -t alsa -d");
+			$sox = shell_exec("tsp -n sox -v $volume $mp3path/$jingle -t alsa -d");
+			$sox = shell_exec("tsp -n sox -v $volume $mp3path/$messageid.mp3 -t alsa -d");
 			LOGGING("first SoX command (jingle) has been executed: 'sox -v $volume $mp3path/$jingle -t alsa -d'", 7);
 			LOGGING("second SoX command has been executed: 'sox -v $volume $mp3path/$messageid.mp3 -t alsa -d'", 7);
 		} else {
