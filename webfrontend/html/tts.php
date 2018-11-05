@@ -138,7 +138,7 @@ $time_start_total = microtime(true);
 	# prüfe of TTS Anbieter und ggf. Stimme gewählt wurde
 	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
 		LOGGING("There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
-	exit();
+		exit();
 	}
 	# Prüfung ob syntax korrekt eingeben wurde.
 	if ((!isset($_GET['text'])) && (!isset($_GET['file'])) && 
