@@ -9,6 +9,8 @@
  1.0.4		[Bugfix] HTML5 Übersetzung korrigiert
 			[Bugfix] HTML5 Code optimiert
  1.0.5		[Bugfix] Logging files updated	
- 1.0.6		[Enhancement] split MP3 functions to speed up output
-			[Enhancement] enhanced Interface functions
- 
+ 1.0.6		[Enhancement] split MP3 funktion
+			[Enhancement] Interface weiter optmiert
+ 1.0.7		[Enhancement] die erzeugten MP3 Dateien verfügen jetzt über Id3v2.3 Tag Informationen
+			[Enhancement] Interface weiter optmiert
+			[Enhancement] Error handler hinzugefügt
