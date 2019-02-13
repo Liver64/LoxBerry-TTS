@@ -90,10 +90,6 @@ $time_start_total = microtime(true);
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
 	LOGGING("All variables has been collected",6);
 	$soundcard = $config['SYSTEM']['card'];
-	if(isset($_GET['json'])) {
-		$soundcard = 'json';
-	}
-	
 		# prüfen ob Volume in syntax, wenn nicht Std. von Config
 		if (!isset($_GET["volume"])) {
 			$volume = $config['TTS']['volume'];
@@ -155,8 +151,6 @@ $time_start_total = microtime(true);
 		exit;
 	}
 	switch ($soundcard) {
-		case 'json':
-			break;
 		case '001':			// NULL
 			exit;
 		break;
@@ -473,7 +467,7 @@ function create_tts() {
 			LOGGING("Expected filename: $resultmp3", 7);
 			if(file_exists($resultmp3) && empty($_GET['nocache'])) {
 				LOGGING("Text in cache: $text", 6);
-				continue;
+				next;
 			}
 			LOGGING("T2S will be called with '$text'", 7);
 				
