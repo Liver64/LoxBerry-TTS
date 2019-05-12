@@ -539,22 +539,38 @@ function json($filename)  {
 	}
 	#write_MP3_IDTag();
 	// ** End MP3 details **
-    	LOGGING("filename of MP3 file: '".$filename."'", 5);
-		$files = array(
-					'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
-					'path' => $config['SYSTEM']['path']."/",
-					'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
-					'cifsinterface' => $config['SYSTEM']['cifsinterface']."/",
-					'full-httpinterface' => $config['SYSTEM']['httpinterface']."/".$filename.".mp3",
-					'httpinterface' => $config['SYSTEM']['httpinterface']."/",
-					'mp3-filename-MD5' => $filename,
-					'duration-ms' => $duration,
-					'bitrate' => $bitrate,
-					'sample-rate' => $sample_rate,
-					'text' => $textstring,
-					'warning' => $notice,
-					'success' => 1
-					);
+	LOGGING("filename of MP3 file: '".$filename."'", 5);
+	// $files = array(
+				// 'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
+				// 'path' => $config['SYSTEM']['path']."/",
+				// 'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
+				// 'cifsinterface' => $config['SYSTEM']['cifsinterface']."/",
+				// 'full-httpinterface' => $config['SYSTEM']['httpinterface']."/".$filename.".mp3",
+				// 'httpinterface' => $config['SYSTEM']['httpinterface']."/",
+				// 'mp3-filename-MD5' => $filename,
+				// 'duration-ms' => $duration,
+				// 'bitrate' => $bitrate,
+				// 'sample-rate' => $sample_rate,
+				// 'text' => $textstring,
+				// 'warning' => $notice,
+				// 'success' => 1
+				// );
+	$localip = LBSystem::get_localip();
+	$files = array(
+				'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
+				'path' => $config['SYSTEM']['path']."/",
+				'full-cifsinterface' => "//" . $localip ."/plugindata/text2speech/interfacedownload/".$filename.".mp3",
+				'cifsinterface' => "//" . $localip ."/plugindata/text2speech/interfacedownload/",
+				'full-httpinterface' => "http://" . $localip . "/plugins/text2speech/interfacedownload/".$filename.".mp3",
+				'httpinterface' => "http://" . $localip . "/plugins/text2speech/interfacedownload/",
+				'mp3-filename-MD5' => $filename,
+				'duration-ms' => $duration,
+				'bitrate' => $bitrate,
+				'sample-rate' => $sample_rate,
+				'text' => $textstring,
+				'warning' => $notice,
+				'success' => 1
+			);
 	$json = json_encode($files);
 	header('Content-Type: application/json');
 	echo $json;
