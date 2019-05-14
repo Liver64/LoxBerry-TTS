@@ -68,32 +68,32 @@ my $template;
 my %SL;
 
 my $helptemplatefilename		= "help.html";
-my $languagefile 			= "tts_all.ini";
+my $languagefile 				= "tts_all.ini";
 my $maintemplatefilename	 	= "index.html";
-my $successtemplatefilename 		= "success.html";
+my $successtemplatefilename 	= "success.html";
 my $errortemplatefilename 		= "error.html";
 my $noticetemplatefilename 		= "notice.html";
-my $no_error_template_message		= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
+my $no_error_template_message	= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
 my $pluginconfigfile 			= "tts_all.cfg";
-my $outputfile 				= 'output.cfg';
-my $pluginlogfile			= "text2speech.log";
-my $lbhostname 				= lbhostname();
-my $lbip 				= LoxBerry::System::get_localip();
+my $outputfile 					= 'output.cfg';
+my $pluginlogfile				= "text2speech.log";
+my $lbhostname 					= lbhostname();
+my $lbip 						= LoxBerry::System::get_localip();
 #my $interfacefolder			= "interface";
-my $ttsfolder				= "tts";
-my $mp3folder				= "mp3";
-#my $ttsinfo				= "info";
-#my $urlfile				= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
-my $log 				= LoxBerry::Log->new ( 
-						name => 'Webinterface', 
-						# filename => $lbplogdir ."/". $pluginlogfile, 
-						# append => 1, 
-						addtime => 1
-					);
-my $helplink 				= "https://www.loxwiki.eu/x/uoFYAg";
-my $pcfg 				= new Config::Simple($lbpconfigdir . "/" . $pluginconfigfile);
-my %Config 				= $pcfg->vars() if ( $pcfg );
-our $error_message			= "";
+my $ttsfolder					= "tts";
+my $mp3folder					= "mp3";
+#my $ttsinfo					= "info";
+#my $urlfile					= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
+my $log 						= LoxBerry::Log->new ( 
+								name => 'Webinterface', 
+								# filename => $lbplogdir ."/". $pluginlogfile, 
+								# append => 1, 
+								addtime => 1
+								);
+my $helplink 					= "https://www.loxwiki.eu/x/uoFYAg";
+my $pcfg 						= new Config::Simple($lbpconfigdir . "/" . $pluginconfigfile);
+my %Config 						= $pcfg->vars() if ( $pcfg );
+our $error_message				= "";
 
 # Set new config options for upgrade installations
 # cachsize
@@ -405,8 +405,8 @@ sub save
 	$pcfg->param("SYSTEM.mp3path", "$R::STORAGEPATH/$mp3folder");
 	$pcfg->param("SYSTEM.ttspath", "$R::STORAGEPATH/$ttsfolder");
 	#$pcfg->param("SYSTEM.interfacepath", "$R::STORAGEPATH/$interfacefolder");
-	$pcfg->param("SYSTEM.httpinterface", "http://$lbip/plugins/$lbpplugindir/interfacedownload");
-	$pcfg->param("SYSTEM.cifsinterface", "//$lbip/plugindata/$lbpplugindir/interfacedownload");
+	$pcfg->param("SYSTEM.httpinterface", "http://$lbhostname/plugins/$lbpplugindir/interfacedownload");
+	$pcfg->param("SYSTEM.cifsinterface", "//$lbhostname/plugindata/$lbpplugindir/interfacedownload");
 	$pcfg->param("SYSTEM.card", "$R::out_list");
 	$pcfg->param("TTS.volume", "$R::volume");
 	

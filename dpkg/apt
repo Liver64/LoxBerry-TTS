@@ -8,3 +8,5 @@ lame
 curl 
 libcurl3
 php-soap
+raspberrypi-sys-mods 
+pi-bluetooth bluez 

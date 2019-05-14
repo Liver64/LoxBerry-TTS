@@ -14,3 +14,4 @@
  1.0.7		[Enhancement] die erzeugten MP3 Dateien verfügen jetzt über Id3v2.3 Tag Informationen
 			[Enhancement] Interface weiter optmiert
 			[Enhancement] Error handler hinzugefügt
+ 1.0.8		[Bugfix] Hostname anstatt IP wird jetzt verwendet
