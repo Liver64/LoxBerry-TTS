@@ -9,4 +9,5 @@ curl
 libcurl3
 php-soap
 raspberrypi-sys-mods 
-pi-bluetooth bluez 
+pi-bluetooth bluez
+task-spooler

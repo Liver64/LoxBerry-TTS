@@ -15,3 +15,4 @@
 			[Enhancement] Interface weiter optmiert
 			[Enhancement] Error handler hinzugefügt
  1.0.8		[Bugfix] Hostname anstatt IP wird jetzt verwendet
+ 1.0.9		[Bugfix] Fehlendes Packt task-spooler hinzugefügt
