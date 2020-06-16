@@ -7,7 +7,9 @@ libsox-fmt-mp3
 lame
 curl 
 libcurl3
+libcurl4
 php-soap
 raspberrypi-sys-mods 
 pi-bluetooth bluez
+mplayer
 task-spooler
