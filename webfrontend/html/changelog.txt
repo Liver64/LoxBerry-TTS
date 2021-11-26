@@ -16,3 +16,6 @@
 			[Enhancement] Error handler hinzugefügt
  1.0.8		[Bugfix] Hostname anstatt IP wird jetzt verwendet
  1.0.9		[Bugfix] Fehlendes Packt task-spooler hinzugefügt
+ 1.1.0		[Bugfix] fehlende Pakete hinzugefügt
+ 1.2.0		[Enhancement] Goolge durch Google Cloud T2S
+			[Enhancement] Interface weiter optmiert

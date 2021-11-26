@@ -46,7 +46,7 @@ $MP3path = "mp3";												// path to preinstalled numeric MP3 files
 $Home = getcwd();												// get Plugin Pfad
 $fullfilename = "t2s_source.json";								// filename to pass info back to ext. Prog#.
 $logging_config = "interface.cfg";								// fixed filename to pass log entries to ext. Prog.
-#$interfacefolder = "interface";
+$interfacefolder = "interface";
 $ttsfolder = "tts";
 $mp3folder = "mp3";
 $lbphtmldir = LBPHTMLDIR;
@@ -402,8 +402,8 @@ function create_tts() {
 			LOGGING("ResponsiveVoice has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 7001) {
-			include_once("voice_engines/Google.php");
-			LOGGING("Google has been successful selected", 7);		
+			include_once("voice_engines/GoogleCloud.php");
+			LOGGING("Google Cloud has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 5001) {
 			include_once("voice_engines/Pico_tts.php");
@@ -512,14 +512,14 @@ function create_tts() {
 
 
 /**
-/* Funktion : jsonfile --> Erstellt ein JSON mit den notwenigen Infos
+/* Funktion : jsonfile --> Erstellt ein JSON Return mit den notwendigen Infos
 /* @param: 	leer
 /*
 /* @return: JSON für weitere Verwendung
 /**/	
 
 function json($filename)  {
-	global $volume, $config, $data, $MP3path, $messageid, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $data, $MP3path, $interfacefolder, $messageid, $lbpplugindir, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$ttspath = $config['SYSTEM']['ttspath'];
 			
@@ -559,10 +559,10 @@ function json($filename)  {
 	$files = array(
 				'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
 				'path' => $config['SYSTEM']['path']."/",
-				'full-cifsinterface' => "//" . $localip ."/plugindata/text2speech/interfacedownload/".$filename.".mp3",
-				'cifsinterface' => "//" . $localip ."/plugindata/text2speech/interfacedownload/",
-				'full-httpinterface' => "http://" . $localip . "/plugins/text2speech/interfacedownload/".$filename.".mp3",
-				'httpinterface' => "http://" . $localip . "/plugins/text2speech/interfacedownload/",
+				'full-cifsinterface' => "//" . $localip ."/plugindata/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
+				'cifsinterface' => "//" . $localip ."/plugindata/".$lbpplugindir."/interfacedownload/",
+				'full-httpinterface' => "http://" . $localip . "/plugins/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
+				'httpinterface' => "http://" . $localip . "/plugins/".$lbpplugindir."/interfacedownload/",
 				'mp3-filename-MD5' => $filename,
 				'duration-ms' => $duration,
 				'bitrate' => $bitrate,
@@ -571,11 +571,49 @@ function json($filename)  {
 				'warning' => $notice,
 				'success' => 1
 			);
+			#print_r($files);
 	$json = json_encode($files);
+	folder_exist();
+	$toBeSaved = $myFolder."/".$interfacefolder."/".$fullfilename;
+	file_put_contents($toBeSaved, $json);
 	header('Content-Type: application/json');
 	echo $json;
-	LOGGING("JSON has been successfully responded to Requester",5);
+	LOGGING("JSON has been successfully responded to Request",5);
 	return $files;	
+}
+
+
+
+/**
+ * Checks if a folder exist
+ *
+ * @param: empty
+ * @return: If FALSE folder will be created
+ */
+ 
+function folder_exist()
+{
+	global $myFolder, $interfacefolder;
+	$toBeSaved = $myFolder."/".$interfacefolder;
+	
+    // Get canonicalized absolute pathname
+    $path = realpath($toBeSaved);
+
+    // If it exist, check if it's a directory
+    if($path !== false AND is_dir($path))
+    {
+        // Return canonicalized absolute pathname
+		#echo $path;
+		LOGGING("Interface folder already exist",7);
+		
+   } else {
+
+		// Path/folder does not exist
+		LOGGING("Interface folder does not exist actually",3);
+		mkdir($myFolder."/".$interfacefolder, 0777);
+		LOGGING("Interface folder has been created",5);
+   }
+    
 }
 
 

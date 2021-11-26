@@ -40,7 +40,7 @@ function process_post_request() {
 	
 	// If json_decode failed, the JSON is invalid.
 	if(!is_array($decoded)){
-		LOGGING("T2S Interface ** Received content contained invalid JSON!", 3);
+		LOGGING("T2S Interface ** Received content containes invalid JSON!", 3);
 		exit;
 	}
 	LOGGING("T2S Interface ** Incoming POST request has been successful processed!", 5);
