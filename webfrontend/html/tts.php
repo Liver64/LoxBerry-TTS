@@ -557,16 +557,16 @@ function json($filename)  {
 				// );
 	$localip = LBSystem::get_localip();
 	$files = array(
-				'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
+				'fullttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
 				'path' => $config['SYSTEM']['path']."/",
-				'full-cifsinterface' => "//" . $localip ."/plugindata/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
+				'fullcifsinterface' => "//" . $localip ."/plugindata/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
 				'cifsinterface' => "//" . $localip ."/plugindata/".$lbpplugindir."/interfacedownload/",
-				'full-httpinterface' => "http://" . $localip . "/plugins/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
+				'fullhttpinterface' => "http://" . $localip . "/plugins/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
 				'httpinterface' => "http://" . $localip . "/plugins/".$lbpplugindir."/interfacedownload/",
-				'mp3-filename-MD5' => $filename,
-				'duration-ms' => $duration,
+				'mp3filenameMD5' => $filename,
+				'durationms' => $duration,
 				'bitrate' => $bitrate,
-				'sample-rate' => $sample_rate,
+				'samplerate' => $sample_rate,
 				'text' => $textstring,
 				'warning' => $notice,
 				'success' => 1
@@ -609,7 +609,7 @@ function folder_exist()
    } else {
 
 		// Path/folder does not exist
-		LOGGING("Interface folder does not exist actually",3);
+		LOGGING("Interface folder does not exist actually",4);
 		mkdir($myFolder."/".$interfacefolder, 0777);
 		LOGGING("Interface folder has been created",5);
    }
