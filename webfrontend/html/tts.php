@@ -529,32 +529,48 @@ function json($filename)  {
     $MP3filename = $ttspath."/".$messageid.".mp3";
 	$getID3 = new getID3;
     $file = $getID3->analyze($MP3filename);
-	$duration = round($file['playtime_seconds'] * 1000, 0);
-	$bitrate = $file['bitrate'];
-	$sample_rate = $file['mpeg']['audio']['sample_rate'];
-		if ($data['message'] === null)  {
+	# success = 1 (everything OK), success = 2 (Warning), success = 3 (failed), 
+	if (isset($file['error'])) {
+		LOGGING("Reading of MP3 Info failed by '".$file['error'][0]."'", 4);
+		$duration = 0;
+		$bitrate = 0;
+		$sample_rate = 0;
 		$notice = "";
+		$success = 3;
 	} else {
-		$notice = $data['message'];
+		if ($data['message'] === null)  {
+			$notice = "";
+		} else {
+			$notice = $data['message'];
+			LOGGING($data['message'], 3);
+			$success = 3;
+		}
+		if (file_exists($MP3filename)) {
+			$success = 1;
+		} else {
+			$notice = "The file $filename does not exist";
+			LOGGING("The file $filename does not exist", 3);
+			$success = 3;
+		}		
+		if (isset($file['playtime_seconds'])) {
+            $duration = round($file['playtime_seconds'] * 1000, 0);
+        } else {
+			$duration = 0;
+		}
+		if (isset($file['bitrate'])) {
+            $bitrate = $file['bitrate'];
+        } else {
+			$bitrate = 0;
+		}
+		if (isset($file['mpeg']['audio']['sample_rate'])) {
+            $sample_rate = $file['mpeg']['audio']['sample_rate'];
+        } else {
+			$sample_rate = 0;
+		}
 	}
 	#write_MP3_IDTag();
 	// ** End MP3 details **
 	LOGGING("filename of MP3 file: '".$filename."'", 5);
-	// $files = array(
-				// 'full-ttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
-				// 'path' => $config['SYSTEM']['path']."/",
-				// 'full-cifsinterface' => $config['SYSTEM']['cifsinterface']."/".$filename.".mp3",
-				// 'cifsinterface' => $config['SYSTEM']['cifsinterface']."/",
-				// 'full-httpinterface' => $config['SYSTEM']['httpinterface']."/".$filename.".mp3",
-				// 'httpinterface' => $config['SYSTEM']['httpinterface']."/",
-				// 'mp3-filename-MD5' => $filename,
-				// 'duration-ms' => $duration,
-				// 'bitrate' => $bitrate,
-				// 'sample-rate' => $sample_rate,
-				// 'text' => $textstring,
-				// 'warning' => $notice,
-				// 'success' => 1
-				// );
 	$localip = LBSystem::get_localip();
 	$files = array(
 				'fullttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
@@ -569,7 +585,7 @@ function json($filename)  {
 				'samplerate' => $sample_rate,
 				'text' => $textstring,
 				'warning' => $notice,
-				'success' => 1
+				'success' => $success
 			);
 			#print_r($files);
 	$json = json_encode($files);
@@ -671,6 +687,21 @@ function write_MP3_IDTag($income_text) {
 		LOGERR('Failed to write tags!<br>'.implode($tagwriter->errors));
 	}
 	return ($TagData);
+}	
+
+
+/**
+/* Funktion : get_MP3_IDTag --> get MP3-ID Tags to file
+/* @param: 	leer
+/*
+/* @return: Message
+/**/	
+
+function get_MP3_IDTag($income_text) {
+	
+	global $config, $data, $textstring, $filename, $TextEncoding, $text;
+	
+	
 }	
 
 
