@@ -19,9 +19,9 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 				if (!empty($valid_voice)) {
 					$language = $valid_voice[0]['language'];
 					$voice = $valid_voice[0]['name'];
-					LOGGING('T2S language/voice has been successful entered',5);
+					LOGGING('voice_engines/Polly.php: T2S language/voice has been successful entered',5);
 				} else {
-					LOGGING("The entered Polly voice is not supported. Please correct (see Wiki)!",3);
+					LOGGING("voice_engines/Polly.php: The entered Polly voice is not supported. Please correct (see Wiki)!",3);
 					exit;
 				}
 		} else {
@@ -40,8 +40,8 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		#-- Aufruf der POLLY Class zum generieren der t2s --
 		$a = new POLLY_TTS();
 		$a->save_mp3($textstring, $config['SYSTEM']['ttspath']."/".$filename.".mp3", $language, $voice);
-		LOGGING('The text has been passed to Polly engine for MP3 creation',5);
-		LOGGING("MP3 file has been sucesfully saved.", 6);	
+		LOGGING('voice_engines/Polly.php: The text has been passed to Polly engine for MP3 creation',5);
+		LOGGING("voice_engines/Polly.php: MP3 file has been sucesfully saved.", 6);	
 		$messageid = $filename;
 		return ($messageid);
 }

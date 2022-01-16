@@ -12,30 +12,30 @@ function w2s()
 				
 		// Einlesen der Daten vom Weather4Lox Plugin
 		if (!file_exists("$home/data/plugins/weather4lox/current.dat")) {
-			LOGGING('Data from Weather4Lox could be obtainend.',3);
-			LOGGING('The file current.dat could not been opened. Please check Weather4Lox Plugin!',3);
+			LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.',3);
+			LOGGING('Text2Speech: addon/weather.php: The file current.dat could not been opened. Please check Weather4Lox Plugin!',3);
 			exit;
 		} else {
 			$current = file_get_contents("$home/data/plugins/weather4lox/current.dat");
 			$current = explode('|',$current);
 		}
 		if (!file_exists("$home/data/plugins/weather4lox/dailyforecast.dat")) {
-			LOGGING('Data from Weather4Lox could be obtainend.',3);
-			LOGGING('The file dailyforecast.dat could not been opened. Please check Weather4Lox Plugin!',3);
+			LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.',3);
+			LOGGING('Text2Speech: addon/weather.php: The file dailyforecast.dat could not been opened. Please check Weather4Lox Plugin!',3);
 			exit;
 		} else {
 			$dailyforecast = file_get_contents("$home/data/plugins/weather4lox/dailyforecast.dat");
 			$dailyforecast = explode('|',$dailyforecast);
 		}
 		if (!file_exists("$home/data/plugins/weather4lox/hourlyforecast.dat")) {
-			LOGGING('Data from Weather4Lox could be obtainend.',3);
-			LOGGING('The file hourlyforecast.dat could not been opened. Please check Weather4Lox Plugin!',3);
+			LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.',3);
+			LOGGING('Text2Speech: addon/weather.php: The file hourlyforecast.dat could not been opened. Please check Weather4Lox Plugin!',3);
 			exit;
 		} else {
 			$hourlyforecast = file_get_contents("$home/data/plugins/weather4lox/hourlyforecast.dat");
 			$hourlyforecast = explode('|',$hourlyforecast);
 		}
-		LOGGING('Data from Weather4Lox has been successful obtainend.',7);
+		LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox has been successful obtainend.',7);
 		#print_r($current);
 		#print_r($dailyforecast);
 		#print_r($hourlyforecast);
@@ -168,8 +168,8 @@ function w2s()
 				break;
 		}
 		$textcode = ($text);
-		LOGGING('Weather announcement: '.($text),5);
-		LOGGING('Message been generated and pushed to T2S creation',7);
+		LOGGING('Text2Speech: addon/weather.php: Weather announcement: '.($text),5);
+		LOGGING('Text2Speech: addon/weather.php: Message been generated and pushed to T2S creation',7);
 		return $textcode;
 	}
 ?>

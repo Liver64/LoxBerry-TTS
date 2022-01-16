@@ -10,11 +10,11 @@ function tt2t()
 	    	
 	$valid_traffic_models = array("pessimistic","best_guess","optimistic");
 	if (empty($_GET['to'])) {
-		LOGGING('You do not have a destination address maintained in syntax. Please enter address!',3);
+		LOGGING('Text2Speech: addon/time2Dest.php: You do not have a destination address maintained in syntax. Please enter address!',3);
 		exit;
     } else {
 		$arrival = $_GET['to'];
-		LOGGING('Valid destination address has been found!',5);
+		LOGGING('Text2Speech: addon/time2Dest.php: Valid destination address has been found!',5);
 	}
 	$key 		= trim($config['LOCATION']['googlekey']);
 	$street		= $config['LOCATION']['googlestreet'];
@@ -31,9 +31,9 @@ function tt2t()
 		$traffic_model 	= $_GET['model'];
 		if (in_array($traffic_model, $valid_traffic_models)) {
 			$traffic_model 	= $_GET['model'];
-			LOGGING('Valid traffic model has been entered!',5);
+			LOGGING('Text2Speech: addon/time2Dest.php: Valid traffic model has been entered!',5);
 		} else {
-			LOGGING('The traffic model you have entered is invalid. Please correct!',3);
+			LOGGING('Text2Speech: addon/time2Dest.php: The traffic model you have entered is invalid. Please correct!',3);
 			exit;
 		}
 	}
@@ -49,10 +49,10 @@ function tt2t()
 	#print_R($jdata);
 	$data       = json_decode($jdata, true);
 	if (empty($data)) {
-		LOGGING('Data from Google Maps could not be obtainend! Please check your syntax',3);
+		LOGGING('Text2Speech: addon/time2Dest.php: Data from Google Maps could not be obtainend! Please check your syntax',3);
 		exit;
 	} else {
-		LOGGING('Data from Google Maps has been successful obtainend.',6);
+		LOGGING('Text2Speech: addon/time2Dest.php: Data from Google Maps has been successful obtainend.',6);
 	}	
 	$status     = $data["status"];
     $row_status = $data["rows"][0]["elements"][0]["status"];
@@ -97,7 +97,7 @@ function tt2t()
         }
         $text = $textpart1 . $textpart2;
     } else {
-		LOGGING('The entered URL is not complete or invalid. Please check URL!',3);
+		LOGGING('Text2Speech: addon/time2Dest.php: The entered URL is not complete or invalid. Please check URL!',3);
         exit;
     }
     $words = $text;
@@ -112,8 +112,8 @@ function tt2t()
 		$ttd .= "Dictance = " . $distance . "km / Zeit = " . $hours . " Stunden " . $minutes . " Minuten";
 
 	#echo $text;
-	LOGGING('Destination announcement: '.($ttd),7);
-	LOGGING('Message been generated and pushed to T2S creation',5);
+	LOGGING('Text2Speech: addon/time2Dest.php: Destination announcement: '.($ttd),7);
+	LOGGING('Text2Speech: addon/time2Dest.php: Message been generated and pushed to T2S creation',5);
 	return $words;
 }
 

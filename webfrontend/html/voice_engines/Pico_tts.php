@@ -18,9 +18,9 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 			$isvalid = array_multi_search($language, $valid_languages, $sKey = "value");
 			if (!empty($isvalid)) {
 				$ttslanguage = $_GET['lang'];
-				LOGGING('T2S language has been successful entered',5);				
+				LOGGING('voice_engines/Pico_tts.php: T2S language has been successful entered',5);				
 			} else {
-				LOGGING("The entered Pico language key is not supported. Please correct (see Wiki)!",3);
+				LOGGING("voice_engines/Pico_tts.php: The entered Pico language key is not supported. Please correct (see Wiki)!",3);
 				exit;
 			}
 		} else {
@@ -37,11 +37,11 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 				exec('/usr/bin/pico2wave -l=' . $ttslanguage . ' -w=' . $file . ' "'.$textstring.'"');
 				#exit;
 				exec('/usr/bin/lame '.$config['SYSTEM']['ttspath'] . $filename . ".wav".' '.$config['SYSTEM']['ttspath'] . $filename . ".mp3");
-				LOGGING('The text has been passed to Pico engine for MP3 creation',5);
-				LOGGING("MP3 file has been sucesfully saved.", 6);	
+				LOGGING('voice_engines/Pico_tts.php: The text has been passed to Pico engine for MP3 creation',5);
+				LOGGING("voice_engines/Pico_tts.php: MP3 file has been sucesfully saved.", 6);	
 				unlink($config['SYSTEM']['ttspath'] . $filename . ".wav");
 			} catch(Exception $e) {
-				LOGGING("The T2S could not be created! Please try again.",4);
+				LOGGING("voice_engines/Pico_tts.php: The T2S could not be created! Please try again.",4);
 			}
 		#}
 	

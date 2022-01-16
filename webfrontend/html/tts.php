@@ -44,17 +44,21 @@ $plugindatapath = "plugindata";									// get plugindata folder
 $MP3path = "mp3";												// path to preinstalled numeric MP3 files
 #$infopath = "interface";										// path to info for ext. Prog
 $Home = getcwd();												// get Plugin Pfad
-$fullfilename = "t2s_source.json";								// filename to pass info back to ext. Prog#.
-$logging_config = "interface.cfg";								// fixed filename to pass log entries to ext. Prog.
+#$fullfilename = "t2s_source.json";								// filename to pass info back to ext. Prog#.
+#$logging_config = "interface.cfg";								// fixed filename to pass log entries to ext. Prog.
 $interfacefolder = "interface";
 $ttsfolder = "tts";
 $mp3folder = "mp3";
 $lbphtmldir = LBPHTMLDIR;
+$lbpbindir = LBPBINDIR;
+$logif = array();
+
+ini_set('max_execution_time', 20); 	
 
 
 #echo '<PRE>'; 
 
-global $text, $messageid, $LOGGING, $data, $textstring, $level, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $logging_config, $jsonfile;
+global $text, $messageid, $LOGGING, $data, $lbpbindir, $textstring, $level, $logif, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $jsonfile;
 
 $level = LBSystem::pluginloglevel();
 	
@@ -73,54 +77,53 @@ LOGSTART("PHP started");
 $time_start_total = microtime(true);
 
 #-- Start Preparation ------------------------------------------------------------------
-	LOGGING("called syntax: ".$myIP."".urldecode($syntax),5);
+	LOGGING("tts.php: called syntax: ".$myIP."".urldecode($syntax),5);
 	// Parsen der Konfigurationsdatei
 	if (!file_exists($myConfigFolder.'/tts_all.cfg')) {
-		LOGGING('The file tts_all.cfg could not be opened, please try again!', 3);
+		LOGGING('tts.php: The file tts_all.cfg could not be opened, please try again!', 3);
 		exit;
 	} else {
 		$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
-		LOGGING("T2S config has been loaded", 7);
+		LOGGING("tts.php: T2S config has been loaded", 7);
 	}
 	#print_r($config);
 	create_symlinks();
-	LOGGING("Config has been successfull loaded",6);
+	LOGGING("tts.php: Config has been successfull loaded",6);
 		
 	# wählt Sprachdatei für hinterlegte Texte der Add-on's
 	$t2s_langfile = "t2s-text_".substr($config['TTS']['messageLang'],0,2).".ini";				// language file for text-speech
-	LOGGING("All variables has been collected",6);
+	LOGGING("tts.php: All variables has been collected",6);
 	$soundcard = $config['SYSTEM']['card'];
 		# prüfen ob Volume in syntax, wenn nicht Std. von Config
 		if (!isset($_GET["volume"])) {
 			$volume = $config['TTS']['volume'];
-			LOGGING("Standardvolume from Config beeen adopted",7);
+			LOGGING("tts.php: Standardvolume from Config beeen adopted",7);
 		} else { 
 			if(isset($_GET['volume']) && is_numeric($_GET['volume']) && $_GET['volume'] >= 0 && $_GET['volume'] <= 500) {
 				$volume = $_GET["volume"];
-				LOGGING("Volume from Syntax beeen adopted",7);
+				LOGGING("tts.php: Volume from Syntax beeen adopted",7);
 			} else {
-				LOGGING("The entered volume is out of range. Please use 0 to 500",4);
+				LOGGING("tts.php: The entered volume is out of range. Please use 0 to 500",4);
 				$volume = $config['TTS']['volume'];
-				LOGGING("As backup the Standardvolume from Config beeen adopted. Please correct your syntax",4);
+				LOGGING("tts.php: As backup the Standardvolume from Config beeen adopted. Please correct your syntax",4);
 			}
 		}
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
-	#$multilog = get_interface_config();
-	#print_r($multilog);
+	
 	
 	
 
 #-- End Preparation ---------------------------------------------------------------------
 
-	global $soundcard, $config, $text, $data, $time_start_total, $decoded, $greet, $textstring, $filename, $myConfigFile;
+	global $soundcard, $config, $lbpbindir, $text, $data, $time_start_total, $logif, $decoded, $greet, $textstring, $filename, $myConfigFile;
 	
 	# Prüfen ob Request per Interface reinkommt
 	$tmp_content = file_get_contents("php://input");
 	if ($tmp_content == true)  {
 	# *** Lese Daten von ext. Call ***
 		require_once('output/interface.php');
-		LOGGING("T2S Interface ** POST request has been received and will be processed!", 6);
+		LOGGING("tts.php: T2S Interface: POST request has been received and will be processed!", 6);
 		process_post_request();
 		# Deklaration der variablen
 		$text = $decoded['text'];
@@ -128,7 +131,7 @@ $time_start_total = microtime(true);
 	} elseif (isset($_GET['json']))  {
 	 # *** Lese Daten von URL ***
 		require_once('output/interface.php');
-		LOGGING("T2S Interface ** JSON is set and will be processed!", 6);
+		LOGGING("tts.php: T2S Interface: JSON is set and will be processed!", 6);
 		# Deklaration der variablen
 		$text = $_GET['text'];
 		isset($_GET['greet']) ?	$greet = $_GET['greet'] : $greet = " ";
@@ -137,7 +140,7 @@ $time_start_total = microtime(true);
 	}
 	# prüfe of TTS Anbieter und ggf. Stimme gewählt wurde
 	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
-		LOGGING("There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
+		LOGGING("tts.php: There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
 		exit();
 	}
 	# Prüfung ob syntax korrekt eingeben wurde.
@@ -147,7 +150,7 @@ $time_start_total = microtime(true);
 		(!isset($_GET['warning'])) && (!isset($_GET['bauernregel'])) && 
 		(!isset($_GET['distance'])) && (!isset($_GET['clock'])) &&
 		(!isset($_GET['calendar']))&& ($text == ' ') && (!isset($data))) {
-		LOGGING("Something went wrong. Please try again and check your syntax. (check Wiki)", 3);
+		LOGGING("tts.php: Something went wrong. Please try again and check your syntax. (check Wiki)", 3);
 		exit;
 	}
 	switch ($soundcard) {
@@ -214,26 +217,62 @@ $time_start_total = microtime(true);
 			shell_exec("export AUDIODEV=plughw:0,1");
 			alsa_ob();
 		break;
-		case '012':			// USB Soundcard  
-			require_once('output/usb.php');
-			shell_exec("export AUDIODEV=hw:1,1");
-			usb();
+		case '012':			// USB Soundcard 1
+			//require_once('output/usb.php');
+			require_once('output/alsa.php');
+			$deviceno = $config['SYSTEM']['usbdevice'];
+			getusbcard();
+			shell_exec("export AUDIODEV=".$myteccard.",1,".$deviceno);
+			alsa_ob();
+		break;
+		case '013':			// USB Soundcard 2	
+			//require_once('output/usb.php');
+			require_once('output/alsa.php');
+			$deviceno = $config['SYSTEM']['usbdevice'];
+			getusbcard();
+			shell_exec("export AUDIODEV=".$myteccard.",2,".$deviceno);
+			alsa_ob();
 		break;
 		default;			// Soundcard bcm2835
 			require_once('output/alsa.php');
 			shell_exec("export AUDIODRIVER=alsa");
 			$output = shell_exec("export AUDIODEV=hw:0,0");
 		break;
+		# The hw:X,Y comes from this mapping of your hardware -- in this case, X is the card number, while Y is the device number.
+		# https://superuser.com/questions/53957/what-do-alsa-devices-like-hw0-0-mean-how-do-i-figure-out-which-to-use
+		# hw:CARD=sndrpihifiberry,DEV=0   ist device number
+		# https://www.alsa-project.org/main/index.php/Asoundrc
 	}
 	if ($tmp_content == true || isset($_GET['json']))  {
 		create_tts();
 	}
-	LOGGING("Processing time of the complete T2S request tooks: " . round((microtime(true)-$time_start_total), 2) . " Sek.", 6);
-	json($filename);	
+	LOGGING("tts.php: Processing time of the complete T2S request tooks: " . round((microtime(true)-$time_start_total), 2) . " Sek.", 6);
+	if ($tmp_content == true)  {
+		json($filename);
+	}	
 	LOGEND("PHP finished"); 
 exit;
 
 
+
+
+/**
+* Function : getusbcard --> get technical name of USB Card to process output
+*
+* @param: 	None
+* @return: 	tech. name
+**/	
+
+function getusbcard()  {
+	
+	global $config, $lbpbindir, $myteccard;
+
+	$json = file_get_contents($lbpbindir."/hats.json");
+	$cfg = json_decode($json, True);
+	$mycard = $config['SYSTEM']['usbcard'];
+	$myteccard = $cfg[$mycard]['output'];
+	return($myteccard);
+}
 
  
 /**
@@ -245,7 +284,7 @@ exit;
 
 function create_tts() {
 	
-	global $config, $filename, $data, $messageid, $textstring, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
+	global $config, $filename, $data, $messageid, $textstring, $logif, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
 	
 	$start_create_tts = microtime(true);
 	
@@ -285,67 +324,61 @@ function create_tts() {
 		// calls the weather-to-speech Function
 		include_once("addon/weather-to-speech.php");
 		$textstring = substr(w2s(), 0, 500);
-		LOGGING("weather-to-speech plugin has been called", 7);
+		LOGGING("tts.php: weather-to-speech plugin has been called", 7);
 		} 
 	elseif (isset($_GET['clock']) or ($text == "clock")) {
 		// calls the clock-to-speech Function
 		include_once("addon/clock-to-speech.php");
 		$textstring = c2s();
-		LOGGING("clock-to-speech plugin has been called", 7);
+		LOGGING("tts.php: clock-to-speech plugin has been called", 7);
 		}
 	elseif (isset($_GET['pollen']) or ($text == "pollen")) {
 		// calls the pollen-to-speech Function
 		include_once("addon/pollen-to-speach.php");
 		$textstring = substr(p2s(), 0, 500);
-		LOGGING("pollen-to-speech plugin has been called", 7);
+		LOGGING("tts.php: pollen-to-speech plugin has been called", 7);
 		}
 	elseif (isset($_GET['warning']) or ($text == "warning")) {
 		// calls the weather warning-to-speech Function
 		include_once("addon/weather-warning-to-speech.php");
 		$textstring = substr(ww2s(), 0, 500);
-		LOGGING("weather warning-to-speech plugin has been called", 7);
+		LOGGING("tts.php: weather warning-to-speech plugin has been called", 7);
 	}
 	elseif (isset($_GET['distance']) or ($text == "distance")) {
 		// calls the time-to-destination-speech Function
 		include_once("addon/time-to-destination-speech.php");
 		$textstring = substr(tt2t(), 0, 500);
-		LOGGING("time-to-distance speech plugin has been called", 7);
+		LOGGING("tts.php: time-to-distance speech plugin has been called", 7);
 		}
 	elseif (isset($_GET['witz']) or ($text == "witz")) {
 		// calls the weather warning-to-speech Function
 		include_once("addon/gimmicks.php");
 		$textstring = substr(GetWitz(), 0, 1000);
-		LOGGING("Joke plugin has been called", 7);
-		}
-	elseif (isset($_GET['bauernregel']) or ($text == "bauernregel")) {
-		// calls the weather warning-to-speech Function
-		include_once("addon/gimmicks.php");
-		$textstring = substr(GetTodayBauernregel(), 0, 500);
-		LOGGING("Bauernregeln plugin has been called", 7);
+		LOGGING("tts.php: Joke plugin has been called", 7);
 		}
 	elseif (isset($_GET['abfall']) or ($text == "abfall")) {
 		// calls the wastecalendar-to-speech Function
 		include_once("addon/waste-calendar-to-speech.php");
 		$textstring = substr(muellkalender(), 0, 500);
-		LOGGING("waste calendar-to-speech plugin has been called", 7);
+		LOGGING("tts.php: waste calendar-to-speech plugin has been called", 7);
 		}
 	elseif (isset($_GET['calendar']) or ($text == "calendar")) {
 		// calls the calendar-to-speech Function
 		include_once("addon/waste-calendar-to-speech.php");
 		$textstring = substr(calendar(), 0, 500);
-		LOGGING("calendar-to-speech plugin has been called", 7);
+		LOGGING("tts.php: calendar-to-speech plugin has been called", 7);
 		}
 	elseif ((empty($messageid)) && (!isset($_GET['text'])) and (isset($_GET['playbatch']))) {
-		LOGGING("No text has been entered", 3);
+		LOGGING("tts.php: No text has been entered", 3);
 		exit();
 		}
 	elseif (!empty($messageid)) { # && ($rawtext != '')) {
 		// takes the messageid
 		$messageid = $_GET['file'];
 		if (file_exists($config['SYSTEM']['mp3path']."/".$messageid.".mp3") === true)  {
-			LOGGING("File '".$messageid."' has been entered", 7);
+			LOGGING("tts.php: File '".$messageid."' has been entered", 7);
 		} else {
-			LOGGING("The corrosponding file '".$messageid.".mp3' does not exist or could not be played. Please check your directory or syntax!", 3);
+			LOGGING("tts.php: The corrosponding file '".$messageid.".mp3' does not exist or could not be played. Please check your directory or syntax!", 3);
 			exit;
 		}	
 		}
@@ -355,28 +388,29 @@ function create_tts() {
 			$textstring = $text;
 		} else {
 			$textstring = $greet.". ".$text;
-		LOGGING("Textstring has been entered", 7);		
+		LOGGING("tts.php: Textstring has been entered", 7);		
 		}	
 	}
 	
 	// Get md5 of full text
 	$textstring = trim($textstring);
 	$fullmessageid = md5($textstring);
-	LOGGING("fullmessageid: $fullmessageid textstring: $textstring", 7);
+	LOGGING("tts.php: fullmessageid: $fullmessageid textstring: $textstring", 7);
 	
 	// if full text is cached, directly return the md5
 	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3") && empty($_GET['nocache'])) {
-		LOGGING("Grabbed from cache: '$textstring' ", 6);
+		LOGGING("tts.php: File already there, grabbed from cache: $textstring ", 6);
 		#LOGINF("Processing time just of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 		$messageid = $fullmessageid;
 		$filename = $messageid;
 		return ($fullmessageid);
 	} else {
-		LOGGING("Processing time of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
+		LOGGING("tts.php: Processing time of creating MP3 file tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
+		
 	}
 	
 	if (!empty($_GET['nocache'])) {
-		LOGGING("Overriding cache because 'nocache' parameter was given", 6);
+		LOGGING("tts.php: Overriding cache because 'nocache' parameter was given", 6);
 	}
 	
 	// The original text is set in a one-element array as default
@@ -391,27 +425,31 @@ function create_tts() {
 	if (($messageid == '0') && ($textstring != '')) {
 		if ($config['TTS']['t2s_engine'] == 1001) {
 			include_once("voice_engines/VoiceRSS.php");
-			LOGGING("VoiceRSS has been successful selected", 7);		
+			LOGGING("tts.php: VoiceRSS has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 3001) {
 			include_once("voice_engines/MAC_OSX.php");
-			LOGGING("/MAC_OSX has been successful selected", 7);		
+			LOGGING("tts.php: /MAC_OSX has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 6001) {
 			include_once("voice_engines/ResponsiveVoice.php");
-			LOGGING("ResponsiveVoice has been successful selected", 7);		
+			LOGGING("tts.php: ResponsiveVoice has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 7001) {
 			include_once("voice_engines/GoogleCloud.php");
-			LOGGING("Google Cloud has been successful selected", 7);		
+			LOGGING("tts.php: Google Cloud has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 5001) {
 			include_once("voice_engines/Pico_tts.php");
-			LOGGING("Pico has been successful selected", 7);		
+			LOGGING("tts.php: Pico has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 4001) {
 			include_once("voice_engines/Polly.php");
-			LOGGING("AWS Polly has been successful selected", 7);		
+			LOGGING("tts.php: AWS Polly has been successful selected", 7);		
+		}
+		if ($config['TTS']['t2s_engine'] == 9001) {
+			include_once("voice_engines/MS_Azure.php");
+			LOGGING("tts.php: MS Azure has been successful selected", 7);		
 		}
 		
 		// Christians sentence splitter
@@ -419,7 +457,7 @@ function create_tts() {
 		
 		// The sentence recognition tendends to false-positives with abbreviations
 		if(!empty($config['MP3']['splitsentences']) && is_enabled($config['MP3']['splitsentences'])) {
-			LOGGING("Splitting sentences", 6);
+			LOGGING("tts.php: Splitting sentences", 6);
 			$textstring = trim($textstring); // . ' ';
 			$textstrings = array ( );
 			$tempstrings = preg_split( '/(?<!\.\.\.)(?<!Dr\.)(?<=[.?!]|\.\)|\.")\s+(?=[a-zA-Z"\(])/i', $textstring, -1);
@@ -464,21 +502,21 @@ function create_tts() {
 			$messageid  = md5($text);
 			$filename = $messageid;
 			$resultmp3 = $config['SYSTEM']['ttspath']."/".$filename.".mp3";
-			LOGGING("Expected filename: $resultmp3", 7);
+			LOGGING("tts.php: Expected filename: $resultmp3", 7);
 			if(file_exists($resultmp3) && empty($_GET['nocache'])) {
-				LOGGING("Text in cache: $text", 6);
-				next;
+				LOGGING("tts.php: Text in cache: $text", 6);
+				#next;
 			}
-			LOGGING("T2S will be called with '$text'", 7);
+			LOGGING("tts.php: T2S will be called with '$text'", 7);
 				
 			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename);
 			if(!file_exists($resultmp3)) {
-				LOGGING("File $filename.mp3 was not created (Text: '$text' Path: $resultmp3)", 3);
+				LOGGING("tts.php: File $filename.mp3 was not created (Text: '$text' Path: $resultmp3)", 3);
 				exit;
 			}
-			require_once("bin/getid3/getid3.php");
-			$getID3 = new getID3;
-			write_MP3_IDTag($text);
+			//require_once("bin/getid3/getid3.php");
+			//$getID3 = new getID3;
+			//write_MP3_IDTag($text);
 						
 			array_push($filenames, $resultmp3);
 			array_push($messageids, $messageid);
@@ -494,12 +532,12 @@ function create_tts() {
 			LOGGING (($output), 7);
 			if(!file_exists($config['SYSTEM']['ttspath']."/".$filename.".mp3")) {
 				LOGGING ("Merged MP3 file $fullmessageid.mp3 could not be found", 2);
-				LOGGING("Processing time of create_tts() (merging) tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
+				LOGGING("tts.php: Processing time of create_tts() (merging) tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
 				$messageid = null;
 				$filename = null;
 				return;
 			} else {
-				write_MP3_IDTag($textstring);
+				//write_MP3_IDTag($textstring);
 				LOGGING ("Created merged file $filename.mp3", 7);
 			}
 			// The $messageid is set to the $fullmessageid from the top 
@@ -519,7 +557,7 @@ function create_tts() {
 /**/	
 
 function json($filename)  {
-	global $volume, $config, $data, $MP3path, $interfacefolder, $messageid, $lbpplugindir, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $config, $data, $MP3path, $interfacefolder, $logif, $messageid, $lbpplugindir, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$ttspath = $config['SYSTEM']['ttspath'];
 			
@@ -531,25 +569,28 @@ function json($filename)  {
     $file = $getID3->analyze($MP3filename);
 	# success = 1 (everything OK), success = 2 (Warning), success = 3 (failed), 
 	if (isset($file['error'])) {
-		LOGGING("Reading of MP3 Info failed by '".$file['error'][0]."'", 4);
+		LOGGING("tts.php: Reading of MP3 Info failed by '".$file['error'][0]."'", 4);
 		$duration = 0;
 		$bitrate = 0;
 		$sample_rate = 0;
-		$notice = "";
+		$notice = $file['error'][0];
 		$success = 3;
+		copybadfile($MP3filename);
 	} else {
 		if ($data['message'] === null)  {
 			$notice = "";
+			$success = 3;
 		} else {
 			$notice = $data['message'];
 			LOGGING($data['message'], 3);
 			$success = 3;
+			#copybadfile($filename);
 		}
 		if (file_exists($MP3filename)) {
 			$success = 1;
 		} else {
 			$notice = "The file $filename does not exist";
-			LOGGING("The file $filename does not exist", 3);
+			LOGGING("tts.php: The file $filename does not exist", 3);
 			$success = 3;
 		}		
 		if (isset($file['playtime_seconds'])) {
@@ -570,16 +611,21 @@ function json($filename)  {
 	}
 	#write_MP3_IDTag();
 	// ** End MP3 details **
-	LOGGING("filename of MP3 file: '".$filename."'", 5);
+	LOGGING("tts.php: filename of MP3 file: ".$filename, 5);
 	$localip = LBSystem::get_localip();
+	$jsonfilename = $filename.".json";
+	$jsonlogfile = $filename."_log.json";
+	$files = array(['DETAILS']);
 	$files = array(
 				'fullttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
-				'path' => $config['SYSTEM']['path']."/",
-				'fullcifsinterface' => "//" . $localip ."/plugindata/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
-				'cifsinterface' => "//" . $localip ."/plugindata/".$lbpplugindir."/interfacedownload/",
-				'fullhttpinterface' => "http://" . $localip . "/plugins/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
-				'httpinterface' => "http://" . $localip . "/plugins/".$lbpplugindir."/interfacedownload/",
+				'path' => $config['SYSTEM']['ttspath']."/",
+				'fullcifsinterface' => '&#92;&#92;' . $localip .'&#92;plugindata&#92;'.$lbpplugindir.'&#92;interfacedownload&#92;'.$filename.'.mp3',
+				'cifsinterface' => "&#92;&#92;" . $localip ."&#92;plugindata&#92;".$lbpplugindir."&#92;interfacedownload&#92;",
+				'fullhttpinterface' => "http://" . $localip . ":80/plugins/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
+				'httpinterface' => "http://" . $localip . ":80/plugins/".$lbpplugindir."/interfacedownload/",
 				'mp3filenameMD5' => $filename,
+				'jsonfilenameMD5' => $jsonfilename,
+				'jsonlogfileMD5' => $jsonlogfile,
 				'durationms' => $duration,
 				'bitrate' => $bitrate,
 				'samplerate' => $sample_rate,
@@ -587,54 +633,70 @@ function json($filename)  {
 				'warning' => $notice,
 				'success' => $success
 			);
-			#print_r($files);
-	$json = json_encode($files);
-	folder_exist();
-	$toBeSaved = $myFolder."/".$interfacefolder."/".$fullfilename;
-	file_put_contents($toBeSaved, $json);
+	# save files
+	$toBeSaved = $myFolder."/interfacedownload/".$jsonfilename;
+	$toBeSavedlog = $myFolder."/interfacedownload/".$jsonlogfile;
+	LOGGING("tts.php: T2S Interface: JSON has been successfully responded to Request",5);
+	file_put_contents($toBeSaved, json_encode($files));
+	file_put_contents($toBeSavedlog, json_encode($logif));
+	# Prepare output for echo
+	$final = array(
+				'fullttspath' => $config['SYSTEM']['ttspath']."/".$filename.".mp3",
+				'path' => $config['SYSTEM']['ttspath']."/",
+				'fullcifsinterface' => '&#92;&#92;' . $localip .'&#92;plugindata&#92;'.$lbpplugindir.'&#92;interfacedownload&#92;'.$filename.'.mp3',
+				'cifsinterface' => "&#92;&#92;" . $localip ."&#92;plugindata&#92;".$lbpplugindir."&#92;interfacedownload&#92;",
+				'fullhttpinterface' => "http://" . $localip . ":80/plugins/".$lbpplugindir."/interfacedownload/".$filename.".mp3",
+				'httpinterface' => "http://" . $localip . ":80/plugins/".$lbpplugindir."/interfacedownload/",
+				'mp3filenameMD5' => $filename,
+				'jsonfilenameMD5' => $jsonfilename,
+				'jsonlogfileMD5' => $jsonlogfile,
+				'durationms' => $duration,
+				'bitrate' => $bitrate,
+				'samplerate' => $sample_rate,
+				'text' => $textstring,
+				'warning' => $notice,
+				'success' => $success,
+				#'warning' => "Test",
+				#'success' => "2",
+				'logging' => $logif
+			);
+	$final = json_encode($final);
 	header('Content-Type: application/json');
-	echo $json;
-	LOGGING("JSON has been successfully responded to Request",5);
-	return $files;	
+	echo $final;
+	return $final;	
 }
 
 
 
-/**
- * Checks if a folder exist
- *
- * @param: empty
- * @return: If FALSE folder will be created
- */
- 
-function folder_exist()
-{
-	global $myFolder, $interfacefolder;
-	$toBeSaved = $myFolder."/".$interfacefolder;
+/** 
+/*
+/* Funktion : copybadfile --> rename corrupted MP3 file
+/* @param: 	leer
+/*
+/* @return: Message
+/**/
+function copybadfile($filename)  {
 	
-    // Get canonicalized absolute pathname
-    $path = realpath($toBeSaved);
-
-    // If it exist, check if it's a directory
-    if($path !== false AND is_dir($path))
-    {
-        // Return canonicalized absolute pathname
-		#echo $path;
-		LOGGING("Interface folder already exist",7);
-		
-   } else {
-
-		// Path/folder does not exist
-		LOGGING("Interface folder does not exist actually",4);
-		mkdir($myFolder."/".$interfacefolder, 0777);
-		LOGGING("Interface folder has been created",5);
-   }
-    
+	global $config;
+	
+	$heute = date("Y-m-d"); 
+	$time = date("His"); 
+	if (file_exists($config['SYSTEM']['ttspath']."/".$filename.".mp3"))   {
+		rename($config['SYSTEM']['ttspath']."/".$filename.".mp3", $config['SYSTEM']['ttspath']."/".$filename."_FAILED_T2S_".$heute."_".$time.".mp3");
+		LOGGING("tts.php: Something went wrong :-( the message could not be saved. The corrupted file has been renamed to: ".$config['SYSTEM']['ttspath']."/".$filename."_FAILED_T2S_".$heute."_".$time.".mp3", 3);	
+		LOGGING("tts.php: Please try again :-) if no success at all please check your Plugin settings, Internet connection as well as T2S Provider, try reboot LoxBerry", 5);
+	} else {
+		LOGGING("tts.php: Something went wrong :-( the file could not be created. Please check your settings and T2S Provider", 3);
+	}
+	#$filename = "t2s_not_available";
+	#copy($config['SYSTEM']['mp3path']."/t2s_not_available.mp3", $config['SYSTEM']['ttspath']."/t2s_not_available.mp3");
+	return;
 }
 
 
 
-/**
+/**   NOT ACTIVE ANYMORE
+/*
 /* Funktion : write_MP3_IDTag --> write MP3-ID Tags to file
 /* @param: 	leer
 /*
@@ -671,8 +733,6 @@ function write_MP3_IDTag($income_text) {
 					'genre'                  => array('text'),
 					'comment'                => array('generated by LoxBerry Plugin'),
 					'track'                  => array(''),
-					#'popularimeter'          => array('email'=>'user@example.net', 'rating'=>128, 'data'=>0),
-					#'unique_file_identifier' => array('ownerid'=>'user@example.net', 'data'=>md5(time())),
 				);
 	
 	$tagwriter->tag_data = $TagData;
@@ -689,20 +749,6 @@ function write_MP3_IDTag($income_text) {
 	return ($TagData);
 }	
 
-
-/**
-/* Funktion : get_MP3_IDTag --> get MP3-ID Tags to file
-/* @param: 	leer
-/*
-/* @return: Message
-/**/	
-
-function get_MP3_IDTag($income_text) {
-	
-	global $config, $data, $textstring, $filename, $TextEncoding, $text;
-	
-	
-}	
 
 
 ?>

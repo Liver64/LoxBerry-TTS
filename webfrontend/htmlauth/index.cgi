@@ -23,6 +23,7 @@ use LoxBerry::System;
 use LoxBerry::Web;
 use LoxBerry::Log;
 use LoxBerry::Storage;
+use LoxBerry::JSON;
 
 use warnings;
 use strict;
@@ -37,7 +38,7 @@ use Config::Simple '-strict';
 #use Cwd 'abs_path';
 #use JSON qw( decode_json );
 #use utf8;
-#use Data::Dumper;
+use Data::Dumper;
 
 ##########################################################################
 # Generic exception handler
@@ -65,6 +66,7 @@ my $storepath;
 my $fullpath;
 my $i;
 my $template;
+our $lbpbindir;
 my %SL;
 
 my $helptemplatefilename		= "help.html";
@@ -76,12 +78,15 @@ my $noticetemplatefilename 		= "notice.html";
 my $no_error_template_message	= "The error template is not readable. We must abort here. Please try to reinstall the plugin.";
 my $pluginconfigfile 			= "tts_all.cfg";
 my $outputfile 					= 'output.cfg';
+my $outputusbfile 				= 'hats.json';
 my $pluginlogfile				= "text2speech.log";
+my $devicefile					= "/tmp/soundcards2.txt";
 my $lbhostname 					= lbhostname();
 my $lbip 						= LoxBerry::System::get_localip();
 #my $interfacefolder			= "interface";
 my $ttsfolder					= "tts";
 my $mp3folder					= "mp3";
+my $azureregion					= "westeurope"; # Change here if you have a Azure API key for diff. region
 #my $ttsinfo					= "info";
 #my $urlfile					= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
 my $log 						= LoxBerry::Log->new ( 
@@ -100,11 +105,22 @@ our $error_message				= "";
 if (!defined $pcfg->param("MP3.cachesize")) {
 	$pcfg->param("MP3.cachesize", "100");
 }
+# add new parameter for Azure TTS"
+if (!defined $pcfg->param("TTS.regionms"))  {
+	$pcfg->param("TTS.regionms", $azureregion);
+	$pcfg->save() or &error;
+}
 # splitsentence
 if (!defined $pcfg->param("MP3.splitsentences")) {
-	$pcfg->param("MP3.splitsentences=", "");
+	$pcfg->param("MP3.splitsentences", "");
+	$pcfg->save() or &error;
 }
-$pcfg->save() or &error;
+# USB device No.
+if (!defined $pcfg->param("SYSTEM.usbdevice")) {
+	$pcfg->param("SYSTEM.usbdevice", 0);
+	$pcfg->save() or &error;
+}
+
 
 ##########################################################################
 # Read Settings
@@ -339,16 +355,41 @@ sub form {
 	}
 	close $in;
 	$template->param("OUT_LIST", $out_list);
+	
+	
+	# Fill USB output Dropdown
+	my $usb_list;
+	my $jsonparser = LoxBerry::JSON->new();
+	my $config = $jsonparser->open(filename => $lbpbindir . "/" . $outputusbfile);
+				
+	foreach my $key (sort { lc($a) cmp lc($b) } keys %$config) {
+		$usb_list.= "<option value=" . $key . ">" . $config->{$key}->{name}, $key . "</option>\n";
+    }
+	$template->param("USB_LIST", $usb_list);
+	
+	# detect Soundcards
+	system($lbpbindir . '/service.sh sc_show');
+	my $filename = '/tmp/soundcards2.txt';
+	open my $in, $filename;
+	my $sc_list;
+	while (my $line = <$in>) {
+            $sc_list.= $line.'<br>';
+        }
+    $template->param("SC_LIST", $sc_list);
+	close($in);
+	
+	# check/get filesize of determined soundcards in order to fadeIn/fadeOut
+	my $filesize = -s $devicefile;
+	$template->param("MYFILE", $filesize);
 		
 	LOGDEB "Printing template";
-	
 	printtemplate();
 	
-	# Test Print to UI
+	#Test Print to UI
 	#my $content =  "Miniserver Nr. 1 heißt: $MiniServer und hat den Port: $MSWebPort User ist: $MSUser und PW: $MSPass.";
-	#my $template_title = '';
+	#my $template_title = 'Testing';
 	#LoxBerry::Web::lbheader($template_title);
-	#print $line;
+	#print "Size: $filesize\n";
 	#LoxBerry::Web::lbfooter();
 	#exit;
 }
@@ -390,6 +431,7 @@ sub save
 	$pcfg->param("TTS.API-key", "$R::apikey");
 	$pcfg->param("TTS.secret-key", "$R::seckey");
 	$pcfg->param("TTS.voice", "$R::voice");
+	$pcfg->param("TTS.regionms", $azureregion);
 	$pcfg->param("MP3.file_gong", "$R::file_gong");
 	$pcfg->param("MP3.MP3store", "$R::mp3store");
 	$pcfg->param("MP3.cachesize", "$R::cachesize");
@@ -408,6 +450,8 @@ sub save
 	$pcfg->param("SYSTEM.httpinterface", "http://$lbhostname/plugins/$lbpplugindir/interfacedownload");
 	$pcfg->param("SYSTEM.cifsinterface", "//$lbhostname/plugindata/$lbpplugindir/interfacedownload");
 	$pcfg->param("SYSTEM.card", "$R::out_list");
+	$pcfg->param("SYSTEM.usbcard", "$R::usb_list");
+	$pcfg->param("SYSTEM.usbdevice", "$R::usbdeviceno");
 	$pcfg->param("TTS.volume", "$R::volume");
 	
 	LOGINF "Writing configuration file";

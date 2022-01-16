@@ -73,8 +73,8 @@ function File_Put_Array_As_JSON($FileName, $ar, $zip=false) {
 
 function File_Get_Array_From_JSON($FileName, $zip=false) {
 	// liest eine JSON Datei und erstellt eine Array
-    if (! is_file($FileName)) 	{ LOGGING("The file $FileName does not exist.", 3); exit; }
-		if (! is_readable($FileName))	{ LOGGING("The file $FileName could not be loaded.", 3); exit;}
+    if (! is_file($FileName)) 	{ LOGGING("helper.php: The file $FileName does not exist.", 3); exit; }
+		if (! is_readable($FileName))	{ LOGGING("helper.php: The file $FileName could not be loaded.", 3); exit;}
             if (! $zip) {
 				return json_decode(file_get_contents($FileName), true);
             } else {
@@ -112,6 +112,9 @@ function select_t2s_engine()  {
 	if ($config['TTS']['t2s_engine'] == 4001) {
 		include_once("voice_engines/Polly.php");
 	}
+	if ($config['TTS']['t2s_engine'] == 9001) {
+		include_once("voice_engines/MS_Azure.php");
+	}
 }
 
 
@@ -129,7 +132,7 @@ function load_t2s_text(){
 	if (file_exists($templatepath.'/lang/'.$t2s_langfile)) {
 		$TL = parse_ini_file($templatepath.'/lang/'.$t2s_langfile, true);
 	} else {
-		LOGGING("For selected T2S language no translation file still exist! Please go to LoxBerry Plugin translation and create a file for selected language ".substr($config['TTS']['messageLang'],0,2),3);
+		LOGGING("helper.php: For selected T2S language no translation file still exist! Please go to LoxBerry Plugin translation and create a file for selected language ".substr($config['TTS']['messageLang'],0,2),3);
 		exit;
 	}
 	return $TL;
@@ -179,27 +182,27 @@ function create_symlinks()  {
 	if (!is_dir($symmp3folder)) {
 		$copy = true;
 	}
-	LOGGING("check if folder/symlinks exists, if not create", 5);
+	LOGGING("helper.php: check if folder/symlinks exists, if not create", 5);
 	if (!is_dir($symttsfolder)) {
 		mkdir($symttsfolder, 0755);
-		LOGGING("Folder: '".$symttsfolder."' has been created", 7);
+		LOGGING("helper.php: Folder: '".$symttsfolder."' has been created", 7);
 	}
 	if (!is_dir($symmp3folder)) {
 		mkdir($symmp3folder, 0755);
-		LOGGING("Folder: '".$symmp3folder."' has been created", 7);
+		LOGGING("helper.php: Folder: '".$symmp3folder."' has been created", 7);
 	}
 	if (!is_dir($myFolder."/interfacedownload")) {
 		symlink($symttsfolder, $myFolder."/interfacedownload");
-		LOGGING("Symlink: '".$myFolder.'/interfacedownload'."' has been created", 7);
+		LOGGING("helper.php: Symlink: '".$myFolder.'/interfacedownload'."' has been created", 7);
 	}
 	if (!is_dir($lbphtmldir."/interfacedownload")) {
 		symlink($symttsfolder, $lbphtmldir."/interfacedownload");
-		LOGGING("Symlink: '".$lbphtmldir.'/interfacedownload'."' has been created", 7);
+		LOGGING("helper.php: Symlink: '".$lbphtmldir.'/interfacedownload'."' has been created", 7);
 	}
 	if ($copy === true) {
-		#LOGGING("Copy existing mp3 files from $myFolder/$mp3folder to $symcurr_path/$mp3folder", 6);
+		#LOGGING("helper.php: Copy existing mp3 files from $myFolder/$mp3folder to $symcurr_path/$mp3folder", 6);
 		xcopy($myFolder."/".$mp3folder, $symcurr_path."/".$mp3folder);
-		LOGGING("All files has been copied from: '".$myFolder."/".$mp3folder."' to: '".$symcurr_path."/".$mp3folder."'", 5);
+		LOGGING("helper.php: All files has been copied from: '".$myFolder."/".$mp3folder."' to: '".$symcurr_path."/".$mp3folder."'", 5);
 	}
 	
 }

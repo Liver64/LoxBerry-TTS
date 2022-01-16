@@ -16,11 +16,12 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		
 		if (isset($_GET['voice'])) {
 			$voice = $_GET['voice'];
+			$language = substr($voice, 5); 
 		} else {
 			$voice = $config['TTS']['voice'];
 		}
 								  		
-		LOGGING("Google Cloud TTS has been successful selected", 7);	
+		LOGGING("voice_engines/GoogleCloud.php: Google Cloud TTS has been successful selected", 7);	
 
 		$params = [
 			"audioConfig"=>[
@@ -59,15 +60,15 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 			# Speicherort der MP3 Datei
 			$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".mp3";
 			file_put_contents($file, base64_decode($responseDecoded['audioContent']));  
-			LOGGING('The text has been passed to Google cloud TTS for MP3 creation',5);
+			LOGGING('voice_engines/GoogleCloud.php: The text has been passed to Google cloud TTS for MP3 creation',5);
 			return ($filename); 	
 		} else {
 			# Error handling
-			LOGGING('Google Cloud TTS failed. Please check error message snd investigate',3);			
+			LOGGING('voice_engines/GoogleCloud.php: Google Cloud TTS failed. Please check error message snd investigate',3);			
 			LOGGING($responseDecoded['error']['message'],3);
 			exit(1);
 		}
 
-		LOGGING('Something went wrong!',5);
+		LOGGING('voice_engines/GoogleCloud.php: Something went wrong!',5);
 		return;
 }

@@ -21,9 +21,9 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 				$isvalid = array_multi_search($language, $valid_languages, $sKey = "value");
 				if (!empty($isvalid)) {
 					$language = $_GET['lang'];
-					LOGGING('T2S language has been successful entered',5);
+					LOGGING('voice_engines/VoiceRSS.php: T2S language has been successful entered',5);
 				} else {
-					LOGGING("The entered VoiceRSS language key is not supported. Please correct (see Wiki)!",3);
+					LOGGING("voice_engines/VoiceRSS.php: The entered VoiceRSS language key is not supported. Please correct (see Wiki)!",3);
 					exit;
 				}
 			} else {
@@ -51,10 +51,10 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 			ini_set('user_agent', 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
 			$mp3 = file_get_contents('http://api.voicerss.org/?' . $inlay);
 			file_put_contents($file, $mp3);
-			LOGGING('The text has been passed to VoiceRSS engine for MP3 creation',5);
-			LOGGING("MP3 file has been sucesfully saved.", 6);	
+			LOGGING('voice_engines/VoiceRSS.php: The text has been passed to VoiceRSS engine for MP3 creation',5);
+			LOGGING("voice_engines/VoiceRSS.php: MP3 file has been sucesfully saved.", 6);	
 		#} else {
-		#	LOGGING('Requested T2s has been grabbed from cache',6);
+		#	LOGGING('voice_engines/VoiceRSS.php: Requested T2s has been grabbed from cache',6);
 		#}
 	# Ersetze die messageid durch die von TTS gespeicherte Datei
 	$messageid = $filename;

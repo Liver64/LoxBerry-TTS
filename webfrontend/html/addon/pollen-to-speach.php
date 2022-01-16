@@ -9,7 +9,7 @@ global $config, $debug, $town;
 
 $town = $config['LOCATION']['town'];
 if (empty($town)) {
-	LOGGING('There is no entry in config maintained, please update your Sonos config!',3);
+	LOGGING('Text2Speech: addon/pollen.php: There is no entry in config maintained, please update your Sonos config!',3);
 	exit;
 }
 #$town = "München";
@@ -175,8 +175,8 @@ curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
 $text = preg_replace("/[^a-z0-9!. ]/i", "", $text);
 $url = $text;
 #echo $url;
-LOGGING('Pollen level announcement: '.($url),5);
-LOGGING('Message been generated and pushed to T2S creation',7);
+LOGGING('Text2Speech: addon/pollen.php: Pollen level announcement: '.($url),5);
+LOGGING('Text2Speech: addon/pollen.php: Message been generated and pushed to T2S creation',7);
 return $url;
 
 curl_setopt($curl, CURLOPT_URL, $url);

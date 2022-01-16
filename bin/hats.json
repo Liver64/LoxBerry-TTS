@@ -1,0 +1,192 @@
+{
+	"usb_audio": {
+		"output": "",
+		"dtoverlay": "rpi-dac",
+		"name": "USB audio"
+	},
+	"allo_boss2_dac": {
+		"output": "hw:CARD=Boss2",
+		"dtoverlay": "allo-boss2-dac-audio",
+		"name": "Allo Boss2 DAC"
+	},
+	"allo_boss_dac_and_miniboss": {
+		"output": "hw:CARD=BossDAC",
+		"dtoverlay": "allo-boss-dac-pcm512x-audio",
+		"name": "Allo Boss DAC (and MiniBoss)"
+	},
+	"allo_digione": {
+		"output": "hw:CARD=sndallodigione",
+		"dtoverlay": "allo-digione",
+		"name": "Allo Digione"
+	},
+	"allo_katana": {
+		"output": "hw:CARD=Katana",
+		"dtoverlay": "allo-katana-dac-audio",
+		"name": "Allo Katana"
+	},
+	"allo_piano_dac": {
+		"output": "hw:CARD=PianoDAC",
+		"dtoverlay": "allo-piano-dac-pcm512x-audio",
+		"name": "Allo Piano DAC"
+	},
+	"allo_piano_dac_plus_2_1_2_2": {
+		"output": "hw:CARD=PianoDACPlus",
+		"dtoverlay": "allo-piano-dac-plus-pcm512x-audio",
+		"name": "Allo Piano DAC Plus 2.1/2.2"
+	},
+	"audiophonics_isabre_q2m": {
+		"output": "hw:CARD=DAC",
+		"dtoverlay": "i-sabre-q2m",
+		"name": "Audiophonics ISabre Q2M"
+	},
+	"cirrus_logic_audio_card": {
+		"output": "hw:CARD=RPiCirrus",
+		"dtoverlay": "rpi-cirrus-wm5102",
+		"name": "Cirrus Logic Audio Card"
+	},
+	"dion_audio_loco": {
+		"output": "hw:CARD=sndrpidionaudio",
+		"dtoverlay": "dionaudio-loco",
+		"name": "Dion Audio LOCO"
+	},
+	"ess9023_dac": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "ESS9023 DAC"
+	},
+	"generic_simple_ess9023_dac": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "Generic/simple ESS9023 DAC"
+	},
+	"generic_simple_ti5102_dac": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "Generic/simple TI5102 DAC"
+	},
+	"google_voicehat": {
+		"output": "hw:CARD=sndrpigooglevoi",
+		"dtoverlay": "googlevoicehat-soundcard",
+		"name": "Google voiceHAT"
+	},
+	"hifiberry_amp_and__plus": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-amp",
+		"name": "HiFiBerry AMP (and +)"
+	},
+	"hifiberry_dac_plus_adc": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dacplusadc",
+		"name": "HiFiBerry DAC+ ADC"
+	},
+	"hifiberry_dac_plus_adc_pro": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dacplusadcpro",
+		"name": "HiFiBerry DAC+ ADC Pro"
+	},
+	"hifiberry_dac_plus_and_pro,_amp2": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dacplus",
+		"name": "HiFiBerry DAC+ (and Pro, AMP2)"
+	},
+	"hifiberry_dac_zero_miniamp": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "HiFiBerry DAC Zero/MiniAMP"
+	},
+	"hifiberry_dac2hd_and_pro": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dacplushd",
+		"name": "HiFiBerry DAC2HD (and Pro)"
+	},
+	"hifiberry_dac_plus_light": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "HiFiBerry DAC+ Light"
+	},
+	"hifiberry_digi_and_digi_plus": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-digi",
+		"name": "HiFiBerry Digi and Digi+"
+	},
+	"hifiberry_digi_plus_pro": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-digi-pro",
+		"name": "HiFiBerry Digi+ Pro"
+	},
+	"iqaudio_amp_plus": {
+		"output": "hw:CARD=IQaudIODAC",
+		"dtoverlay": "iqaudio-dacplus",
+		"name": "IQaudIO AMP+"
+	},
+	"iqaudio_codec_audio_card": {
+		"output": "hw:CARD=IQaudIOCODEC",
+		"dtoverlay": "iqaudio-codec",
+		"name": "IQaudIO Codec Audio Card"
+	},
+	"iqaudio_dac_plus": {
+		"output": "hw:CARD=IQaudIODAC",
+		"dtoverlay": "iqaudio-dacplus",
+		"name": "IQaudIO DAC+"
+	},
+	"iqaudio_dac": {
+		"output": "hw:CARD=IQaudIODAC",
+		"dtoverlay": "iqaudio-dac",
+		"name": "IQaudIO DAC"
+	},
+	"iqaudio_digi_plus": {
+		"output": "hw:CARD=IQAudIODigi",
+		"dtoverlay": "iqaudio-digi-wm8804-audio",
+		"name": "IQaudIO DIGI+"
+	},
+	"justboom_dac_amp_and_zero_amp": {
+		"output": "hw:CARD=sndrpijustboomd",
+		"dtoverlay": "justboom-dac",
+		"name": "JustBoom DAC/AMP (and Zero/AMP)"
+	},
+	"justboom_digi_and_zero": {
+		"output": "hw:CARD=sndrpijustboomd",
+		"dtoverlay": "justboom-digi",
+		"name": "JustBoom Digi (and Zero)"
+	},
+	"mamboberry-hifi-dac_plus": {
+		"output": "hw:CARD=Mamboberry",
+		"dtoverlay": "mamboberry-dacplus-es9023-audio,384k",
+		"name": "Mamboberry-HiFi-DAC+"
+	},
+	"merus_audio_amp": {
+		"output": "hw:CARD=sndrpimerusamp",
+		"dtoverlay": "merus-amp",
+		"name": "Merus Audio Amp"
+	},
+	"orchard_audio_applepi_dac": {
+		"output": "hw:CARD=ApplePiDAC",
+		"dtoverlay": "applepi-dac",
+		"name": "Orchard Audio ApplePi DAC"
+	},
+	"orchard_audio_pecanpi_dac": {
+		"output": "hw:CARD=sndrpirpidac",
+		"dtoverlay": "rpi-dac",
+		"name": "Orchard Audio PecanPi DAC"
+	},
+	"pifi40_dac": {
+		"output": "hw:CARD=PiFi40",
+		"dtoverlay": "pifi-40",
+		"name": "PiFi40 DAC"
+	},
+	"phat_dac": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "PHAT-DAC"
+	},
+		"rpi_hifi_amp_dac": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-amp",
+		"name": "RPI HiFi AMP HAT TAS5713"
+	},
+	"rpi_dac": {
+		"output": "hw:CARD=sndrpirpidac",
+		"dtoverlay": "rpi-dac",
+		"name": "RPi DAC"
+	}
+}
