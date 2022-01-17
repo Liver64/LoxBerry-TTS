@@ -67,7 +67,7 @@ $params = [	"name" => "Text2speech",
 			"append" => 1,
 			"addtime" => 1,
 			];
-LBLog::newLog($params);	
+$log = LBLog::newLog($params);	
 
 // used for single logging
 $plugindata = LBSystem::plugindata();
@@ -110,18 +110,20 @@ $time_start_total = microtime(true);
 		}
 		# Volume prozentual für sox (1=100%)
 		$volume = $volume / 100;
-	
+		$oldlog = $log->loglevel;
 	
 	
 
 #-- End Preparation ---------------------------------------------------------------------
 
-	global $soundcard, $config, $lbpbindir, $text, $data, $time_start_total, $logif, $decoded, $greet, $textstring, $filename, $myConfigFile;
+	global $soundcard, $config, $lbpbindir, $text, $data, $log, $time_start_total, $logif, $decoded, $greet, $textstring, $filename, $myConfigFile;
 	
 	# Prüfen ob Request per Interface reinkommt
 	$tmp_content = file_get_contents("php://input");
 	if ($tmp_content == true)  {
 	# *** Lese Daten von ext. Call ***
+		$log->loglevel(7);
+		LOGGING("tts.php: Set Loglevel temporally to level 7 to process Interface logging", 5);
 		require_once('output/interface.php');
 		LOGGING("tts.php: T2S Interface: POST request has been received and will be processed!", 6);
 		process_post_request();
@@ -247,9 +249,9 @@ $time_start_total = microtime(true);
 		create_tts();
 	}
 	LOGGING("tts.php: Processing time of the complete T2S request tooks: " . round((microtime(true)-$time_start_total), 2) . " Sek.", 6);
-	if ($tmp_content == true)  {
+	#if ($tmp_content == true)  {
 		json($filename);
-	}	
+	#}	
 	LOGEND("PHP finished"); 
 exit;
 
@@ -265,7 +267,7 @@ exit;
 
 function getusbcard()  {
 	
-	global $config, $lbpbindir, $myteccard;
+	global $config, $lbpbindir, $log, $myteccard;
 
 	$json = file_get_contents($lbpbindir."/hats.json");
 	$cfg = json_decode($json, True);
@@ -284,7 +286,7 @@ function getusbcard()  {
 
 function create_tts() {
 	
-	global $config, $filename, $data, $messageid, $textstring, $logif, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
+	global $config, $filename, $log, $data, $messageid, $textstring, $logif, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
 	
 	$start_create_tts = microtime(true);
 	
@@ -557,7 +559,7 @@ function create_tts() {
 /**/	
 
 function json($filename)  {
-	global $volume, $config, $data, $MP3path, $interfacefolder, $logif, $messageid, $lbpplugindir, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $plugindata, $oldlog, $config, $data, $log, $MP3path, $interfacefolder, $logif, $messageid, $lbpplugindir, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$ttspath = $config['SYSTEM']['ttspath'];
 			
@@ -611,7 +613,7 @@ function json($filename)  {
 	}
 	#write_MP3_IDTag();
 	// ** End MP3 details **
-	LOGGING("tts.php: filename of MP3 file: ".$filename, 5);
+	LOGGING("tts.php: filename of MP3 file: ".$filename, 7);
 	$localip = LBSystem::get_localip();
 	$jsonfilename = $filename.".json";
 	$jsonlogfile = $filename."_log.json";
@@ -660,9 +662,12 @@ function json($filename)  {
 				#'success' => "2",
 				'logging' => $logif
 			);
+	#print_r($logif);
 	$final = json_encode($final);
 	header('Content-Type: application/json');
 	echo $final;
+	LOGGING("tts.php: Set Loglevel back to ".$oldlog, 6);
+	$log->loglevel($plugindata['PLUGINDB_LOGLEVEL']);
 	return $final;	
 }
 
@@ -677,7 +682,7 @@ function json($filename)  {
 /**/
 function copybadfile($filename)  {
 	
-	global $config;
+	global $config, $log;
 	
 	$heute = date("Y-m-d"); 
 	$time = date("His"); 
@@ -705,7 +710,7 @@ function copybadfile($filename)  {
 
 function write_MP3_IDTag($income_text) {
 	
-	global $config, $data, $textstring, $filename, $TextEncoding, $text;
+	global $config, $data, $log, $textstring, $filename, $TextEncoding, $text;
 	
 	require_once("bin/getid3/getid3.php");
 	// Initialize getID3 engine

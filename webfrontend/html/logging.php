@@ -13,10 +13,12 @@
 
 function LOGGING($message = "", $loglevel = 7, $raw = 0)
 {
-	global $pcfg, $L, $config, $lbplogdir, $logfile, $plugindata, $logif;
+	global $pcfg, $L, $config, $log, $lbplogdir, $logfile, $plugindata, $logif;
 	
-	if ($plugindata['PLUGINDB_LOGLEVEL'] >= intval($loglevel) || $loglevel == 8)  {
+	if ($plugindata['PLUGINDB_LOGLEVEL'] >= intval($loglevel) || $loglevel == 8 || $log->loglevel == 7)  {
 		($raw == 1)?$message="<br>".$message:$message=htmlentities($message);
+		
+		#echo $log->loglevel;
 		switch ($loglevel) 	{
 		case 0:
 		        //OFF
