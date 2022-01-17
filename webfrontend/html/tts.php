@@ -249,9 +249,9 @@ $time_start_total = microtime(true);
 		create_tts();
 	}
 	LOGGING("tts.php: Processing time of the complete T2S request tooks: " . round((microtime(true)-$time_start_total), 2) . " Sek.", 6);
-	#if ($tmp_content == true)  {
+	if ($tmp_content == true)  {
 		json($filename);
-	#}	
+	}	
 	LOGEND("PHP finished"); 
 exit;
 
