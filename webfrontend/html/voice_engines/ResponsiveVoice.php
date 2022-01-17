@@ -34,7 +34,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		$url = 'https://code.responsivevoice.org/getvoice.php?t='.$textstring.'&tl='.$language;
 		$mp3 =  my_curl($url);
 		file_put_contents($file, $mp3);
-		LOGGING('voice_engines/RespVoice.php: Sonos: voice_engines\responsivevoice.php: The text has been passed to Responsive Voice for MP3 creation',5);
+		LOGGING('voice_engines/RespVoice.php: The text has been passed to Responsive Voice for MP3 creation',5);
 		return $filename;
 		
 }
@@ -78,7 +78,7 @@ function my_curl($url, $timeout=2, $error_report=FALSE)
         // PROCESS ERRORS HERE
         if ($error_report)
         {
-			LOGGING('voice_engines/RespVoice.php: Sonos: voice_engines\responsivevoice.php: CURL FAIL: $url TIMEOUT=$timeout, CURL_ERRNO=$err',3);
+			LOGGING('voice_engines/RespVoice.php: CURL FAIL: $url TIMEOUT=$timeout, CURL_ERRNO=$err',3);
             #echo "CURL FAIL: $url TIMEOUT=$timeout, CURL_ERRNO=$err";
             #var_dump($inf);
         }
