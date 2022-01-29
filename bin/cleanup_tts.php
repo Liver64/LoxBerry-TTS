@@ -26,10 +26,10 @@ if (!file_exists($myConfigFolder.'/tts_all.cfg')) {
 $folderpeace = explode("/",$config['SYSTEM']['path']);
 if ($folderpeace[3] != "data") {
 	// wenn NICHT local dir als Speichermedium selektiert wurde
-	$MessageStorepath = $config['SYSTEM']['path']."/".$hostname."/tts/";
+	$MessageStorepath = $config['SYSTEM']['path']."/tts/";
 } else {
 	// wenn local dir als Speichermedium selektiert wurde
-	$MessageStorepath = $config['SYSTEM']['path']."/";
+	$MessageStorepath = $config['SYSTEM']['ttspath']."/";
 }
 
 // Set defaults if needed
@@ -61,21 +61,6 @@ function delmp3() {
 
 	$dir = $MessageStorepath;
     
-	// $folder = dir($dir);
-	// // $store = '-'.$config['MP3']['MP3store'].' days';
-	// while ($dateiname = $folder->read()) {
-	    // if (filetype($dir.$dateiname) == "dir") continue;
-        // if (strtotime($store) > @filemtime($dir.$dateiname)) {
-			// if (strlen($dateiname) == 36) {
-				// if (@unlink($dir.$dateiname) != false)
-					// LOGINF($dateiname.' has been deleted');
-				// else
-					// LOGINF($dateiname.' could not be deleted');
-			// }
-		// }
-        
-    // }
-
 	LOGDEB ("Directory: $dir");
 	$files = glob("$dir/*");
 	usort($files, function($a, $b) {
@@ -143,7 +128,7 @@ function delmp3() {
 			}
 			$filetime = @filemtime($file);
 			LOGDEB("Checking file ".basename($file)." (".date(DATE_ATOM, $filetime).")");
-			if($filetime < $deltime && strlen($file) == 36) {
+			if($filetime < $deltime) {
 				if ( @unlink($file) != false )
 					LOGINF(basename($file).' has been deleted');
 				else

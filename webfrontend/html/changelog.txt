@@ -23,3 +23,4 @@
  1.2.2		[Enhancement] Microsoft Azure T2S hinzugefügt
 			[Enhancement] Interface erweitert (inklusive Logging)
 			[Enhancement] USB-Soundkarten Unterstützung
+ 1.3.0		[Bugfix] Fixed Cleanup TTS files
