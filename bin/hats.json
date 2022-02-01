@@ -1,6 +1,6 @@
 {
 	"usb_audio": {
-		"output": "",
+		"output": "hw:",
 		"dtoverlay": "rpi-dac",
 		"name": "USB audio"
 	},
