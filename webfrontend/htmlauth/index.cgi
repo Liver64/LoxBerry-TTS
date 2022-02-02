@@ -91,8 +91,8 @@ my $azureregion					= "westeurope"; # Change here if you have a Azure API key fo
 #my $urlfile					= "https://raw.githubusercontent.com/Liver64/LoxBerry-Sonos/master/webfrontend/html/release/info.txt";
 my $log 						= LoxBerry::Log->new ( 
 								name => 'Webinterface', 
-								# filename => $lbplogdir ."/". $pluginlogfile, 
-								# append => 1, 
+								#filename => $lbplogdir ."/". $pluginlogfile, 
+								#append => 1, 
 								addtime => 1
 								);
 my $helplink 					= "https://www.loxwiki.eu/x/uoFYAg";
@@ -119,7 +119,12 @@ if (!defined $pcfg->param("MP3.splitsentences")) {
 if (!defined $pcfg->param("SYSTEM.usbdevice")) {
 	$pcfg->param("SYSTEM.usbdevice", 0);
 	$pcfg->save() or &error;
+}# USB card No.
+if (!defined $pcfg->param("SYSTEM.usbcardno")) {
+	$pcfg->param("SYSTEM.usbcardno", 1);
+	$pcfg->save() or &error;
 }
+
 
 
 ##########################################################################
@@ -452,6 +457,7 @@ sub save
 	$pcfg->param("SYSTEM.card", "$R::out_list");
 	$pcfg->param("SYSTEM.usbcard", "$R::usb_list");
 	$pcfg->param("SYSTEM.usbdevice", "$R::usbdeviceno");
+	$pcfg->param("SYSTEM.usbcardno", "$R::usbcardno");
 	$pcfg->param("TTS.volume", "$R::volume");
 	
 	LOGINF "Writing configuration file";

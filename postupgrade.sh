@@ -49,6 +49,10 @@ PBIN=$LBPBIN/$PDIR
 echo "<INFO> Copy back existing config files"
 cp -p -v -r /tmp/$1\_upgrade/config/$3/* $5/config/plugins/$3/ 
 
+echo "<INFO> Replace output.cfg config"
+rm -r $5/config/plugins/$3/output.cfg
+cp -p -v -r $5/bin/plugins/$3/output.cfg $5/config/plugins/$3/output.cfg 
+
 echo "<INFO> Copy back existing log files"
 cp -p -v -r /tmp/$1\_upgrade/log/$3/* $5/log/plugins/$3/ 
 

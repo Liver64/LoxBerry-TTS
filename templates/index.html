@@ -259,8 +259,6 @@
 							<script>
 								$('#out_list').val('<TMPL_VAR SYSTEM.card>');
 							</script>
-							
-							
 						</td>
 						<div id="loginResult" style="display:none;"></div>
 						<div id="msg"></div>
@@ -308,7 +306,22 @@
 							<script>
 								$('#usb_list').val('<TMPL_VAR SYSTEM.usbcard>');
 							</script>
-							<td class="collapse_usb" style="height: 30px; width: 60px;">
+							
+							<td class="collapse_usb" style="height: 30px; width: 30px;">
+								<label id="lusb"><TMPL_VAR T2S.USB_CARDNO></label>
+							</td>	
+							<td class="collapse_usb" width="19%">
+								<select id="usbcardno" name="usbcardno" data-mini="true" data-native-menu="false" width="20%">
+									<!--<option value="0">0</option>-->
+									<option selected="selected" value="1">1</option>
+									<option value="2">2</option>
+								</select>
+								<script>
+									$('#usbcardno option[value="<TMPL_VAR SYSTEM.usbcardno>"').prop('selected', 'selected');
+								</script>
+							</td>
+							
+							<td class="collapse_usb" style="height: 30px; width: 30px;">
 								<label id="lusb"><TMPL_VAR T2S.USB_DEVICE></label>
 							</td>	
 							<td class="collapse_usb" width="19%">

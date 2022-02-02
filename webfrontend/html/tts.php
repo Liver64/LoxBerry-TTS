@@ -19,6 +19,7 @@ ini_set('max_execution_time', 90); 								// Max. Skriptlaufzeit auf 90 Sekunde
 
 include("helper.php");
 include('logging.php');
+require_once('output/soundcards.php');
 
 // setze korrekte Zeitzone
 date_default_timezone_set(date("e"));
@@ -68,6 +69,10 @@ $params = [	"name" => "Text2speech",
 			"addtime" => 1,
 			];
 $log = LBLog::newLog($params);	
+
+#$t = New soundCard();
+#$e = $t->listSoundCards();
+#print_r($e);
 
 // used for single logging
 $plugindata = LBSystem::plugindata();
@@ -220,19 +225,17 @@ $time_start_total = microtime(true);
 			alsa_ob();
 		break;
 		case '012':			// USB Soundcard 1
-			//require_once('output/usb.php');
 			require_once('output/alsa.php');
-			$deviceno = $config['SYSTEM']['usbdevice'];
 			getusbcard();
-			shell_exec("export AUDIODEV=".$myteccard.",1,".$deviceno);
+			#echo "export AUDIODEV=".$myteccard;
+			shell_exec("export AUDIODEV=".$myteccard);
 			alsa_ob();
 		break;
 		case '013':			// USB Soundcard 2	
-			//require_once('output/usb.php');
 			require_once('output/alsa.php');
-			$deviceno = $config['SYSTEM']['usbdevice'];
 			getusbcard();
-			shell_exec("export AUDIODEV=".$myteccard.",2,".$deviceno);
+			#echo "export AUDIODEV=".$myteccard;
+			shell_exec("export AUDIODEV=".$myteccard);
 			alsa_ob();
 		break;
 		default;			// Soundcard bcm2835
@@ -272,10 +275,13 @@ function getusbcard()  {
 	$json = file_get_contents($lbpbindir."/hats.json");
 	$cfg = json_decode($json, True);
 	$mycard = $config['SYSTEM']['usbcard'];
-	$myteccard = $cfg[$mycard]['output'];
-	return($myteccard);
+	if ($mycard == "usb_audio")   {
+		$myteccard = $cfg[$mycard]['output'].$config['SYSTEM']['usbcardno'].','.$config['SYSTEM']['usbdevice'];
+	} else {
+		$myteccard = $cfg[$mycard]['output'].',DEV='.$config['SYSTEM']['usbdevice'];
+	}
+	return $myteccard;
 }
-
  
 /**
 * Function : create_tts --> creates an MP3 File based on Text Input
