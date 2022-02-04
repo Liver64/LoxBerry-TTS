@@ -1541,13 +1541,13 @@ $("#testbox_submit").click(function(){
 		  text: text
 		})
 	.done(function(data){
-	console.log(data);
+	console.log(data.success);
 		if(data.success == 1) 
 			$("#testbox_response").html("Fertig - ich habe \"" + data.text + "\" abgespielt");
 		else if (data.errortext) 
 			$("#testbox_response").html("Fehler: "+data.errortext);
-		else 
-			$("#testbox_response").html("Fehler: Unbekannter Fehler");
+		//else 
+			//$("#testbox_response").html("Fehler: Unbekannter Fehler");
 		
 	})
 	.fail(function(dataobj, textStatus){
