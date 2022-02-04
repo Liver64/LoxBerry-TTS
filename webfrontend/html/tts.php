@@ -19,7 +19,7 @@ ini_set('max_execution_time', 90); 								// Max. Skriptlaufzeit auf 90 Sekunde
 
 include("helper.php");
 include('logging.php');
-require_once('output/soundcards.php');
+#require_once('output/soundcards.php');
 
 // setze korrekte Zeitzone
 date_default_timezone_set(date("e"));
@@ -275,10 +275,13 @@ function getusbcard()  {
 	$json = file_get_contents($lbpbindir."/hats.json");
 	$cfg = json_decode($json, True);
 	$mycard = $config['SYSTEM']['usbcard'];
+	#echo cfg[$mycard]['output'];
 	if ($mycard == "usb_audio")   {
 		$myteccard = $cfg[$mycard]['output'].$config['SYSTEM']['usbcardno'].','.$config['SYSTEM']['usbdevice'];
+		LOGDEB("Settings of usb_audio: export AUDIODEV=".$cfg[$mycard]['output'].$config['SYSTEM']['usbcardno'].','.$config['SYSTEM']['usbdevice']);
 	} else {
 		$myteccard = $cfg[$mycard]['output'].',DEV='.$config['SYSTEM']['usbdevice'];
+		LOGDEB("Settings of usb_other: export AUDIODEV=".$cfg[$mycard]['output'].',DEV='.$config['SYSTEM']['usbdevice']);
 	}
 	return $myteccard;
 }
