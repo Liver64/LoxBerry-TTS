@@ -19,7 +19,7 @@ ini_set('max_execution_time', 90); 								// Max. Skriptlaufzeit auf 90 Sekunde
 
 include("helper.php");
 include('logging.php');
-require_once('output/soundcards.php');
+include('output/usb.php');
 
 // setze korrekte Zeitzone
 date_default_timezone_set(date("e"));
@@ -243,7 +243,7 @@ $time_start_total = microtime(true);
 		default;			// Soundcard bcm2835
 			require_once('output/alsa.php');
 			shell_exec("export AUDIODRIVER=alsa");
-			$output = shell_exec("export AUDIODEV=hw:0,0");
+			$output = shell_exec("export AUDIODEV=hw:1,0");
 		break;
 		# The hw:X,Y comes from this mapping of your hardware -- in this case, X is the card number, while Y is the device number.
 		# https://superuser.com/questions/53957/what-do-alsa-devices-like-hw0-0-mean-how-do-i-figure-out-which-to-use

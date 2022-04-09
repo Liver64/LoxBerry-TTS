@@ -24,3 +24,4 @@
 			[Enhancement] Interface erweitert (inklusive Logging)
 			[Enhancement] USB-Soundkarten Unterstützung
  1.3.0		[Bugfix] Fixed Cleanup TTS files
+ 1.3.1		[Bugfix] Fixed missing link
