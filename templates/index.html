@@ -1,3 +1,4 @@
+
 <style type="text/css">
 
 
@@ -772,8 +773,8 @@ function disable() {
 		validate_enable('#apikey');
 		validate_chk_object(['#apikey']);
   }
-validate_enable('#volume');
-validate_chk_object(['#volume', '#apikey']);
+//validate_enable('#volume');
+//validate_chk_object(['#volume', '#apikey']);
 
 }
 //*************************End of Block for Layout control ************************************
@@ -1132,6 +1133,30 @@ function initial_lang_voice_load()  {
 		        scrollTop: $("#info").offset().top
 		    }, 2000);
 		    $("#file_gong").focus();
+			e.preventDefault();
+		}
+		// validate output device
+		var usbcard = document.getElementById("out_list").value;
+		if (usbcard == '')  {
+			$(".infotext").fadeIn(800);
+			$("#info").attr("style", "color:red");
+			$("#info").text('<TMPL_VAR T2S.VALIDATE_OUTPUT>');
+			$('html, body').animate({
+		        scrollTop: $("#info").offset().top
+		    }, 2000);
+		    $("#out_list").focus();
+			e.preventDefault();
+		}
+		// validate save path
+		var storage = document.getElementById("STORAGEPATH").value;
+		if (storage == '')  {
+			$(".infotext").fadeIn(800);
+			$("#info").attr("style", "color:red");
+			$("#info").text('<TMPL_VAR T2S.VALIDATE_PATH>');
+			$('html, body').animate({
+		        scrollTop: $("#info").offset().top
+		    }, 2000);
+		    $("#STORAGEPATH").focus();
 			e.preventDefault();
 		}
 		
@@ -1570,7 +1595,3 @@ $("#testbox_submit").click(function(){
 	<TMPL_VAR LOGLIST_HTML>
 <!-- form 'LOGFILES' END -->
 </TMPL_IF LOGFILES>
-
-
-
-
