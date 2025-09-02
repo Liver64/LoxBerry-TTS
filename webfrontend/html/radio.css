@@ -1,0 +1,16 @@
+/* jQuery Mobile Wrapper Transition */
+.ui-input-text.input-valid,
+.ui-input-text.input-invalid {
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* Optional, falls du Klassen nutzen willst */
+.ui-input-text.input-valid {
+    border-color: #28a745 !important;
+    box-shadow: 0 0 6px rgba(40,167,69,0.18) !important;
+}
+
+.ui-input-text.input-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 6px rgba(220,53,69,0.18) !important;
+}

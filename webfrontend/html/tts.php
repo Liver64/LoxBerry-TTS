@@ -24,6 +24,11 @@ include('output/usb.php');
 // setze korrekte Zeitzone
 date_default_timezone_set(date("e"));
 
+header("Cache-Control: no-store, no-cache, must-revalidate");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
 # prepare variables
 $home = $lbhomedir;												// get Folder 
 $hostname = gethostname();										// hostname LoxBerry 
@@ -57,9 +62,9 @@ $logif = array();
 ini_set('max_execution_time', 20); 	
 
 
-#echo '<PRE>'; 
+echo '<PRE>'; 
 
-global $text, $messageid, $LOGGING, $data, $lbpbindir, $textstring, $level, $logif, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $jsonfile;
+global $text, $messageid, $t2s_param, $LOGGING, $data, $t2s_param, $lbpbindir, $textstring, $level, $logif, $voice, $config, $volume, $time_start, $filename, $MP3path, $mp3, $text_ext, $logging_config, $myConfigFile, $lbhomedir, $params, $jsonfile;
 
 $level = LBSystem::pluginloglevel();
 	
@@ -83,14 +88,15 @@ $time_start_total = microtime(true);
 
 #-- Start Preparation ------------------------------------------------------------------
 	LOGGING("tts.php: called syntax: ".$myIP."".urldecode($syntax),5);
-	// Parsen der Konfigurationsdatei
-	if (!file_exists($myConfigFolder.'/tts_all.cfg')) {
-		LOGGING('tts.php: The file tts_all.cfg could not be opened, please try again!', 3);
-		exit;
+		
+	// Laden der Konfigurationsdatei t2s_config.json
+	if (file_exists($myConfigFolder . "/t2s_config.json"))    {
+		$config = json_decode(file_get_contents($myConfigFolder . "/t2s_config.json"), TRUE);
 	} else {
-		$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
-		LOGGING("tts.php: T2S config has been loaded", 7);
+		LOGGING('tts.php: The file t2s_config.json could not be opened, please try again!', 3);
+		exit;
 	}
+	
 	#print_r($config);
 	create_symlinks();
 	LOGGING("tts.php: Config has been successfull loaded",6);
@@ -121,7 +127,11 @@ $time_start_total = microtime(true);
 
 #-- End Preparation ---------------------------------------------------------------------
 
-	global $soundcard, $config, $lbpbindir, $text, $data, $log, $time_start_total, $logif, $decoded, $greet, $textstring, $filename, $myConfigFile;
+	global $soundcard, $config, $t2s_param, $lbpbindir, $text, $data, $log, $time_start_total, $logif, $decoded, $greet, $textstring, $filename, $myConfigFile;
+	
+	delete_all_cache();
+	$t2s_param = prepare_array_for_t2s_proccessing();
+	#print_r($t2s_param);
 	
 	# Prüfen ob Request per Interface reinkommt
 	$tmp_content = file_get_contents("php://input");
@@ -136,15 +146,21 @@ $time_start_total = microtime(true);
 		$text = $decoded['text'];
 		$greet = $decoded['greet'];
 	} elseif (isset($_GET['json']))  {
-	 # *** Lese Daten von URL ***
+	 # *** Lese JSON Daten von URL ***
 		require_once('output/interface.php');
 		LOGGING("tts.php: T2S Interface: JSON is set and will be processed!", 6);
 		# Deklaration der variablen
 		$text = $_GET['text'];
 		isset($_GET['greet']) ?	$greet = $_GET['greet'] : $greet = " ";
 	} else {
+		#$t2s_param = prepare_array_for_t2s_proccessing();
+		#print_r($t2s_param);
 		create_tts();
+		LOGGING("tts.php: No T2S Interface involved, we go ahead with standard proccessing", 6);
 	}
+	#prepare_array_for_t2s_proccessing();
+	#print_r($t2s_param);
+	$text = $t2s_param['text'];
 	# prüfe of TTS Anbieter und ggf. Stimme gewählt wurde
 	if ((empty($config['TTS']['t2s_engine'])) or (empty($config['TTS']['messageLang'])))  {
 		LOGGING("tts.php: There is no T2S engine/language selected in Plugin config. Please select before using T2S functionality.", 3);
@@ -153,13 +169,16 @@ $time_start_total = microtime(true);
 	# Prüfung ob syntax korrekt eingeben wurde.
 	if ((!isset($_GET['text'])) && (!isset($_GET['file'])) && 
 		(!isset($_GET['weather'])) && (!isset($_GET['abfall'])) &&
-		(!isset($_GET['witz'])) && (!isset($_GET['pollen'])) && 
-		(!isset($_GET['warning'])) && (!isset($_GET['bauernregel'])) && 
+		(!isset($_GET['pollen'])) && (!isset($_GET['warning'])) &&  
 		(!isset($_GET['distance'])) && (!isset($_GET['clock'])) &&
 		(!isset($_GET['calendar']))&& ($text == ' ') && (!isset($data))) {
 		LOGGING("tts.php: Something went wrong. Please try again and check your syntax. (check Wiki)", 3);
 		exit;
 	}
+	if ($tmp_content == true || isset($_GET['json']))  {
+		create_tts();
+	}
+	
 	switch ($soundcard) {
 		case '001':			// NULL
 			exit;
@@ -250,13 +269,24 @@ $time_start_total = microtime(true);
 		# hw:CARD=sndrpihifiberry,DEV=0   ist device number
 		# https://www.alsa-project.org/main/index.php/Asoundrc
 	}
-	if ($tmp_content == true || isset($_GET['json']))  {
-		create_tts();
-	}
+	
+	sleep(8);
 	LOGGING("tts.php: Processing time of the complete T2S request tooks: " . round((microtime(true)-$time_start_total), 2) . " Sek.", 6);
 	if ($tmp_content == true)  {
 		json($filename);
 	}	
+	/**
+	if (isset($_GET['testfile']))    {
+		$testfile = $_GET['testfile'];
+		if ($testfile = 1)    {
+			if(file_exists($config['SYSTEM']['ttspath']."/".$filename.".mp3")) {
+				#sleep(8);
+				#unlink($config['SYSTEM']['ttspath']."/".$filename.".mp3");
+				LOGERR("Testfile has been deleted");
+			}
+		}
+	}
+	**/
 	LOGEND("PHP finished"); 
 exit;
 
@@ -272,7 +302,7 @@ exit;
 
 function getusbcard()  {
 	
-	global $config, $lbpbindir, $log, $myteccard;
+	global $config, $t2s_param, $lbpbindir, $log, $myteccard;
 
 	$json = file_get_contents($lbpbindir."/hats.json");
 	$cfg = json_decode($json, True);
@@ -294,10 +324,10 @@ function getusbcard()  {
 
 function create_tts() {
 	
-	global $config, $filename, $log, $data, $messageid, $textstring, $logif, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
+	global $config, $t2s_param, $filename, $log, $data, $t2s_param, $messageid, $textstring, $logif, $home, $time_start, $tmp_batch, $MP3path, $text, $greet, $time_start_total;
 	
 	$start_create_tts = microtime(true);
-	
+
 	if (isset($_GET['greet']) or ($greet == 1))  {
 		$Stunden = intval(strftime("%H"));
 		$TL = LOAD_T2S_TEXT();
@@ -327,7 +357,7 @@ function create_tts() {
 	}
 	$messageid = !empty($_GET['file']) ? $_GET['file'] : '0';
 	isset($_GET['text']) ? $text = $_GET['text'] : $text;
-	
+
 	#echo 'CREATE_TTS: '.$text.'<br>';
 	
 	if(isset($_GET['weather']) or ($text == "weather")) {
@@ -360,12 +390,6 @@ function create_tts() {
 		$textstring = substr(tt2t(), 0, 500);
 		LOGGING("tts.php: time-to-distance speech plugin has been called", 7);
 		}
-	elseif (isset($_GET['witz']) or ($text == "witz")) {
-		// calls the weather warning-to-speech Function
-		include_once("addon/gimmicks.php");
-		$textstring = substr(GetWitz(), 0, 1000);
-		LOGGING("tts.php: Joke plugin has been called", 7);
-		}
 	elseif (isset($_GET['abfall']) or ($text == "abfall")) {
 		// calls the wastecalendar-to-speech Function
 		include_once("addon/waste-calendar-to-speech.php");
@@ -390,7 +414,8 @@ function create_tts() {
 		} else {
 			LOGGING("tts.php: The corrosponding file '".$messageid.".mp3' does not exist or could not be played. Please check your directory or syntax!", 3);
 			exit;
-		}	
+		}
+	
 		}
 	elseif ((empty($messageid)) && ($text <> '')) {
 		// prepares the T2S message
@@ -398,7 +423,7 @@ function create_tts() {
 			$textstring = $text;
 		} else {
 			$textstring = $greet.". ".$text;
-		LOGGING("tts.php: Textstring has been entered", 7);		
+		LOGGING("tts.php: Textstring has been entered $textstring", 7);		
 		}	
 	}
 	
@@ -410,12 +435,12 @@ function create_tts() {
 	// if full text is cached, directly return the md5
 	if(file_exists($config['SYSTEM']['ttspath']."/".$fullmessageid.".mp3") && empty($_GET['nocache'])) {
 		LOGGING("tts.php: File already there, grabbed from cache: $textstring ", 6);
-		#LOGINF("Processing time just of create_tts() tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms");
 		$messageid = $fullmessageid;
 		$filename = $messageid;
 		return ($fullmessageid);
 	} else {
-		LOGGING("tts.php: Processing time of creating MP3 file tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
+		#LOGGING("tts.php: Processing time of creating MP3 file tooks: " . round((microtime(true)-$start_create_tts), 5) . " Sek.", 6);
+		#LOGGING("tts.php: Processing time of creating MP3 file tooks: " . (microtime(true)-$start_create_tts)*1000 . " ms", 6);
 		
 	}
 	
@@ -433,13 +458,16 @@ function create_tts() {
 	
 	// calls the various T2S engines depending on config)
 	if (($messageid == '0') && ($textstring != '')) {
+		if (isset($_GET['t2sengine']))    {
+			$config['TTS']['t2s_engine'] = $_GET['t2sengine'];
+		}
 		if ($config['TTS']['t2s_engine'] == 1001) {
 			include_once("voice_engines/VoiceRSS.php");
 			LOGGING("tts.php: VoiceRSS has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 3001) {
-			include_once("voice_engines/MAC_OSX.php");
-			LOGGING("tts.php: /MAC_OSX has been successful selected", 7);		
+			include_once("voice_engines/ElevenLabs.php");
+			LOGGING("tts.php: ElevenLabs has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 6001) {
 			include_once("voice_engines/ResponsiveVoice.php");
@@ -450,8 +478,8 @@ function create_tts() {
 			LOGGING("tts.php: Google Cloud has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 5001) {
-			include_once("voice_engines/Pico_tts.php");
-			LOGGING("tts.php: Pico has been successful selected", 7);		
+			include_once("voice_engines/Piper.php");
+			LOGGING("tts.php: Piper has been successful selected", 7);		
 		}
 		if ($config['TTS']['t2s_engine'] == 4001) {
 			include_once("voice_engines/Polly.php");
@@ -519,15 +547,11 @@ function create_tts() {
 			}
 			LOGGING("tts.php: T2S will be called with '$text'", 7);
 				
-			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename);
+			t2s($messageid, $config['SYSTEM']['ttspath'], $text, $filename, $t2s_param);
 			if(!file_exists($resultmp3)) {
 				LOGGING("tts.php: File $filename.mp3 was not created (Text: '$text' Path: $resultmp3)", 3);
 				exit;
 			}
-			//require_once("bin/getid3/getid3.php");
-			//$getID3 = new getID3;
-			//write_MP3_IDTag($text);
-						
 			array_push($filenames, $resultmp3);
 			array_push($messageids, $messageid);
 		}
@@ -547,7 +571,6 @@ function create_tts() {
 				$filename = null;
 				return;
 			} else {
-				//write_MP3_IDTag($textstring);
 				LOGGING ("Created merged file $filename.mp3", 7);
 			}
 			// The $messageid is set to the $fullmessageid from the top 
@@ -567,58 +590,19 @@ function create_tts() {
 /**/	
 
 function json($filename)  {
-	global $volume, $plugindata, $oldlog, $config, $data, $log, $MP3path, $interfacefolder, $logif, $messageid, $lbpplugindir, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
+	global $volume, $plugindata, $t2s_param, $oldlog, $config, $data, $log, $MP3path, $interfacefolder, $logif, $messageid, $lbpplugindir, $notice, $level, $time_start_total, $filename, $infopath, $myFolder, $fullfilename, $config, $ttsinfopath, $filepath, $ttspath, $myIP, $plugindatapath, $lbhomedir, $files, $psubfolder, $hostname, $fullfilename, $text, $textstring, $duration;
 	
 	$ttspath = $config['SYSTEM']['ttspath'];
 			
 	// ** get details of MP3 **
 	// https://github.com/JamesHeinrich/getID3/archive/master.zip
-	require_once("bin/getid3/getid3.php");
+	#require_once("bin/getid3/getid3.php");
     $MP3filename = $ttspath."/".$messageid.".mp3";
-	$getID3 = new getID3;
-    $file = $getID3->analyze($MP3filename);
+	#$getID3 = new getID3;
+    #$file = $getID3->analyze($MP3filename);
+	$file = $MP3filename;
 	# success = 1 (everything OK), success = 2 (Warning), success = 3 (failed), 
-	if (isset($file['error'])) {
-		LOGGING("tts.php: Reading of MP3 Info failed by '".$file['error'][0]."'", 4);
-		$duration = 0;
-		$bitrate = 0;
-		$sample_rate = 0;
-		$notice = $file['error'][0];
-		$success = 3;
-		copybadfile($MP3filename);
-	} else {
-		if ($data['message'] === null)  {
-			$notice = "";
-			$success = 3;
-		} else {
-			$notice = $data['message'];
-			LOGGING($data['message'], 3);
-			$success = 3;
-			#copybadfile($filename);
-		}
-		if (file_exists($MP3filename)) {
-			$success = 1;
-		} else {
-			$notice = "The file $filename does not exist";
-			LOGGING("tts.php: The file $filename does not exist", 3);
-			$success = 3;
-		}		
-		if (isset($file['playtime_seconds'])) {
-            $duration = round($file['playtime_seconds'] * 1000, 0);
-        } else {
-			$duration = 0;
-		}
-		if (isset($file['bitrate'])) {
-            $bitrate = $file['bitrate'];
-        } else {
-			$bitrate = 0;
-		}
-		if (isset($file['mpeg']['audio']['sample_rate'])) {
-            $sample_rate = $file['mpeg']['audio']['sample_rate'];
-        } else {
-			$sample_rate = 0;
-		}
-	}
+	
 	#write_MP3_IDTag();
 	// ** End MP3 details **
 	LOGGING("tts.php: filename of MP3 file: ".$filename, 7);
@@ -636,18 +620,18 @@ function json($filename)  {
 				'mp3filenameMD5' => $filename,
 				'jsonfilenameMD5' => $jsonfilename,
 				'jsonlogfileMD5' => $jsonlogfile,
-				'durationms' => $duration,
-				'bitrate' => $bitrate,
-				'samplerate' => $sample_rate,
-				'text' => $textstring,
-				'warning' => $notice,
-				'success' => $success
+				#'durationms' => $duration,
+				#'bitrate' => $bitrate,
+				#'samplerate' => $sample_rate,
+				'text' => $textstring
+				#'warning' => $notice,
+				#'success' => $success
 			);
 	# save files
 	$toBeSaved = $myFolder."/interfacedownload/".$jsonfilename;
 	$toBeSavedlog = $myFolder."/interfacedownload/".$jsonlogfile;
 	LOGGING("tts.php: T2S Interface: JSON has been successfully responded to Request",5);
-	file_put_contents($toBeSaved, json_encode($files));
+	file_put_contents($toBeSaved, json_encode($files, JSON_PRETTY_PRINT));
 	file_put_contents($toBeSavedlog, json_encode($logif));
 	# Prepare output for echo
 	$final = array(
@@ -660,15 +644,15 @@ function json($filename)  {
 				'mp3filenameMD5' => $filename,
 				'jsonfilenameMD5' => $jsonfilename,
 				'jsonlogfileMD5' => $jsonlogfile,
-				'durationms' => $duration,
-				'bitrate' => $bitrate,
-				'samplerate' => $sample_rate,
+				#'durationms' => $duration,
+				#'bitrate' => $bitrate,
+				#'samplerate' => $sample_rate,
 				'text' => $textstring,
-				'warning' => $notice,
-				'success' => $success,
+				#'warning' => $notice,
+				#'success' => $success,
 				#'warning' => "Test",
 				#'success' => "2",
-				'logging' => $logif
+				#'logging' => $logif
 			);
 	#print_r($logif);
 	$final = json_encode($final);
@@ -690,7 +674,7 @@ function json($filename)  {
 /**/
 function copybadfile($filename)  {
 	
-	global $config, $log;
+	global $config, $log, $t2s_param;
 	
 	$heute = date("Y-m-d"); 
 	$time = date("His"); 
@@ -707,61 +691,63 @@ function copybadfile($filename)  {
 }
 
 
-
-/**   NOT ACTIVE ANYMORE
-/*
-/* Funktion : write_MP3_IDTag --> write MP3-ID Tags to file
-/* @param: 	leer
-/*
-/* @return: Message
-/**/	
-
-function write_MP3_IDTag($income_text) {
+function delete_all_cache()    {
 	
-	global $config, $data, $log, $textstring, $filename, $TextEncoding, $text;
+	global $t2s_param;
 	
-	require_once("bin/getid3/getid3.php");
-	// Initialize getID3 engine
-	$getID3 = new getID3;
-	$getID3->setOption(array('encoding' => $TextEncoding));
-	 
-	require_once('bin/getid3/write.php');	
-	// Initialize getID3 tag-writing module
-	$tagwriter = new getid3_writetags;
-	$tagwriter->filename = $config['SYSTEM']['ttspath']."/".$filename.".mp3";
-	$tagwriter->tagformats = array('id3v2.3');
-
-	// set various options (optional)
-	$tagwriter->overwrite_tags    = true;  // if true will erase existing tag data and write only passed data; if false will merge passed data with existing tag data (experimental)
-	$tagwriter->remove_other_tags = false; // if true removes other tag formats (e.g. ID3v1, ID3v2, APE, Lyrics3, etc) that may be present in the file and only write the specified tag format(s). If false leaves any unspecified tag formats as-is.
-	$tagwriter->tag_encoding      = $TextEncoding;
-	$tagwriter->remove_other_tags = true;
-
-	// populate data array
-	$TagData = array(
-					'title'                  => array("$income_text"),
-					'artist'                 => array('text2speech'),
-					'album'                  => array(''),
-					'year'                   => array(date("Y")),
-					'genre'                  => array('text'),
-					'comment'                => array('generated by LoxBerry Plugin'),
-					'track'                  => array(''),
-				);
-	
-	$tagwriter->tag_data = $TagData;
-	
-	// write tags
-	if ($tagwriter->WriteTags()) {
-	LOGDEB("Successfully wrote id3v2.3 tags");
-		if (!empty($tagwriter->warnings)) {
-			LOGWARN('There were some warnings:<br>'.implode($tagwriter->warnings));
-		}
-	} else {
-		LOGERR('Failed to write tags!<br>'.implode($tagwriter->errors));
+	// ===================================================================
+	// PHP-Ausgabepuffer (Output Buffer) löschen
+	// ===================================================================
+	if (ob_get_level() > 0) {
+	ob_end_clean(); // alle aktiven Buffer schließen und leeren
 	}
-	return ($TagData);
-}	
+	ob_start(); // neuen Buffer starten, falls du danach noch was schreiben willst
+
+	// ===================================================================
+	// PHP OPcache zurücksetzen (falls aktiv)
+	// ===================================================================
+	if (function_exists('opcache_reset')) {
+	opcache_reset();
+	}
+
+	// ===================================================================
+	// Optional: APCu Cache zurücksetzen (falls installiert)
+	// ===================================================================
+	if (function_exists('apcu_clear_cache')) {
+	apcu_clear_cache();
+	}
+
+	// ===================================================================
+	// Testausgabe
+	// ===================================================================
+	ob_end_flush(); // Buffer-Inhalt an Client senden
+	LOGDEB("tts.php: All Caches and Buffer has been deleted. Content will not be loaded from Browser-Cache");
+	#return;
+}
 
 
+function prepare_array_for_t2s_proccessing()   {
+	
+	global $config, $t2s_param;
+	
+	// Sammle alle T2S-Parameter in einem Array mit Fallback auf Config
+	$t2s_param = [
+		'text'       => $_GET['testtext'] ?? $_GET['text'],
+		't2sengine'  => $_GET['t2sengine'] ?? $config['TTS']['t2s_engine'],
+		'filename'   => $_GET['filename'] ?? md5(trim($_GET['text'])),
+		'apikey'     => $_GET['apikey'] ?? $config['TTS']['apikey'],
+		'secretkey'  => $_GET['secretkey'] ?? $config['TTS']['secretkey'],  // nur für Polly
+		'language'   => $_GET['language'] ?? $config['TTS']['messageLang'], // für Piper, Azure und RespVoice
+		'voice'      => $_GET['voice'] ?? $config['TTS']['voice'],
+		'testfile'   => $_GET['testfile'] ?? null
+	];
+
+	// Debug: Parameter ausgeben
+	#echo '<pre>';
+	#print_r($t2s_param);
+	LOGDEB("tts.php: Array of all needed Information has been created: ".$t2s_param['filename']);
+
+	return $t2s_param;
+}
 
 ?>

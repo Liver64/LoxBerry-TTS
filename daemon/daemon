@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# create interface folder if not exist
+if [ ! -d $LBPDATA/$3/t2s_interface ]; then
+	mkdir -p $LBPDATA/$3/t2s_interface
+fi
+
+# create Symlink if not exist
+if [ ! -L $LBPLOG/$3/t2s_interface ]; then
+	ln -s $LBPDATA/$3/t2s_interface $LBPLOG/$3/t2s_interface);
+fi
+
+# start MQTT handler
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable mqtt-service-tts
+sudo systemctl start mqtt-service-tts

@@ -10,23 +10,23 @@
 **/	
 
 
-function t2s($messageid, $MessageStorepath, $textstring, $filename)  
+function t2s($textstring, $filename)  
 {
-	
-	global $config;
+	global $config, $t2s_param;
 
 	// Note: new unified SpeechService API key and issue token uri is per region
 	// New unified SpeechService key
 	// Paid: https://go.microsoft.com/fwlink/?LinkId=872236
 	// Preis Übersicht: https://azure.microsoft.com/de-de/pricing/details/cognitive-services/speech-services/
 
-
 	// User to create Azure account for "westeurope" to get Azure working
 
-
 	$region = $config['TTS']['regionms']; //"westeurope";
-	$apiKey = $config['TTS']['API-key'];
-	$lang = $config['TTS']['messageLang'];
+	$apiKey = $t2s_param['apikey'];
+	$lang = $t2s_param['language'];
+	$textstring = $t2s_param['text'];
+	$voice_ms = $t2s_param['voice'];
+	$filename = $t2s_param['filename'];
 	
 	$AccessTokenUri = "https://".$region.".api.cognitive.microsoft.com/sts/v1.0/issueToken";
 
@@ -45,7 +45,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 	$access_token = file_get_contents($AccessTokenUri, false, $context);
 
 	if (!$access_token) {
-		LOGERR("Text2Speech: voice_engines\MS_Azure.php: Problem with $AccessTokenUri, $php_errormsg");
+		LOGERR("'Sonos: voice_engines\MS_Azure.php: Problem with $AccessTokenUri, $php_errormsg");
 		#throw new Exception("Problem with $AccessTokenUri, $php_errormsg");
 	} else {
 	   #echo "Access Token: ". $access_token. "<br>";
@@ -59,7 +59,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 	   $voice = $doc->createElement( "voice" );
 	   $voice->setAttribute( "xml:lang" , substr($lang,0,5));
 	   #$voice->setAttribute( "xml:gender" , "" );
-	   $voice->setAttribute( "name" , $lang); // Short name for "Microsoft Server Speech Text to Speech Voice (en-US, Guy24KRUS)"
+	   $voice->setAttribute( "name" , $voice_ms); // Short name for "Microsoft Server Speech Text to Speech Voice (en-US, Guy24KRUS)"
 
 	   $text = $doc->createTextNode($textstring);
 	   $voice->appendChild( $text );
@@ -84,19 +84,19 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 
     $context  = stream_context_create($options);
 	
-	LOGGING("voice_engines/MS_Azure.php: Microsoft TTS has been successful selected", 7);	
-	#echo $filename;
+	LOGGING("voice_engines\MS_Azure.php: Microsoft TTS has been successful selected", 7);	
+	
 	$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".mp3";
     // get the wave data
     $result = file_get_contents($ttsServiceUri, false, $context);
 	file_put_contents($file, $result);
-	LOGGING('voice_engines/MS_Azure.php: The text has been passed to Microsoft engine for MP3 creation',5);
+	LOGGING('voice_engines\MS_Azure.php: The text has been passed to Microsoft engine for MP3 creation',5);
 	
     if (!$result) {
-		LOGERR("Text2Speech: voice_engines\MS_Azure.php: No File created --> Problem with $ttsServiceUri, $php_errormsg");
+		LOGERR("'Sonos: voice_engines\MS_Azure.php: No File created --> Problem with $ttsServiceUri, $php_errormsg");
         #throw new Exception("Problem with $ttsServiceUri, $php_errormsg");
     } else {
-        LOGGING('voice_engines/MS_Azure.php: Everything went well during TTS creation!',5);
+        LOGGING('voice_engines\MS_Azure.php: Everything went well during TTS creation!',5);
     }
 	return;
 	}

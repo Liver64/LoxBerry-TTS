@@ -46,20 +46,29 @@ PSBIN=$LBPSBIN/$PDIR
 PBIN=$LBPBIN/$PDIR
 
 
-echo "<INFO> Copy back existing config files"
+echo "<INFO> Copy back config files"
 cp -p -v -r /tmp/$1\_upgrade/config/$3/* $5/config/plugins/$3/ 
 
 echo "<INFO> Replace output.cfg config"
 rm -r $5/config/plugins/$3/output.cfg
 cp -p -v -r $5/bin/plugins/$3/output.cfg $5/config/plugins/$3/output.cfg 
 
-echo "<INFO> Copy back existing log files"
+echo "<INFO> Copy back log files"
 cp -p -v -r /tmp/$1\_upgrade/log/$3/* $5/log/plugins/$3/ 
 
-echo "<INFO> Copy back existing MP3 files"
+echo "<INFO> Copy back MP3 files"
 cp -p -v -r /tmp/$1\_upgrade/data/$3/* $5/data/plugins/$3/ 
+
+if [ -d /tmp/$1\_upgrade/webfrontend/piper-voices ]; then
+	echo "<INFO> Copy back Piper files"
+	mkdir -p $5/webfrontend/html/plugins/$3/voice_engines/piper-voices
+	cp -p -v -r /tmp/$1\_upgrade/webfrontend/piper-voices/* $5/webfrontend/html/plugins/$3/voice_engines/
+fi
 
 echo "<INFO> Remove temporary folders"
 rm -r /tmp/$1\_upgrade
+
+echo "<INFO> Start migration of Config files"
+/usr/bin/php REPLACELBPHTMLDIR/bin/migrate.php
 
 exit 0

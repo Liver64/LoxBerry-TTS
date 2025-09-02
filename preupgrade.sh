@@ -50,6 +50,7 @@ mkdir -p /tmp/$1\_upgrade
 mkdir -p /tmp/$1\_upgrade/config
 mkdir -p /tmp/$1\_upgrade/log
 mkdir -p /tmp/$1\_upgrade/data
+mkdir -p /tmp/$1\_upgrade/webfrontend
 
 echo "<INFO> Backing up existing config files"
 cp -p -v -r $5/config/plugins/$3/ /tmp/$1\_upgrade/config
@@ -59,6 +60,12 @@ cp -p -v -r $5/log/plugins/$3/ /tmp/$1\_upgrade/log
 
 echo "<INFO> Backing up existing MP3 files"
 cp -p -v -r $5/data/plugins/$3/ /tmp/$1\_upgrade/data
+
+if [ -d $5/webfrontend/html/plugins/$3/voice_engines/piper-voices ]; then
+	mkdir -p /tmp/$1\_upgrade/webfrontend/piper-voices
+	echo "<INFO> Backing up existing Piper files"
+	cp -p -v -r $5/webfrontend/html/plugins/$3/voice_engines/piper-voices/ /tmp/$1\_upgrade/webfrontend/piper-voices
+fi
 
 # Exit with Status 0
 exit 0

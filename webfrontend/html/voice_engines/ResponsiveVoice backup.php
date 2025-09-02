@@ -35,7 +35,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".mp3";
 				
 		# Übermitteln des strings an ResponsiveVoice
-		$url = 'https://code.responsivevoice.org/getvoice.php?t='.$textstring.'&tl='.$language;
+		$url = 'https://code.responsivevoice.org/getvoice.php?t='.$textstring.'&tv=Deutsch Male';
 		$mp3 =  my_curl($url);
 		file_put_contents($file, $mp3);
 		LOGGING('voice_engines/RespVoice.php: The text has been passed to Responsive Voice for MP3 creation',5);

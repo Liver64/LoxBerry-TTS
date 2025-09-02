@@ -1,0 +1,22 @@
+[
+    {
+        "country": "Spain",
+        "value": "es_ES"
+    },
+    {
+        "country": "Great Britain",
+        "value": "en_GB"
+    },
+    {
+        "country": "France",
+        "value": "fr_FR"
+    },
+    {
+        "country": "Germany",
+        "value": "de_DE"
+    },
+    {
+        "country": "United States",
+        "value": "en_US"
+    }
+]

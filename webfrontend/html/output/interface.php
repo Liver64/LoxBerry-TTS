@@ -44,7 +44,7 @@ function process_post_request() {
 		exit;
 	}
 	LOGGING("T2S Interface: Incoming POST request has been successful processed, let's go ahead!", 5);
-	return ($decoded);
+	return $decoded;
 }
 
 

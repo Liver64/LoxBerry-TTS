@@ -6,16 +6,19 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 
 # 08/03/2018 added $ttsaudiocodec from sonos.cfg
 {
-	global $config, $messageid, $pathlanguagefile;
+	global $config, $messageid, $t2s_param, $pathlanguagefile;
 	
-		$ttskey = $config['TTS']['API-key'];
+		$apikey = $t2s_param['apikey'];
+		$filename = $t2s_param['filename'];
+		$textstring = $t2s_param['text'];
+		$language = $t2s_param['language'];
+	
 		$ttsaudiocodec = "44khz_16bit_mono";
 		$textstring = urlencode($textstring);
 		
 		$file = "voicerss.json";
 		$url = $pathlanguagefile."".$file;
 		$valid_languages = File_Get_Array_From_JSON($url, $zip=false);
-		
 			if (isset($_GET['lang'])) {
 				$language = $_GET['lang'];
 				$isvalid = array_multi_search($language, $valid_languages, $sKey = "value");
@@ -39,7 +42,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		#####################################################################################################################	
 
 		# Generieren des strings der an VoiceRSS geschickt wird
-		$inlay = "key=$ttskey&src=$textstring&hl=$language&f=$ttsaudiocodec";	
+		$inlay = "key=$apikey&src=$textstring&hl=$language&f=$ttsaudiocodec";	
 									
 		# Speicherort der MP3 Datei
 		$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".mp3";

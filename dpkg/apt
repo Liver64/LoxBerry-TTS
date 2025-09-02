@@ -4,7 +4,7 @@
 sox
 libsox-fmt-all
 lame
-curl 
+#curl 
 libcurl4
 php-soap
 raspberrypi-sys-mods 

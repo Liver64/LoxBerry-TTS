@@ -14,13 +14,13 @@ $myConfigFolder = "$lbpconfigdir";								// get config folder
 $myConfigFile = "tts_all.cfg";									// get config file
 $hostname = lbhostname();
 
-// Parsen der Konfigurationsdatei
-if (!file_exists($myConfigFolder.'/tts_all.cfg')) {
+// Laden der Konfigurationsdatei t2s_config.json
+if (file_exists($myConfigFolder . "/t2s_config.json"))    {
+	$config = json_decode(file_get_contents($myConfigFolder . "/t2s_config.json"), TRUE);
+	LOGOK("T2S config has been loaded");
+} else {
 	LOGCRIT('The file tts_all.cfg could not be opened, please try again!');
 	exit;
-} else {
-	$config = parse_ini_file($myConfigFolder.'/tts_all.cfg', TRUE);
-	LOGOK("T2S config has been loaded");
 }
 
 $folderpeace = explode("/",$config['SYSTEM']['path']);

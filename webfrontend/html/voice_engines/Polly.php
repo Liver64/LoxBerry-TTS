@@ -6,9 +6,16 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 {
 	set_include_path(__DIR__ . '/polly_tts');
 	
-	global $config, $messageid, $voice, $accesskey, $secretkey, $pathlanguagefile;
+	global $config, $messageid, $t2s_param, $voice, $accesskey, $secretkey, $pathlanguagefile;
 		
 		include_once 'polly_tts/polly.php';
+		
+		$accesskey = $t2s_param['apikey'];
+		$secretkey = $t2s_param['secretkey'];
+		$filename = $t2s_param['filename'];
+		$textstring = $t2s_param['text'];
+		$language = $t2s_param['language'];
+		$tmp_voice = $t2s_param['voice'];
 		
 		$voicefile = "polly_voices.json";
 		$urlvoice = $pathlanguagefile."".$voicefile;
@@ -26,7 +33,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 				}
 		} else {
 			$language = $config['TTS']['messageLang'];
-			$voice = $config['TTS']['voice'];
+			$voice = $tmp_voice;
 		}
 				
 		#####################################################################################################################

@@ -43,5 +43,42 @@ PCONFIG=$LBPCONFIG/$PDIR
 PSBIN=$LBPSBIN/$PDIR
 PBIN=$LBPBIN/$PDIR
 
+if [ -d /tmp/$1\_upgrade/webfrontend/piper-voices ]; then
+	echo "<INFO> Piper-Voice already exist, we skip installation of Voices"
+else
+	mkdir -p $5/webfrontend/html/plugins/$3/voice_engines/piper-voices
+	echo "<OK> Folder piper-voices has been created."
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/gilles/low/fr_FR-gilles-low.onnx
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/gilles/low/fr_FR-gilles-low.onnx.json
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/medium/en_GB-cori-medium.onnx
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/medium/en_GB-cori-medium.onnx.json
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/danny/low/en_US-danny-low.onnx
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/danny/low/en_US-danny-low.onnx.json	
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/blob/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/blob/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx.json
+	/usr/bin/php REPLACELBPHTMLDIR/bin/add_details_piper_tts.php
+	echo "<INFO> Piper-Voices has been downloaded"
+fi
+
+# create interface folder
+if [ -d $LBPDATA/$3/t2s_interface ]; then
+	echo "<INFO> Interface folder already exists"
+else
+	mkdir -p $LBPDATA/$3/t2s_interface
+	echo "<OK> Interface folder has been created"
+fi
+
+# create Symlink
+if [ -L $LBPLOG/$3/t2s_interface ]; then
+	echo "<INFO> Symlink folder already exists"
+else
+	ln -s $LBPDATA/$3/t2s_interface $LBPLOG/$3/t2s_interface
+	echo "<OK> Symlink has been created"
+fi
+
 # Exit with Status 0
 exit 0

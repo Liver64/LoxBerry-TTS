@@ -1,0 +1,402 @@
+[
+  {
+    "name": "Oda - Female",
+    "language": "ar-eg"
+  },
+  {
+    "name": "Salim - Male",
+    "language": "ar-sa"
+  },
+  {
+    "name": "Dimo - Male",
+    "language": "bg-bg"
+  },
+  {
+    "name": "Rut - Female",
+    "language": "ca-es"
+  },
+  {
+    "name": "Luli - Female",
+    "language": "zh-cn"
+  },
+  {
+    "name": "Shu - Female",
+    "language": "zh-cn"
+  },
+  {
+    "name": "Chow - Female",
+    "language": "zh-cn"
+  },
+  {
+    "name": "Wang - Male",
+    "language": "zh-cn"
+  },
+  {
+    "name": "Jia - Female",
+    "language": "zh-hk"
+  },
+  {
+    "name": "Xia - Female",
+    "language": "zh-hk"
+  },
+  {
+    "name": "Chen - Male",
+    "language": "zh-hk"
+  },
+  {
+    "name": "Akemi - Female",
+    "language": "zh-tw"
+  },
+  {
+    "name": "Lin - Female",
+    "language": "zh-tw"
+  },
+  {
+    "name": "Lee - Male",
+    "language": "zh-tw"
+  },
+  {
+    "name": "Nikola - Male",
+    "language": "hr-hr"
+  },
+  {
+    "name": "Josef - Male",
+    "language": "cs-cz"
+  },
+  {
+    "name": "Freja - Female",
+    "language": "da-dk"
+  },
+  {
+    "name": "Daan - Male",
+    "language": "nl-be"
+  },
+  {
+    "name": "Lotte - Female",
+    "language": "nl-nl"
+  },
+  {
+    "name": "Bram - Male",
+    "language": "nl-nl"
+  },
+  {
+    "name": "Zoe - Female",
+    "language": "en-au"
+  },
+  {
+    "name": "Isla - Female",
+    "language": "en-au"
+  },
+  {
+    "name": "Evie - Female",
+    "language": "en-au"
+  },
+  {
+    "name": "Jack - Male",
+    "language": "en-au"
+  },
+  {
+    "name": "Rose - Female",
+    "language": "en-ca"
+  },
+  {
+    "name": "Clara - Female",
+    "language": "en-ca"
+  },
+  {
+    "name": "Emma - Female",
+    "language": "en-ca"
+  },
+  {
+    "name": "Mason - Male",
+    "language": "en-ca"
+  },
+  {
+    "name": "Alice - Female",
+    "language": "en-gb"
+  },
+  {
+    "name": "Nancy - Female",
+    "language": "en-gb"
+  },
+  {
+    "name": "Lily - Female",
+    "language": "en-gb"
+  },
+  {
+    "name": "Harry - Male",
+    "language": "en-gb"
+  },
+  {
+    "name": "Eka - Female",
+    "language": "en-in"
+  },
+  {
+    "name": "Jai - Female",
+    "language": "en-in"
+  },
+  {
+    "name": "Ajit - Male",
+    "language": "en-in"
+  },
+  {
+    "name": "Oran - Male",
+    "language": "en-ie"
+  },
+  {
+    "name": "Linda - Female",
+    "language": "en-us"
+  },
+  {
+    "name": "Amy - Female",
+    "language": "en-us"
+  },
+  {
+    "name": "Mary - Female",
+    "language": "en-us"
+  },
+  {
+    "name": "John - Male",
+    "language": "en-us"
+  },
+  {
+    "name": "Mike - Male",
+    "language": "en-us"
+  },
+  {
+    "name": "Aada - Female",
+    "language": "fi-fi"
+  },
+  {
+    "name": "Emile - Female",
+    "language": "fr-ca"
+  },
+  {
+    "name": "Olivia - Female",
+    "language": "fr-ca"
+  },
+  {
+    "name": "Logan - Male",
+    "language": "fr-ca"
+  },
+  {
+    "name": "Felix - Male",
+    "language": "fr-ca"
+  },
+  {
+    "name": "Bette - Female",
+    "language": "fr-fr"
+  },
+  {
+    "name": "Iva - Female",
+    "language": "fr-fr"
+  },
+  {
+    "name": "Zola - Female",
+    "language": "fr-fr"
+  },
+  {
+    "name": "Axel - Male",
+    "language": "fr-fr"
+  },
+  {
+    "name": "Theo - Male",
+    "language": "fr-ch"
+  },
+  {
+    "name": "Lukas - Male",
+    "language": "de-at"
+  },
+  {
+    "name": "Hanna - Female",
+    "language": "de-de"
+  },
+  {
+    "name": "Lina - Female",
+    "language": "de-de"
+  },
+  {
+    "name": "Jonas - Male",
+    "language": "de-de"
+  },
+  {
+    "name": "Tim - Male",
+    "language": "de-ch"
+  },
+  {
+    "name": "Neo - Male",
+    "language": "el-gr"
+  },
+  {
+    "name": "Rami - Male",
+    "language": "he-il"
+  },
+  {
+    "name": "Puja - Female",
+    "language": "hi-in"
+  },
+  {
+    "name": "Kabir - Male",
+    "language": "hi-in"
+  },
+  {
+    "name": "Mate - Male",
+    "language": "hu-hu"
+  },
+  {
+    "name": "Intan - Male",
+    "language": "id-id"
+  },
+  {
+    "name": "Bria - Female",
+    "language": "it-it"
+  },
+  {
+    "name": "Mia - Female",
+    "language": "it-it"
+  },
+  {
+    "name": "Pietro - Male",
+    "language": "it-it"
+  },
+  {
+    "name": "Hina - Female",
+    "language": "ja-jp"
+  },
+  {
+    "name": "Airi - Female",
+    "language": "ja-jp"
+  },
+  {
+    "name": "Fumi - Female",
+    "language": "ja-jp"
+  },
+  {
+    "name": "Akira - Male",
+    "language": "ja-jp"
+  },
+  {
+    "name": "Nari - Female",
+    "language": "ko-kr"
+  },
+  {
+    "name": "Aqil - Male",
+    "language": "ms-my"
+  },
+  {
+    "name": "Marte - Female",
+    "language": "nb-no"
+  },
+  {
+    "name": "Erik - Male",
+    "language": "nb-no"
+  },
+  {
+    "name": "Julia - Female",
+    "language": "pl-pl"
+  },
+  {
+    "name": "Jan - Male",
+    "language": "pl-pl"
+  },
+  {
+    "name": "Marcia - Female",
+    "language": "pt-br"
+  },
+  {
+    "name": "Ligia - Female",
+    "language": "pt-br"
+  },
+  {
+    "name": "Yara - Female",
+    "language": "pt-br"
+  },
+  {
+    "name": "Dinis - Male",
+    "language": "pt-br"
+  },
+  {
+    "name": "Leonor - Female",
+    "language": "pt-pt"
+  },
+  {
+    "name": "Doru - Male",
+    "language": "ro-ro"
+  },
+  {
+    "name": "Olga - Female",
+    "language": "ru-ru"
+  },
+  {
+    "name": "Marina - Female",
+    "language": "ru-ru"
+  },
+  {
+    "name": "Peter - Male",
+    "language": "ru-ru"
+  },
+  {
+    "name": "Beda - Male",
+    "language": "sk-sk"
+  },
+  {
+    "name": "Vid - Male",
+    "language": "sl-si"
+  },
+  {
+    "name": "Juana - Female",
+    "language": "es-mx"
+  },
+  {
+    "name": "Silvia - Female",
+    "language": "es-mx"
+  },
+  {
+    "name": "Teresa - Female",
+    "language": "es-mx"
+  },
+  {
+    "name": "Jose - Male",
+    "language": "es-mx"
+  },
+  {
+    "name": "Camila - Female",
+    "language": "es-es"
+  },
+  {
+    "name": "Sofia - Female",
+    "language": "es-es"
+  },
+  {
+    "name": "Luna - Female",
+    "language": "es-es"
+  },
+  {
+    "name": "Diego - Male",
+    "language": "es-es"
+  },
+  {
+    "name": "Molly - Female",
+    "language": "sv-se"
+  },
+  {
+    "name": "Hugo - Male",
+    "language": "sv-se"
+  },
+  {
+    "name": "Sai - Male",
+    "language": "ta-in"
+  },
+  {
+    "name": "Ukrit - Male",
+    "language": "th-th"
+  },
+  {
+    "name": "Omer - Male",
+    "language": "tr-tr"
+  },
+  {
+    "name": "Chi - Male",
+    "language": "vi-vn"
+  }
+]

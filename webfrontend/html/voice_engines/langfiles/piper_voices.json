@@ -1,0 +1,27 @@
+[
+   {
+      "filename" : "es_ES-davefx-medium.onnx",
+      "language" : "es_ES",
+      "name" : "davefx"
+   },
+   {
+      "filename" : "en_GB-cori-medium.onnx",
+      "language" : "en_GB",
+      "name" : "cori"
+   },
+   {
+      "filename" : "fr_FR-gilles-low.onnx",
+      "language" : "fr_FR",
+      "name" : "gilles"
+   },
+   {
+      "filename" : "de_DE-thorsten-high.onnx",
+      "language" : "de_DE",
+      "name" : "thorsten"
+   },
+   {
+      "filename" : "en_US-danny-low.onnx",
+      "language" : "en_US",
+      "name" : "danny"
+   }
+]
