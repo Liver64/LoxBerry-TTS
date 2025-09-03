@@ -7,8 +7,8 @@ lame
 #curl 
 libcurl4
 php-soap
-raspberrypi-sys-mods 
-pi-bluetooth 
+#raspberrypi-sys-mods 
+#pi-bluetooth 
 bluez
 mplayer
 task-spooler
