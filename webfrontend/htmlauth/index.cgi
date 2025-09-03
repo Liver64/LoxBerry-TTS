@@ -510,9 +510,16 @@ sub save
 	$tcfg->{SYSTEM}->{httpinterface} 							= "http://$lbhostname/plugins/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{cifsinterface} 							= "//$lbhostname/plugindata/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{card}					 					= "$R::out_list";
-	$tcfg->{SYSTEM}->{usbcard} 									= "$R::usb_list";
-	$tcfg->{SYSTEM}->{usbdevice}								= "$R::usbdeviceno";
-	$tcfg->{SYSTEM}->{usbcardno} 								= "$R::usbcardno";
+	if ($R::out_list eq '012' || $R::out_list eq '012')   {
+		$tcfg->{SYSTEM}->{usbcard} 									= "$R::usb_list";
+		$tcfg->{SYSTEM}->{usbdevice}								= "$R::usbdeviceno";
+		$tcfg->{SYSTEM}->{usbcardno} 								= "$R::usbcardno";
+	} else {
+		$tcfg->{SYSTEM}->{usbcard} 									= "";
+		$tcfg->{SYSTEM}->{usbdevice}								= "";
+		$tcfg->{SYSTEM}->{usbcardno} 								= "";
+	}
+	
 	
 	LOGINF "Writing configuration file";
 	$jsonobj->write();
