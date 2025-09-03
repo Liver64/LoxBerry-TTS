@@ -1,7 +1,7 @@
 <?php
 ##############################################################################################################################
 # tts.php - LoxBerry Text2Speech
-# Version: 1.0.8 Optimized
+# Version: 2.0.0 Optimized
 ##############################################################################################################################
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -11,7 +11,7 @@ header("Expires: 0");
 
 ini_set('max_execution_time', 90);
 
-require_once("helper.php");
+require_once("bin/helper.php");
 require_once('output/usb.php');
 require_once('output/tts_functions.php'); // alle TTS-Funktionen
 

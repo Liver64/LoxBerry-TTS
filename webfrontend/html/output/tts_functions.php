@@ -1,10 +1,9 @@
 <?php
 ##############################################################################################################################
 # tts_functions.php - Funktionen für Text2Speech
-# Version: 1.0.8 Optimized
+# Version: 2.0.0 Optimized
 ##############################################################################################################################
 
-//require_once('logging.php');
 
 global $config, $t2s_param, $lbpdatadir;
 
@@ -49,6 +48,8 @@ function create_tts() {
 
     // Splitten falls nötig (optional)
     $textstrings = [$textstring];
+	
+	// Löschung des MP3 Files falls es aus Plugin Test kommt
 	if (isset($_GET['testfile']))    {
 		if (file_exists($lbpdatadir."/interfacedownload/".$_GET['filename'].".mp3"))   {
 			@unlink($lbpdatadir."/interfacedownload/".$_GET['filename'].".mp3");
@@ -80,6 +81,7 @@ function create_tts() {
         array_push($filenames, $filename);
     }
 
+	/**
     // Mehrere MP3s zusammenführen (optional)
     if(count($filenames) > 1) {
         $mergefile = "$ttspath/$fullmessageid.mp3";
@@ -91,6 +93,7 @@ function create_tts() {
         }
         return $mergefile;
     }
+	**/
 
     return $filenames[0];
 }

@@ -24,7 +24,6 @@ use LoxBerry::Web;
 use LoxBerry::Log;
 use LoxBerry::Storage;
 use LoxBerry::JSON;
-use CGI;
 
 use warnings;
 use strict;
@@ -68,11 +67,7 @@ my $storepath;
 my $fullpath;
 my $i;
 my $template;
-my $templateout;
 our $lbpbindir;
-my $templateoutout;
-my $templateoutfile;
-my $templateout_title;
 my %SL;
 
 my $languagefile 				= "tts_all.ini";
@@ -143,51 +138,15 @@ $jsonobj->write();
 
 # read language
 my $lblang = lblanguage();
-#my %SL = LoxBerry::System::readlanguage($templateout, $languagefile);
+#my %SL = LoxBerry::System::readlanguage($template, $languagefile);
 
 # Read Plugin Version
 my $sversion = LoxBerry::System::pluginversion();
 
 # read all POST-Parameter in namespace "R".
 my $cgi = CGI->new;
-my $q = $cgi->Vars;
-
-$q->{form} = "main" if !$q->{form};
-
-if ( $q->{form} eq "main" ) {
-	$templateoutfile = "$lbptemplatedir/index.html";
-	$template = LoxBerry::System::read_file($templateoutfile);
-	#$templateout->param("FORM", "1");
-	&form();
-}
-
 $cgi->import_names('R');
-
-##########################################################################
-# Form: Log
-##########################################################################
-
-sub form_logs
-{
-
-	# Prepare template
-	&inittemplate();
-	$templateout->param("LOGLIST_HTML", LoxBerry::Web::loglist_html());
-
-	return();
-}
-
-##########################################################################
-# Form: Main
-##########################################################################
-
-sub form_main
-{
-	# Prepare template
-	&inittemplate();
-
-	return();
-}
+my $q = $cgi->Vars;
 
 
 #########################################################################
@@ -209,6 +168,15 @@ if( $q->{ajax} )
 
 LOGSTART "T2S UI started";
 
+##########################################################################
+
+# deletes the log file
+if ( $R::delete_log )
+{
+	print "Content-Type: text/plain\n\nOK - In this version, this call does nothing";
+	exit;
+}
+
 #########################################################################
 # Parameter
 #########################################################################
@@ -219,7 +187,7 @@ $do = defined $R::do ? $R::do : "form";
 ##########################################################################
 # Init Main Template
 ##########################################################################
-#inittemplate();
+inittemplate();
 
 if ($R::getkeys)
 {
@@ -252,7 +220,7 @@ if (-r $lbpconfigdir . "/" . $interfaceconfigfilefile)
 			$plugincheck = 1;
 		}
 	}
-	$templateout->param(
+	$template->param(
 		INTERFACE => $plugincheck,
 		PLUGINS   => \@plugins_enabled,
 		PLUGINDIR => $lbpplugindir,
@@ -260,35 +228,41 @@ if (-r $lbpconfigdir . "/" . $interfaceconfigfilefile)
 }
 
 ##########################################################################
-# Set LoxBerry SDK to debug if plugin is in debug
+# Set LoxBerry SDK to debug in plugin is in debug
 ##########################################################################
 
-
+if($log->loglevel() eq "7") {
+	$LoxBerry::System::DEBUG 	= 1;
+	$LoxBerry::Web::DEBUG 		= 1;
+	$LoxBerry::Storage::DEBUG	= 1;
+	$LoxBerry::Log::DEBUG		= 1;
+}
 
 ##########################################################################
 # Language Settings
 ##########################################################################
 
-$templateout->param("LBHOSTNAME", lbhostname());
-$templateout->param("LBLANG", $lblang);
-$templateout->param("SELFURL", $ENV{REQUEST_URI});
-$templateout->param("LBPPLUGINDIR", $lbpplugindir);
-$templateout->param("LBPTEMPLATEDIR", $lbptemplatedir);
-$templateout->param("HTTPINTERFACE", "http://$lbhostname/plugins/$lbpplugindir/interfacedownload");
+$template->param("LBHOSTNAME", lbhostname());
+$template->param("LBLANG", $lblang);
+$template->param("SELFURL", $ENV{REQUEST_URI});
+$template->param("LBPPLUGINDIR", $lbpplugindir);
+$template->param("LBPTEMPLATEDIR", $lbptemplatedir);
+$template->param("HTTPINTERFACE", "http://$lbhostname/plugins/$lbpplugindir/interfacedownload");
 
 LOGDEB "Read main settings from " . $languagefile . " for language: " . $lblang;
 
 # übergibt Plugin Verzeichnis an HTML
-$templateout->param(PLUGINDIR => $lbpplugindir,);
+#$template->param("PLUGINDIR" => $lbpplugindir);
+$template->param(PLUGINDIR => $lbpplugindir,);
 
 # übergibt Log Verzeichnis und Dateiname an HTML
-$templateout->param("LOGFILE" , $lbplogdir . "/" . $pluginlogfile);
+$template->param("LOGFILE" , $lbplogdir . "/" . $pluginlogfile);
 
 ##########################################################################
 # check if config files exist and they are readable
 ##########################################################################
 
-# Check if config file exist/directory exists
+# Check if tts_all.cfg file exist/directory exists
 if (!-r $lbpconfigdir . "/" . $configfile) 
 {
 	LOGWARN "Plugin config file/directory does not exist";
@@ -302,21 +276,48 @@ if (!-r $lbpconfigdir . "/" . $configfile)
 # Main program
 ##########################################################################
 
+our %navbar;
+$navbar{1}{Name} = "$SL{'T2S.MENU_SETTINGS'}";
+$navbar{1}{URL} = './index.cgi?do=form';
+#$navbar{3}{Name} = "$SL{'T2S.MENU_WIZARD'}";
+#$navbar{3}{URL} = './index.cgi??do=logfilesdo=wizard';
+$navbar{99}{Name} = "$SL{'T2S.MENU_LOGFILES'}";
+$navbar{99}{URL} = './index.cgi?do=logfiles';
+
 if ($R::saveformdata) {
   &save;
   $jsonobj->write();
 } 
+
+if(!defined $R::do or $R::do eq "form") {
+	$navbar{1}{active} = 1;
+	$template->param("FORM", "1");
+	&form;
+#} elsif ($R::do eq "wizard") {
+#	LOGTITLE "Show logfiles";
+#	$navbar{3}{active} = 1;
+#	$template->param("WIZARD", "1");
+#	printtemplate();
+} elsif ($R::do eq "logfiles") {
+	LOGTITLE "Show logfiles";
+	$navbar{99}{active} = 1;
+	$template->param("LOGFILES", "1");
+	$template->param("LOGLIST_HTML", LoxBerry::Web::loglist_html());
+	printtemplate();
+}
+
+$error_message = "Invalid do parameter";
+error();
+exit;
 
 #####################################################
 # Form-Sub
 #####################################################
 
 sub form {
-	
-	&inittemplate();
-	
-	$templateout->param(FORMNO => 'FORM' );
-	
+
+	$template->param(FORMNO => 'FORM' );
+
 	LOGTITLE "Display form";
 	
 	my $storage = LoxBerry::Storage::get_storage_html(
@@ -328,17 +329,17 @@ sub form {
 					data_mini => 1,
 					label => "$SL{'T2S.SAFE_DETAILS'}");
 					
-	$templateout->param("STORAGEPATH", $storage);
+	$template->param("STORAGEPATH", $storage);
 	
 	# fill saved values into form
-	#$templateout		->param("SELFURL", $ENV{REQUEST_URI});
-	$templateout		->param("T2S_ENGINE" 	=> $tcfg->{TTS}->{t2s_engine});
-	$templateout		->param("VOICE" 		=> $tcfg->{TTS}->{voice});
-	$templateout		->param("CODE" 			=> $tcfg->{TTS}->{messageLang});
-	$templateout		->param("VOLUME" 		=> $tcfg->{TTS}->{volume});
-	$templateout		->param("DATADIR" 		=> $tcfg->{SYSTEM}->{path});
-	$templateout		->param("APIKEY"		=> $tcfg->{TTS}->{apikeys}->{$tcfg->{TTS}->{t2s_engine}});
-	$templateout		->param("SECKEY"		=> $tcfg->{TTS}->{secretkeys}->{$tcfg->{TTS}->{t2s_engine}});
+	#$template		->param("SELFURL", $ENV{REQUEST_URI});
+	$template		->param("T2S_ENGINE" 	=> $tcfg->{TTS}->{t2s_engine});
+	$template		->param("VOICE" 		=> $tcfg->{TTS}->{voice});
+	$template		->param("CODE" 			=> $tcfg->{TTS}->{messageLang});
+	$template		->param("VOLUME" 		=> $tcfg->{TTS}->{volume});
+	$template		->param("DATADIR" 		=> $tcfg->{SYSTEM}->{path});
+	$template		->param("APIKEY"		=> $tcfg->{TTS}->{apikeys}->{$tcfg->{TTS}->{t2s_engine}});
+	$template		->param("SECKEY"		=> $tcfg->{TTS}->{secretkeys}->{$tcfg->{TTS}->{t2s_engine}});
 		
 	# Get current storage folder
 	$storepath = $tcfg->{SYSTEM}->{path};
@@ -363,7 +364,7 @@ sub form {
 		$mp3_list.= "<option value='$file'>" . $file . "</option>\n";
     }
 	closedir(DIR);
-	$templateout->param("MP3_LIST", $mp3_list);
+	$template->param("MP3_LIST", $mp3_list);
 	LOGDEB "List of MP3 files has been successful loaded";
 	LOGOK "Plugin has been successfully loaded.";
 	
@@ -434,7 +435,7 @@ sub form {
 		}
 	}
 	close $in;
-	$templateout->param("OUT_LIST", $out_list);
+	$template->param("OUT_LIST", $out_list);
 	
 	# Fill USB output Dropdown
 	my $usb_list;
@@ -444,7 +445,7 @@ sub form {
 	foreach my $key (sort { lc($a) cmp lc($b) } keys %$config) {
 		$usb_list.= "<option value=" . $key . ">" . $config->{$key}->{name}, $key . "</option>\n";
     }
-	$templateout->param("USB_LIST", $usb_list);
+	$template->param("USB_LIST", $usb_list);
 	
 	# detect Soundcards
 	system($lbpbindir . '/service.sh sc_show');
@@ -454,15 +455,23 @@ sub form {
 	while (my $line = <$in>) {
             $sc_list.= $line.'<br>';
         }
-    $templateout->param("SC_LIST", $sc_list);
+    $template->param("SC_LIST", $sc_list);
 	close($in);
 	
 	# check/get filesize of determined soundcards in order to fadeIn/fadeOut
 	my $filesize = -s $devicefile;
-	$templateout->param("MYFILE", $filesize);
+	$template->param("MYFILE", $filesize);
 	
 	LOGDEB "Printing template";
 	printtemplate();
+	
+	#Test Print to UI
+	#my $content =  "Miniserver Nr. 1 heißt: $MiniServer und hat den Port: $MSWebPort User ist: $MSUser und PW: $MSPass.";
+	#my $template_title = 'Testing';
+	#LoxBerry::Web::lbheader($template_title);
+	#print "Size: $filesize\n";
+	#LoxBerry::Web::lbfooter();
+	#exit;
 }
 
 #####################################################
@@ -519,6 +528,9 @@ sub save
 	LOGINF "Creating folders and symlinks";
 	system ("mkdir -p $R::STORAGEPATH/$mp3folder");
 	system ("mkdir -p $R::STORAGEPATH/$ttsfolder");
+	#if (!-e $rampath)    {
+	#	system ("mkdir -p $rampath");
+	#}
 	system ("rm $lbpdatadir/interfacedownload");
 	system ("rm $lbphtmldir/interfacedownload");
 	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbpdatadir/interfacedownload");
@@ -541,11 +553,11 @@ sub save
 
 sub error 
 {
-	$templateout->param("ERROR", "1");
-	$templateout_title = $SL{'ERRORS.MY_NAME'} . ": v$sversion - " . $SL{'ERRORS.ERR_TITLE'};
-	LoxBerry::Web::lbheader($templateout_title, $helplink);
-	$templateout->param('ERR_MESSAGE', $error_message);
-	print $templateout->output();
+	$template->param("ERROR", "1");
+	$template_title = $SL{'ERRORS.MY_NAME'} . ": v$sversion - " . $SL{'ERRORS.ERR_TITLE'};
+	LoxBerry::Web::lbheader($template_title, $helplink);
+	$template->param('ERR_MESSAGE', $error_message);
+	print $template->output();
 	LoxBerry::Web::lbfooter();
 	exit;
 }
@@ -557,10 +569,10 @@ sub error
 
 sub print_save
 {
-	$templateout->param("SAVE", "1");
-	$templateout_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
-	LoxBerry::Web::lbheader($templateout_title, $helplink);
-	print $templateout->output();
+	$template->param("SAVE", "1");
+	$template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
+	LoxBerry::Web::lbheader($template_title, $helplink);
+	print $template->output();
 	LoxBerry::Web::lbfooter();
 	exit;
 }
@@ -572,9 +584,10 @@ sub print_save
 
 sub pids 
 {
-	#$pids{'mqttgateway'}   = trim(`pgrep mqttgateway.pl`);
-	#$pids{'mosquitto'}     = trim(`pgrep mosquitto`);
+	$pids{'mqttgateway'}   = trim(`pgrep mqttgateway.pl`);
+	$pids{'mosquitto'}     = trim(`pgrep mosquitto`);
 	$pids{'mqtt_handler'}  = trim(`pgrep -f mqtt-handler.php`);
+	$pids{'mqtt-watchdog'} = trim(`pgrep -f mqtt-watchdog.php`);
 	#LOGDEB "PIDs updated";
 }	
 
@@ -610,31 +623,29 @@ sub getkeys
 ##########################################################################
 sub inittemplate
 {
-    # Add JS Scripts
-	my $templatefile = "$lbptemplatedir/javascript.js";
-	$template .= LoxBerry::System::read_file($templatefile);
-
-	$templateout = HTML::Template->new_scalar_ref(
-		\$template,
-		global_vars => 1,
-		loop_context_vars => 1,
-		die_on_bad_params => 0,
-	);
-
-	# Language File
-	%SL = LoxBerry::System::readlanguage($templateout, $languagefile);	
+    # Check, if filename for the maintemplate is readable, if not raise an error
+    my $maintemplatefile = "$lbptemplatedir/$maintemplatefilename";
 	
-	our %navbar;
+    stat($maintemplatefile);
+    if (!-r _) {
+        $error_message = "Error: Main template not readable";
+        LOGCRIT "The ".$maintemplatefilename." file could not be loaded. Abort plugin loading";
+        LOGCRIT $error_message;
+        &error;
+    }
 	
-	$navbar{10}{Name} = "$SL{'T2S.MENU_SETTINGS'}";
-	$navbar{10}{URL} = './index.cgi?form';
-	$navbar{10}{active} = 1 if $q->{form} eq "main";
-	$navbar{99}{Name} = "$SL{'T2S.MENU_LOGFILES'}";
-	$navbar{99}{URL} = 'index.cgi?form=logfiles';
-	$navbar{99}{active} = 1 if $q->{form} eq "logs";
-	
-	return();
+	$template =  HTML::Template->new(
+				filename => $lbptemplatedir . "/" . $maintemplatefilename,
+				global_vars => 1,
+				loop_context_vars => 1,
+				die_on_bad_params=> 0,
+				associate => $jsonobj,
+				%htmltemplate_options,
+				debug => 1
+				);
 
+    # Sprachdatei laden
+    %SL = LoxBerry::System::readlanguage($template, $languagefile);			
 }
 
 ##########################################################################
@@ -642,14 +653,16 @@ sub inittemplate
 ##########################################################################
 sub printtemplate
 {
-    # Print out Template
-	LoxBerry::Web::lbheader($SL{'BASIS.MAIN_TITLE'} . " v$sversion", "https://wiki.loxberry.de/plugins/audioserver4home/start", "");
-	# Print your plugins notifications with name daemon.
-	print LoxBerry::Log::get_notifications_html($lbpplugindir, 'text2speech');
-	print $templateout->output();
-	LoxBerry::Web::lbfooter();
-	
-	return();
+    # Print Template
+    print "Content-type: text/html\n\n";  # war: application/javascript
+    $template_title = "$SL{'BASIS.MAIN_TITLE'}: v$sversion";
+    LoxBerry::Web::head();
+    LoxBerry::Web::pagestart($template_title, $helplink, $helptemplate);
+    print LoxBerry::Log::get_notifications_html($lbpplugindir);
+    print $template->output();
+    LoxBerry::Web::lbfooter();
+    LOGOK "Website printed";
+    exit;
 }		
 
 ##########################################################################
