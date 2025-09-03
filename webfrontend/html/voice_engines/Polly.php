@@ -6,7 +6,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 {
 	set_include_path(__DIR__ . '/polly_tts');
 	
-	global $config, $messageid, $t2s_param, $voice, $accesskey, $secretkey, $pathlanguagefile;
+	global $config, $messageid, $t2s_param, $lbphtmldir, $voice, $accesskey, $secretkey, $pathlanguagefile;
 		
 		include_once 'polly_tts/polly.php';
 		
@@ -19,16 +19,17 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		
 		$voicefile = "polly_voices.json";
 		$urlvoice = $pathlanguagefile."".$voicefile;
-		$valid_voices = File_Get_Array_From_JSON($urlvoice, $zip=false);
+		#$valid_voices = File_Get_Array_From_JSON($urlvoice, $zip=false);
+		$valid_voices = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$voicefile), TRUE);
 		if (isset($_GET['voice'])) {
 			$tmp_voice = $_GET['voice'];
 				$valid_voice = array_multi_search($tmp_voice, $valid_voices, $sKey = "name");
 				if (!empty($valid_voice)) {
 					$language = $valid_voice[0]['language'];
 					$voice = $valid_voice[0]['name'];
-					LOGGING('voice_engines/Polly.php: T2S language/voice has been successful entered',5);
+					LOGOK('voice_engines/Polly.php: T2S language/voice has been successful entered');
 				} else {
-					LOGGING("voice_engines/Polly.php: The entered Polly voice is not supported. Please correct (see Wiki)!",3);
+					LOGERR("voice_engines/Polly.php: The entered Polly voice is not supported. Please correct (see Wiki)!");
 					exit;
 				}
 		} else {
@@ -47,8 +48,8 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		#-- Aufruf der POLLY Class zum generieren der t2s --
 		$a = new POLLY_TTS();
 		$a->save_mp3($textstring, $config['SYSTEM']['ttspath']."/".$filename.".mp3", $language, $voice);
-		LOGGING('voice_engines/Polly.php: The text has been passed to Polly engine for MP3 creation',5);
-		LOGGING("voice_engines/Polly.php: MP3 file has been sucesfully saved.", 6);	
+		LOGOK('voice_engines/Polly.php: The text has been passed to Polly engine for MP3 creation');
+		LOGOK("voice_engines/Polly.php: MP3 file has been sucesfully saved.");	
 		$messageid = $filename;
 		return ($messageid);
 }

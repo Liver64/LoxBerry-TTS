@@ -1,402 +1,402 @@
 [
   {
-    "name": "Oda - Female",
+    "name": "Oda",
     "language": "ar-eg"
   },
   {
-    "name": "Salim - Male",
+    "name": "Salim",
     "language": "ar-sa"
   },
   {
-    "name": "Dimo - Male",
+    "name": "Dimo",
     "language": "bg-bg"
   },
   {
-    "name": "Rut - Female",
+    "name": "Rut",
     "language": "ca-es"
   },
   {
-    "name": "Luli - Female",
+    "name": "Luli",
     "language": "zh-cn"
   },
   {
-    "name": "Shu - Female",
+    "name": "Shu",
     "language": "zh-cn"
   },
   {
-    "name": "Chow - Female",
+    "name": "Chow",
     "language": "zh-cn"
   },
   {
-    "name": "Wang - Male",
+    "name": "Wang",
     "language": "zh-cn"
   },
   {
-    "name": "Jia - Female",
+    "name": "Jia",
     "language": "zh-hk"
   },
   {
-    "name": "Xia - Female",
+    "name": "Xia",
     "language": "zh-hk"
   },
   {
-    "name": "Chen - Male",
+    "name": "Chen",
     "language": "zh-hk"
   },
   {
-    "name": "Akemi - Female",
+    "name": "Akemi",
     "language": "zh-tw"
   },
   {
-    "name": "Lin - Female",
+    "name": "Lin",
     "language": "zh-tw"
   },
   {
-    "name": "Lee - Male",
+    "name": "Lee",
     "language": "zh-tw"
   },
   {
-    "name": "Nikola - Male",
+    "name": "Nikola",
     "language": "hr-hr"
   },
   {
-    "name": "Josef - Male",
+    "name": "Josef",
     "language": "cs-cz"
   },
   {
-    "name": "Freja - Female",
+    "name": "Freja",
     "language": "da-dk"
   },
   {
-    "name": "Daan - Male",
+    "name": "Daan",
     "language": "nl-be"
   },
   {
-    "name": "Lotte - Female",
+    "name": "Lotte",
     "language": "nl-nl"
   },
   {
-    "name": "Bram - Male",
+    "name": "Bram",
     "language": "nl-nl"
   },
   {
-    "name": "Zoe - Female",
+    "name": "Zoe",
     "language": "en-au"
   },
   {
-    "name": "Isla - Female",
+    "name": "Isla",
     "language": "en-au"
   },
   {
-    "name": "Evie - Female",
+    "name": "Evie",
     "language": "en-au"
   },
   {
-    "name": "Jack - Male",
+    "name": "Jack",
     "language": "en-au"
   },
   {
-    "name": "Rose - Female",
+    "name": "Rose",
     "language": "en-ca"
   },
   {
-    "name": "Clara - Female",
+    "name": "Clara",
     "language": "en-ca"
   },
   {
-    "name": "Emma - Female",
+    "name": "Emma",
     "language": "en-ca"
   },
   {
-    "name": "Mason - Male",
+    "name": "Mason",
     "language": "en-ca"
   },
   {
-    "name": "Alice - Female",
+    "name": "Alice",
     "language": "en-gb"
   },
   {
-    "name": "Nancy - Female",
+    "name": "Nancy",
     "language": "en-gb"
   },
   {
-    "name": "Lily - Female",
+    "name": "Lily",
     "language": "en-gb"
   },
   {
-    "name": "Harry - Male",
+    "name": "Harry",
     "language": "en-gb"
   },
   {
-    "name": "Eka - Female",
+    "name": "Eka",
     "language": "en-in"
   },
   {
-    "name": "Jai - Female",
+    "name": "Jai",
     "language": "en-in"
   },
   {
-    "name": "Ajit - Male",
+    "name": "Ajit",
     "language": "en-in"
   },
   {
-    "name": "Oran - Male",
+    "name": "Oran",
     "language": "en-ie"
   },
   {
-    "name": "Linda - Female",
+    "name": "Linda",
     "language": "en-us"
   },
   {
-    "name": "Amy - Female",
+    "name": "Amy",
     "language": "en-us"
   },
   {
-    "name": "Mary - Female",
+    "name": "Mary",
     "language": "en-us"
   },
   {
-    "name": "John - Male",
+    "name": "John",
     "language": "en-us"
   },
   {
-    "name": "Mike - Male",
+    "name": "Mike",
     "language": "en-us"
   },
   {
-    "name": "Aada - Female",
+    "name": "Aada",
     "language": "fi-fi"
   },
   {
-    "name": "Emile - Female",
+    "name": "Emile",
     "language": "fr-ca"
   },
   {
-    "name": "Olivia - Female",
+    "name": "Olivia",
     "language": "fr-ca"
   },
   {
-    "name": "Logan - Male",
+    "name": "Logan",
     "language": "fr-ca"
   },
   {
-    "name": "Felix - Male",
+    "name": "Felix",
     "language": "fr-ca"
   },
   {
-    "name": "Bette - Female",
+    "name": "Bette",
     "language": "fr-fr"
   },
   {
-    "name": "Iva - Female",
+    "name": "Iva",
     "language": "fr-fr"
   },
   {
-    "name": "Zola - Female",
+    "name": "Zola",
     "language": "fr-fr"
   },
   {
-    "name": "Axel - Male",
+    "name": "Axel",
     "language": "fr-fr"
   },
   {
-    "name": "Theo - Male",
+    "name": "Theo",
     "language": "fr-ch"
   },
   {
-    "name": "Lukas - Male",
+    "name": "Lukas",
     "language": "de-at"
   },
   {
-    "name": "Hanna - Female",
+    "name": "Hanna",
     "language": "de-de"
   },
   {
-    "name": "Lina - Female",
+    "name": "Lina",
     "language": "de-de"
   },
   {
-    "name": "Jonas - Male",
+    "name": "Jonas",
     "language": "de-de"
   },
   {
-    "name": "Tim - Male",
+    "name": "Tim",
     "language": "de-ch"
   },
   {
-    "name": "Neo - Male",
+    "name": "Neo",
     "language": "el-gr"
   },
   {
-    "name": "Rami - Male",
+    "name": "Rami",
     "language": "he-il"
   },
   {
-    "name": "Puja - Female",
+    "name": "Puja",
     "language": "hi-in"
   },
   {
-    "name": "Kabir - Male",
+    "name": "Kabir",
     "language": "hi-in"
   },
   {
-    "name": "Mate - Male",
+    "name": "Mate",
     "language": "hu-hu"
   },
   {
-    "name": "Intan - Male",
+    "name": "Intan",
     "language": "id-id"
   },
   {
-    "name": "Bria - Female",
+    "name": "Bria",
     "language": "it-it"
   },
   {
-    "name": "Mia - Female",
+    "name": "Mia",
     "language": "it-it"
   },
   {
-    "name": "Pietro - Male",
+    "name": "Pietro",
     "language": "it-it"
   },
   {
-    "name": "Hina - Female",
+    "name": "Hina",
     "language": "ja-jp"
   },
   {
-    "name": "Airi - Female",
+    "name": "Airi",
     "language": "ja-jp"
   },
   {
-    "name": "Fumi - Female",
+    "name": "Fumi",
     "language": "ja-jp"
   },
   {
-    "name": "Akira - Male",
+    "name": "Akira",
     "language": "ja-jp"
   },
   {
-    "name": "Nari - Female",
+    "name": "Nari",
     "language": "ko-kr"
   },
   {
-    "name": "Aqil - Male",
+    "name": "Aqil",
     "language": "ms-my"
   },
   {
-    "name": "Marte - Female",
+    "name": "Marte",
     "language": "nb-no"
   },
   {
-    "name": "Erik - Male",
+    "name": "Erik",
     "language": "nb-no"
   },
   {
-    "name": "Julia - Female",
+    "name": "Julia",
     "language": "pl-pl"
   },
   {
-    "name": "Jan - Male",
+    "name": "Jan",
     "language": "pl-pl"
   },
   {
-    "name": "Marcia - Female",
+    "name": "Marcia",
     "language": "pt-br"
   },
   {
-    "name": "Ligia - Female",
+    "name": "Ligia",
     "language": "pt-br"
   },
   {
-    "name": "Yara - Female",
+    "name": "Yara",
     "language": "pt-br"
   },
   {
-    "name": "Dinis - Male",
+    "name": "Dinis",
     "language": "pt-br"
   },
   {
-    "name": "Leonor - Female",
+    "name": "Leonor",
     "language": "pt-pt"
   },
   {
-    "name": "Doru - Male",
+    "name": "Doru",
     "language": "ro-ro"
   },
   {
-    "name": "Olga - Female",
+    "name": "Olga",
     "language": "ru-ru"
   },
   {
-    "name": "Marina - Female",
+    "name": "Marina",
     "language": "ru-ru"
   },
   {
-    "name": "Peter - Male",
+    "name": "Peter",
     "language": "ru-ru"
   },
   {
-    "name": "Beda - Male",
+    "name": "Beda",
     "language": "sk-sk"
   },
   {
-    "name": "Vid - Male",
+    "name": "Vid",
     "language": "sl-si"
   },
   {
-    "name": "Juana - Female",
+    "name": "Juana",
     "language": "es-mx"
   },
   {
-    "name": "Silvia - Female",
+    "name": "Silvia",
     "language": "es-mx"
   },
   {
-    "name": "Teresa - Female",
+    "name": "Teresa",
     "language": "es-mx"
   },
   {
-    "name": "Jose - Male",
+    "name": "Jose",
     "language": "es-mx"
   },
   {
-    "name": "Camila - Female",
+    "name": "Camila",
     "language": "es-es"
   },
   {
-    "name": "Sofia - Female",
+    "name": "Sofia",
     "language": "es-es"
   },
   {
-    "name": "Luna - Female",
+    "name": "Luna",
     "language": "es-es"
   },
   {
-    "name": "Diego - Male",
+    "name": "Diego",
     "language": "es-es"
   },
   {
-    "name": "Molly - Female",
+    "name": "Molly",
     "language": "sv-se"
   },
   {
-    "name": "Hugo - Male",
+    "name": "Hugo",
     "language": "sv-se"
   },
   {
-    "name": "Sai - Male",
+    "name": "Sai",
     "language": "ta-in"
   },
   {
-    "name": "Ukrit - Male",
+    "name": "Ukrit",
     "language": "th-th"
   },
   {
-    "name": "Omer - Male",
+    "name": "Omer",
     "language": "tr-tr"
   },
   {
-    "name": "Chi - Male",
+    "name": "Chi",
     "language": "vi-vn"
   }
 ]

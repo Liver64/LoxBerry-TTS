@@ -5,7 +5,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 // speichert das zurückkommende file lokal ab
 
 {
-	global $config, $messageid, $t2s_param, $pathlanguagefile;
+	global $config, $messageid, $t2s_param, $lbphtmldir, $pathlanguagefile;
 	
 	$filename = $t2s_param['filename'];
 	$textstring = $t2s_param['text'];
@@ -15,16 +15,16 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 	$file = "respvoice.json";
 	$url = $pathlanguagefile."".$file;
 	$textstring = urlencode($textstring);
-	$valid_languages = File_Get_Array_From_JSON($url, $zip=false);
+	$valid_languages = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$file), TRUE);
 	
 		if (isset($_GET['lang'])) {
 			$language = $_GET['lang'];
 			$isvalid = array_multi_search($language, $valid_languages, $sKey = "value");
 			if (!empty($isvalid)) {
 				$language = $_GET['lang'];
-				LOGGING('voice_engines/RespVoice.php: T2S language has been successful entered',5);
+				LOGOK('voice_engines/RespVoice.php: T2S language has been successful entered');
 			} else {
-				LOGGING("voice_engines/RespVoice.php: The entered ResponsiveVoice language key is not supported. Please correct (see Wiki)!",3);
+				LOGERR("voice_engines/RespVoice.php: The entered ResponsiveVoice language key is not supported. Please correct (see Wiki)!");
 				exit;
 			}
 		} else {
@@ -38,7 +38,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		$url = 'https://code.responsivevoice.org/getvoice.php?t='.$textstring.'&tl='.$language;
 		$mp3 =  my_curl($url);
 		file_put_contents($file, $mp3);
-		LOGGING('voice_engines/RespVoice.php: The text has been passed to Responsive Voice for MP3 creation',5);
+		LOGOK('voice_engines/RespVoice.php: The text has been passed to Responsive Voice for MP3 creation');
 		return $filename;
 		
 }

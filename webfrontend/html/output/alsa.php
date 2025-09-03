@@ -28,12 +28,12 @@ function alsa_ob() {
 	# wenn MP3 file ohne jingle
 	if ((isset($_GET['file'])) and (!isset($_GET['jingle'])))  {
 		$sox = shell_exec("tsp -n sox -v $volume $mp3path/$messageid.mp3 -t alsa");
-		LOGGING("output/alsa.php: SoX command has been executed: 'sox -v $volume $mp3path/$messageid.mp3 -t alsa'", 7);
+		LOGINF("output/alsa.php: SoX command has been executed: 'sox -v $volume $mp3path/$messageid.mp3 -t alsa'");
 	}
 	# wenn TTS ohne jingle
 	elseif ((isset($_GET['text'])) and (!isset($_GET['jingle'])))  {
 		$sox = shell_exec("tsp -n sox -v $volume $ttspath/$filename.mp3 -t alsa");
-		LOGGING("output/alsa.php: SoX command has been executed: 'sox -v $volume $ttspath/$filename.mp3 -t alsa'", 7);
+		LOGINF("output/alsa.php: SoX command has been executed: 'sox -v $volume $ttspath/$filename.mp3 -t alsa'");
 	}
 	# wenn TTS mit jingle
 	elseif ((isset($_GET['text'])) and (isset($_GET['jingle'])))  {
@@ -48,10 +48,10 @@ function alsa_ob() {
 		if ($valid === true) {
 			$sox = shell_exec("tsp -n sox -v $volume $mp3path/$jingle -t alsa");
 			$sox = shell_exec("tsp -n sox -v $volume $ttspath/$filename.mp3 -t alsa");
-			LOGGING("output/alsa.php: first SoX command (jingle) has been executed: 'sox -v $volume $mp3path/$jingle -t alsa'", 7);
-			LOGGING("output/alsa.php: second SoX command has been executed: 'sox -v $volume $ttspath/$filename.mp3 -t alsa'", 7);
+			LOGINF("output/alsa.php: first SoX command (jingle) has been executed: 'sox -v $volume $mp3path/$jingle -t alsa'");
+			LOGINF("output/alsa.php: second SoX command has been executed: 'sox -v $volume $ttspath/$filename.mp3 -t alsa'");
 		} else {
-			LOGGING("output/alsa.php: The entered jingle file '".$jingle."' is not valid, please correct your syntax! ", 4);
+			LOGWARN("output/alsa.php: The entered jingle file '".$jingle."' is not valid, please correct your syntax! ");
 		}
 	}
 	# wenn file mit jingle
@@ -67,10 +67,10 @@ function alsa_ob() {
 		if ($valid === true) {
 			$sox = shell_exec("tsp -n sox -v $volume $mp3path/$jingle -t alsa");
 			$sox = shell_exec("tsp -n sox -v $volume $mp3path/$messageid.mp3 -t alsa");
-			LOGGING("output/alsa.php: first SoX command (jingle) has been executed: 'sox -v $volume $mp3path/$jingle -t alsa'", 7);
-			LOGGING("output/alsa.php: second SoX command has been executed: 'sox -v $volume $mp3path/$messageid.mp3 -t alsa'", 7);
+			LOGINF("output/alsa.php: first SoX command (jingle) has been executed: 'sox -v $volume $mp3path/$jingle -t alsa'");
+			LOGINF("output/alsa.php: second SoX command has been executed: 'sox -v $volume $mp3path/$messageid.mp3 -t alsa'");
 		} else {
-			LOGGING("output/alsa.php: The entered jingle file '".$jingle."' is not valid, please correct your syntax! ", 4);
+			LOGWARN("output/alsa.php: The entered jingle file '".$jingle."' is not valid, please correct your syntax! ");
 		}
 	}
 	return;

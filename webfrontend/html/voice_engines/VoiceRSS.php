@@ -4,35 +4,28 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 // voicerss: Erstellt basierend auf Input eine TTS Nachricht, übermittelt sie an VoiceRRS und 
 // speichert das zurückkommende file lokal ab
 
-# 08/03/2018 added $ttsaudiocodec from sonos.cfg
 {
-	global $config, $messageid, $t2s_param, $pathlanguagefile;
-	
+	global $config, $messageid, $lbphtmldir, $t2s_param, $pathlanguagefile;
+		#echo "<PRE>";
 		$apikey = $t2s_param['apikey'];
 		$filename = $t2s_param['filename'];
 		$textstring = $t2s_param['text'];
 		$language = $t2s_param['language'];
+		$voice = $t2s_param['voice'];
 	
 		$ttsaudiocodec = "44khz_16bit_mono";
 		$textstring = urlencode($textstring);
 		
-		$file = "voicerss.json";
-		$url = $pathlanguagefile."".$file;
-		$valid_languages = File_Get_Array_From_JSON($url, $zip=false);
-			if (isset($_GET['lang'])) {
-				$language = $_GET['lang'];
-				$isvalid = array_multi_search($language, $valid_languages, $sKey = "value");
-				if (!empty($isvalid)) {
-					$language = $_GET['lang'];
-					LOGGING('voice_engines/VoiceRSS.php: T2S language has been successful entered',5);
-				} else {
-					LOGGING("voice_engines/VoiceRSS.php: The entered VoiceRSS language key is not supported. Please correct (see Wiki)!",3);
-					exit;
-				}
-			} else {
-				$language = $config['TTS']['messageLang'];
-			}	
-								
+		$langfile = "voicerss.json";
+		$voicefile = "voicerss_voices.json";
+		$voices = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$voicefile), TRUE);
+		$valid_languages = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$langfile), TRUE);
+		
+		$language = $config['TTS']['messageLang'];
+		$isvalid = array_multi_search($voice, $voices, $sKey = "name");
+		$language = $isvalid[0]['language'];
+		$voice = $isvalid[0]['name'];
+							
 		#####################################################################################################################
 		# zu testen da auf Google Translate basierend (urlencode)
 		# ersetzt Umlaute um die Sprachqualität zu verbessern
@@ -42,26 +35,20 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		#####################################################################################################################	
 
 		# Generieren des strings der an VoiceRSS geschickt wird
-		$inlay = "key=$apikey&src=$textstring&hl=$language&f=$ttsaudiocodec";	
+		$inlay = "key=$apikey&src=$textstring&hl=$language&v=$voice&f=$ttsaudiocodec";	
 									
 		# Speicherort der MP3 Datei
 		$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".mp3";
 					
-		# Prüfung ob die MP3 Datei bereits vorhanden ist
-		#if (!file_exists($file)) 
-		#{
-			# Übermitteln des strings an VoiceRSS.org
-			ini_set('user_agent', 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
-			$mp3 = file_get_contents('http://api.voicerss.org/?' . $inlay);
-			file_put_contents($file, $mp3);
-			LOGGING('voice_engines/VoiceRSS.php: The text has been passed to VoiceRSS engine for MP3 creation',5);
-			LOGGING("voice_engines/VoiceRSS.php: MP3 file has been sucesfully saved.", 6);	
-		#} else {
-		#	LOGGING('voice_engines/VoiceRSS.php: Requested T2s has been grabbed from cache',6);
-		#}
-	# Ersetze die messageid durch die von TTS gespeicherte Datei
-	$messageid = $filename;
-	return ($messageid);
+		# Übermitteln des strings an VoiceRSS.org
+		ini_set('user_agent', 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
+		$mp3 = file_get_contents('http://api.voicerss.org/?' . $inlay);
+		file_put_contents($file, $mp3);
+		LOGOK('voice_engines/VoiceRSS.php: The text has been passed to VoiceRSS engine for MP3 creation');
+		LOGOK("voice_engines/VoiceRSS.php: MP3 file has been sucesfully saved.");	
+		# Ersetze die messageid durch die von TTS gespeicherte Datei
+		$messageid = $filename;
+		return ($messageid);
 				  	
 }
 

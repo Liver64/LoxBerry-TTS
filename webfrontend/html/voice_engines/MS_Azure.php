@@ -84,19 +84,19 @@ function t2s($textstring, $filename)
 
     $context  = stream_context_create($options);
 	
-	LOGGING("voice_engines\MS_Azure.php: Microsoft TTS has been successful selected", 7);	
+	LOGINF("voice_engines\MS_Azure.php: Microsoft TTS has been successful selected");	
 	
 	$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".mp3";
     // get the wave data
     $result = file_get_contents($ttsServiceUri, false, $context);
 	file_put_contents($file, $result);
-	LOGGING('voice_engines\MS_Azure.php: The text has been passed to Microsoft engine for MP3 creation',5);
+	LOGOK('voice_engines\MS_Azure.php: The text has been passed to Microsoft engine for MP3 creation');
 	
     if (!$result) {
 		LOGERR("'Sonos: voice_engines\MS_Azure.php: No File created --> Problem with $ttsServiceUri, $php_errormsg");
         #throw new Exception("Problem with $ttsServiceUri, $php_errormsg");
     } else {
-        LOGGING('voice_engines\MS_Azure.php: Everything went well during TTS creation!',5);
+        LOGOK('voice_engines\MS_Azure.php: Everything went well during TTS creation!');
     }
 	return;
 	}
