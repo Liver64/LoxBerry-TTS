@@ -1,0 +1,10 @@
+#!/bin/sh
+
+systemctl stop mqtt-service-tts
+systemctl disable mqtt-service-tts
+rm /etc/systemd/system/mqtt-service-tts.service
+rm /etc/systemd/system/mqtt-service-tts # and symlinks that might be related
+rm /usr/lib/systemd/system/mqtt-service-tts 
+rm /usr/lib/systemd/system/mqtt-service-tts # and symlinks that might be related
+systemctl daemon-reload
+systemctl reset-failed

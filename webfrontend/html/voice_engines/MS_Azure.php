@@ -10,9 +10,9 @@
 **/	
 
 
-function t2s($textstring, $filename)  
+function t2s($t2s_param)  
 {
-	global $config, $t2s_param;
+	global $config;
 
 	// Note: new unified SpeechService API key and issue token uri is per region
 	// New unified SpeechService key
@@ -21,12 +21,12 @@ function t2s($textstring, $filename)
 
 	// User to create Azure account for "westeurope" to get Azure working
 
-	$region = $config['TTS']['regionms']; //"westeurope";
-	$apiKey = $t2s_param['apikey'];
-	$lang = $t2s_param['language'];
-	$textstring = $t2s_param['text'];
-	$voice_ms = $t2s_param['voice'];
-	$filename = $t2s_param['filename'];
+	$region 		= $config['TTS']['regionms']; //"westeurope";
+	$apiKey 		= $t2s_param['apikey'];
+	$lang 			= $t2s_param['language'];
+	$textstring 	= $t2s_param['text'];
+	$voice_ms 		= $t2s_param['voice'];
+	$filename 		= $t2s_param['filename'];
 	
 	$AccessTokenUri = "https://".$region.".api.cognitive.microsoft.com/sts/v1.0/issueToken";
 

@@ -1,12 +1,12 @@
 <?php
-function t2s($messageid, $MessageStorepath, $textstring, $filename)
+function t2s($t2s_param)
 
 // polly: Erstellt basierend auf Input eine TTS Nachricht, übermittelt sie an Ivona.com und 
 // speichert das zurückkommende file lokal ab
 {
 	set_include_path(__DIR__ . '/polly_tts');
 	
-	global $config, $messageid, $t2s_param, $lbphtmldir, $voice, $accesskey, $secretkey, $pathlanguagefile;
+	global $config, $voice, $pathlanguagefile;
 		
 		include_once 'polly_tts/polly.php';
 		
@@ -20,7 +20,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		$voicefile = "polly_voices.json";
 		$urlvoice = $pathlanguagefile."".$voicefile;
 		#$valid_voices = File_Get_Array_From_JSON($urlvoice, $zip=false);
-		$valid_voices = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$voicefile), TRUE);
+		$valid_voices = json_decode(file_get_contents(LBPHTMLDIR."/voice_engines/langfiles/".$voicefile), TRUE);
 		if (isset($_GET['voice'])) {
 			$tmp_voice = $_GET['voice'];
 				$valid_voice = array_multi_search($tmp_voice, $valid_voices, $sKey = "name");

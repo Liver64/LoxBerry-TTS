@@ -1,12 +1,12 @@
 <?php
-function t2s($messageid, $MessageStorepath, $textstring, $filename)
+function t2s($t2s_param)
 
 // voicerss: Erstellt basierend auf Input eine TTS Nachricht, übermittelt sie an VoiceRRS und 
 // speichert das zurückkommende file lokal ab
 
 {
-	global $config, $messageid, $lbphtmldir, $t2s_param, $pathlanguagefile;
-		#echo "<PRE>";
+	global $config, $pathlanguagefile;
+
 		$apikey = $t2s_param['apikey'];
 		$filename = $t2s_param['filename'];
 		$textstring = $t2s_param['text'];
@@ -18,8 +18,8 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		
 		$langfile = "voicerss.json";
 		$voicefile = "voicerss_voices.json";
-		$voices = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$voicefile), TRUE);
-		$valid_languages = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$langfile), TRUE);
+		$voices = json_decode(file_get_contents(LBPHTMLDIR."/voice_engines/langfiles/".$voicefile), TRUE);
+		$valid_languages = json_decode(file_get_contents(LBPHTMLDIR."/voice_engines/langfiles/".$langfile), TRUE);
 		
 		$language = $config['TTS']['messageLang'];
 		$isvalid = array_multi_search($voice, $voices, $sKey = "name");

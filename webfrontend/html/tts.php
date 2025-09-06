@@ -97,6 +97,10 @@ if(empty($config['TTS']['t2s_engine']) || empty($config['TTS']['messageLang'])) 
 
 $finalfile = create_tts();
 
+if (isset($_GET['file']) && !empty($_GET['file'])) {
+    $messageid = basename($_GET['file']);  // Schutz vor Pfadangaben
+}
+
 # ------------------ Soundcard abspielen ------------------
 $soundcard = $config['SYSTEM']['card'] ?? '001';
 require_once('output/alsa.php');
@@ -153,6 +157,46 @@ function delete_all_cache() {
 # ------------------ JSON Response für Interface ------------------
 if($tmp_content || isset($_GET['json'])) {
     json($t2s_param['filename']);
+}
+
+function getusbcard() {
+	
+    global $config, $lbpbindir, $myteccard;
+
+    $jsonFile = $lbpbindir . "/hats.json";
+
+    // Prüfen, ob JSON existiert
+    if (!file_exists($jsonFile)) {
+        LOGERR("getusbcard(): JSON file not found: $jsonFile");
+        return false;
+    }
+
+    // JSON einlesen und parsen
+    $cfg = json_decode(file_get_contents($jsonFile), true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        LOGERR("getusbcard(): Failed to parse JSON file: " . json_last_error_msg());
+        return false;
+    }
+
+    $mycard = $config['SYSTEM']['usbcard'] ?? '';
+    $usbCardNo = $config['SYSTEM']['usbcardno'] ?? '';
+    $usbDevice = $config['SYSTEM']['usbdevice'] ?? '';
+
+    // Prüfen, ob die Karte existiert
+    if (!isset($cfg[$mycard]['output'])) {
+        LOGERR("getusbcard(): Card type '$mycard' not found in JSON config.");
+        return false;
+    }
+
+    // Ergebnis-String zusammenbauen
+    if ($mycard === "usb_audio") {
+        $myteccard = $cfg[$mycard]['output'] . $usbCardNo . ',' . $usbDevice;
+    } else {
+        $myteccard = $cfg[$mycard]['output'] . ',DEV=' . $usbDevice;
+    }
+
+    LOGINF("getusbcard(): Detected card string: $myteccard");
+    return $myteccard;
 }
 
 LOGEND("PHP finished");

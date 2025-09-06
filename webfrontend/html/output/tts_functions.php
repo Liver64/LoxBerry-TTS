@@ -9,94 +9,70 @@ global $config, $t2s_param, $lbpdatadir;
 
 // =================== create_tts ===================
 function create_tts() {
-    global $config, $t2s_param, $lbpdatadir, $log;
+	
+    global $config, $t2s_param;
 
-    $textstring = trim($t2s_param['text']);
-    $fullmessageid = md5($textstring);
-    $ttspath = $config['SYSTEM']['ttspath'];
-    $mp3file = "$ttspath/$fullmessageid.mp3";
+    $ttspath  = rtrim($config['SYSTEM']['ttspath'], '/');
+    $mp3path  = rtrim($config['SYSTEM']['mp3path'], '/');
 
-    // Cache prüfen
-    if(file_exists($mp3file) && empty($_GET['nocache'])) {
-        LOGINF("tts_functions.php: File already exists in cache: $mp3file");
+    // ------------------ 1) Fertige MP3-Datei aus URL ------------------
+    if (!empty($_GET['file'])) {
+        $filename = basename($_GET['file']); // Schutz vor Pfadangriffen
+
+        // Nur .mp3 anhängen, wenn es noch nicht vorhanden ist
+        if (substr($filename, -4) !== '.mp3') {
+            $filename .= '.mp3';
+        }
+
+        $fullpath = "$mp3path/$filename";
+
+        if (file_exists($fullpath)) {
+            LOGINF("tts_functions.php: Serving existing MP3 file: $fullpath");
+            return $fullpath;
+        } else {
+            LOGERR("tts_functions.php: Requested file not found: $fullpath");
+            return false;
+        }
+    }
+
+    // ------------------ 2) Text in TTS umwandeln ------------------
+    if (!empty($t2s_param['text'])) {
+        $text = trim($t2s_param['text']);
+        $messageid = md5($text);
+        $mp3file = "$ttspath/$messageid.mp3";
+
+        // Cache prüfen
+        if (file_exists($mp3file) && empty($_GET['nocache'])) {
+            LOGINF("tts_functions.php: Found cached MP3: $mp3file");
+            return $mp3file;
+        }
+
+        // Engine-Datei laden
+        $engine_file = get_engine_file($t2s_param['t2sengine']);
+        if (!$engine_file) {
+            LOGERR("tts_functions.php: Invalid TTS engine: " . $t2s_param['t2sengine']);
+            return false;
+        }
+
+        include_once($engine_file);
+
+        LOGINF("tts_functions.php: Generating new MP3 with engine $engine_file for text: '$text'");
+        t2s($t2s_param);
+
+        if (!file_exists($mp3file)) {
+            LOGERR("tts_functions.php: MP3 could not be created: $mp3file");
+            return false;
+        }
+
         return $mp3file;
     }
 
-    // Plugin-Spezifische Texte
-    if ($textstring === "weather") {
-        include_once("addon/weather-to-speech.php");
-        $textstring = substr(w2s(),0,500);
-    } elseif ($textstring === "clock") {
-        include_once("addon/clock-to-speech.php");
-        $textstring = c2s();
-    } elseif ($textstring === "pollen") {
-        include_once("addon/pollen-to-speach.php");
-        $textstring = substr(p2s(),0,500);
-    } elseif ($textstring === "warning") {
-        include_once("addon/weather-warning-to-speech.php");
-        $textstring = substr(ww2s(),0,500);
-    } elseif ($textstring === "distance") {
-        include_once("addon/time-to-destination-speech.php");
-        $textstring = substr(tt2t(),0,500);
-    } elseif ($textstring === "abfall") {
-        include_once("addon/waste-calendar-to-speech.php");
-        $textstring = substr(muellkalender(),0,500);
-    } elseif ($textstring === "calendar") {
-        include_once("addon/waste-calendar-to-speech.php");
-        $textstring = substr(calendar(),0,500);
-    }
-
-    // Splitten falls nötig (optional)
-    $textstrings = [$textstring];
-	
-	// Löschung des MP3 Files falls es aus Plugin Test kommt
-	if (isset($_GET['testfile']))    {
-		if (file_exists($lbpdatadir."/interfacedownload/".$_GET['filename'].".mp3"))   {
-			@unlink($lbpdatadir."/interfacedownload/".$_GET['filename'].".mp3");
-			LOGINF("tts.php: Previous Testfile: ".$_GET['filename'].".mp3 has been deleted");
-		}
-	}
-    $filenames = [];
-    foreach($textstrings as $text) {
-        $text = trim($text);
-        if(empty($text)) continue;
-
-        $messageid = md5($text);
-        $filename = "$ttspath/$messageid.mp3";
-
-        if(!file_exists($filename) || !empty($_GET['nocache'])) {
-            $engine_file = get_engine_file($t2s_param['t2sengine']);
-            if(!$engine_file) {
-                LOGERR("tts_functions.php: Unknown TTS engine selected");
-                return false;
-            }
-            include_once($engine_file);
-            t2s($messageid, $ttspath, $text, $filename, $t2s_param);
-
-            if(!file_exists($filename)) {
-                LOGERR("tts_functions.php: MP3 could not be created for text: $text");
-                return false;
-            }
-        }
-        array_push($filenames, $filename);
-    }
-
-	/**
-    // Mehrere MP3s zusammenführen (optional)
-    if(count($filenames) > 1) {
-        $mergefile = "$ttspath/$fullmessageid.mp3";
-        $cmd = "sox " . implode(" ", $filenames) . " $mergefile";
-        shell_exec($cmd);
-        if(!file_exists($mergefile)) {
-            LOGERR("tts_functions.php: Merged MP3 file could not be created");
-            return false;
-        }
-        return $mergefile;
-    }
-	**/
-
-    return $filenames[0];
+    // ------------------ 3) Weder file noch text angegeben ------------------
+    LOGERR("tts_functions.php: Neither 'file' nor 'text' provided in request");
+    return false;
 }
+
+
 
 // =================== get_engine_file ===================
 function get_engine_file($engineid) {

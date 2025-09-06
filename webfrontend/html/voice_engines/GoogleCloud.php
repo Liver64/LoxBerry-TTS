@@ -1,6 +1,6 @@
 <?php
-#function t2s($textstring, $filename)
-function t2s($messageid, $MessageStorepath, $textstring, $filename)
+
+function t2s($t2s_param)
 
 // google: Erstellt basierend auf Input eine TTS Nachricht, übermittelt sie an Google.com und 
 // speichert das zurückkommende file lokal ab
@@ -22,7 +22,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 		}
 								  		
 		LOGINF("voice_engines/GoogleCloud.php: Google Cloud TTS has been successful selected");	
-		LOGINF("voice_engines/GoogleCloud.php: Google Cloud TTS has been successful selected");	
+
 
 		$params = [
 			"audioConfig"=>[

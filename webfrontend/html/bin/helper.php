@@ -91,32 +91,41 @@ function File_Get_Array_From_JSON($FileName, $zip=false) {
 * @return: 
 **/
 
-function select_t2s_engine()  {
-	global $config;
-	
-	if ($config['TTS']['t2s_engine'] == 1001) {
-		include_once("voice_engines/VoiceRSS.php");
-	}
-	if ($config['TTS']['t2s_engine'] == 3001) {
-		include_once("voice_engines/ElevenLabs.php");
-	}
-	if ($config['TTS']['t2s_engine'] == 6001) {
-		include_once("voice_engines/ResponsiveVoice.php");
-	}
-	if ($config['TTS']['t2s_engine'] == 7001) {
-		include_once("voice_engines/GoogleCloud.php");
-	}
-	if ($config['TTS']['t2s_engine'] == 5001) {
-		include_once("voice_engines/Piper.php");
-	}
-	if ($config['TTS']['t2s_engine'] == 4001) {
-		include_once("voice_engines/Polly.php");
-	}
-	if ($config['TTS']['t2s_engine'] == 9001) {
-		include_once("voice_engines/MS_Azure.php");
-	}
+function select_t2s_engine($selectedEngine) {
+    // Mapping von Engine-ID zu Dateiname
+    $engineMap = [
+        1001 => "VoiceRSS.php",
+        3001 => "ElevenLabs.php",
+        4001 => "Polly.php",
+        5001 => "Piper.php",
+        6001 => "ResponsiveVoice.php",
+        7001 => "GoogleCloud.php",
+        9001 => "MS_Azure.php",
+    ];
+    if (isset($engineMap[$selectedEngine])) {
+        require_once LBPHTMLDIR . "/voice_engines/" . $engineMap[$selectedEngine];
+    } else {
+        trigger_error("helper.php: Unknown T2S Engine ID: $selectedEngine", E_USER_WARNING);
+    }
 }
 
+
+function GetTTSParameter($config, $data)    {
+	
+	global $config, $t2s_param;
+	
+	$t2s_param = [
+		'text'      => $data['text'] ?? null,
+		't2sengine' => $config['TTS']['t2s_engine'] ?? null,
+		'filename'  => md5(trim($data['text'])) ?? null,
+		'apikey'    => $config['TTS']['apikey'] ?? null,
+		'secretkey' => $config['TTS']['secretkey'] ?? null,
+		'language'  => $config['TTS']['messageLang'] ?? null,
+		'voice'     => $config['TTS']['voice'] ?? null,
+		'interface' => 1 ?? null
+	];
+	return $t2s_param;
+}
 
 
 /**
@@ -245,6 +254,27 @@ function xcopy($source, $dest, $permissions = 0755)
     // Clean up
     $dir->close();
     return true;
+}
+
+function LoadConfig() {
+	
+    global $config;
+
+    $configFile = LBPCONFIGDIR . "/t2s_config.json";
+
+    if (!file_exists($configFile)) {
+        logmsg("OK", "t2s_config.json could not be found!");
+        return null; // Sauberer Abbruch ohne exit
+    }
+
+    $config = json_decode(file_get_contents($configFile), true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        logmsg("ERROR", "Error during parse des Config file Fehler beim Parsen der $configFile - " . json_last_error_msg());
+        return null;
+    }
+
+    return $config;
 }
  
 ?>

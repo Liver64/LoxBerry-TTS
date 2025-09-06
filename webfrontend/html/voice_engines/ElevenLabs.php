@@ -1,11 +1,7 @@
 <?php
-function t2s($textstring, $filename, $t2s_param =!'')
-
+function t2s($t2s_param)
 {
-	
-	global $config, $voice, $t2s_param, $urlvoice, $audio, $apikey, $filename, $textstring, $modelid, $lbpplugindir, $lbhomedir, $stability, $similarity_boost, $style, $use_speaker_boost, $jsondata;
-	
-	echo "<PRE>";
+	global $config, $voice, $urlvoice, $audio, $apikey, $filename, $textstring, $modelid, $lbpplugindir, $lbhomedir, $stability, $similarity_boost, $style, $use_speaker_boost, $jsondata;
 	
 	$apikey = $t2s_param['apikey'];
 	$filename = $t2s_param['filename'];

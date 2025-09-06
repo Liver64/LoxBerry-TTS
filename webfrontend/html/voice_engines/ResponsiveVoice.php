@@ -1,11 +1,11 @@
 <?php
-function t2s($messageid, $MessageStorepath, $textstring, $filename)
+function t2s($t2s_param)
 
 // text-to-speech: Erstellt basierend auf Input eine TTS Nachricht, übermittelt sie an ResponsiveVoice und 
 // speichert das zurückkommende file lokal ab
 
 {
-	global $config, $messageid, $t2s_param, $lbphtmldir, $pathlanguagefile;
+	global $config, $pathlanguagefile;
 	
 	$filename = $t2s_param['filename'];
 	$textstring = $t2s_param['text'];
@@ -15,7 +15,7 @@ function t2s($messageid, $MessageStorepath, $textstring, $filename)
 	$file = "respvoice.json";
 	$url = $pathlanguagefile."".$file;
 	$textstring = urlencode($textstring);
-	$valid_languages = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$file), TRUE);
+	$valid_languages = json_decode(file_get_contents(LBPHTMLDIR."/voice_engines/langfiles/".$file), TRUE);
 	
 		if (isset($_GET['lang'])) {
 			$language = $_GET['lang'];

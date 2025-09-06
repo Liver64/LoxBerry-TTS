@@ -1,21 +1,21 @@
 <?php
-function t2s($textstring, $filename)
+function t2s($t2s_param)
 
 // Piper: Erstellt basierend auf Input eine TTS Nachricht mit Piper
 // http://lame.sf.net
 
 {
-	global $config, $pathlanguagefile, $t2s_param, $messageid, $voice, $textstring, $filename, $lbphtmldir;
+	global $config, $pathlanguagefile;
 	
 		$filename = $t2s_param['filename'];
 		$textstring = $t2s_param['text'];
 		$voice = $t2s_param['voice'];
 		
 		$voicefile = "piper_voices.json";
-		$piperdet = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$voicefile), TRUE);
+		$piperdet = json_decode(file_get_contents(LBPHTMLDIR."/voice_engines/langfiles/".$voicefile), TRUE);
 		$urlvoice = $pathlanguagefile."".$voicefile;
 		#$valid_voices = File_Get_Array_From_JSON($urlvoice, $zip=false);
-		#$valid_voices = json_decode(file_get_contents($lbphtmldir."/voice_engines/langfiles/".$langfile), TRUE);
+		#$valid_voices = json_decode(file_get_contents(LBPHTMLDIR."/voice_engines/langfiles/".$langfile), TRUE);
 	
 		$valid_voice = array_multi_search($voice, $piperdet, $sKey = "name");
 		$pipervoicefile = $valid_voice[0]['filename'];
@@ -34,7 +34,7 @@ function t2s($textstring, $filename)
 		LOGINF("voice_engines\Piper.php: Piper has been successful selected");	
 		# Übermitteln des Strings an Piper
 		try {
-			exec('echo '.$textstring.' | piper -m '.$lbphtmldir.'/voice_engines/piper-voices/'.$pipervoicefile.' -f '.$config['SYSTEM']['ttspath'] .'/'. $filename . '.wav --speaker '.$speaker);
+			exec('echo '.$textstring.' | piper -m '.LBPHTMLDIR.'/voice_engines/piper-voices/'.$pipervoicefile.' -f '.$config['SYSTEM']['ttspath'] .'/'. $filename . '.wav --speaker '.$speaker);
 			exec('/usr/bin/lame '.$config['SYSTEM']['ttspath'] ."/". $filename . ".wav".' '.$config['SYSTEM']['ttspath'] ."/". $filename . ".mp3");
 			unlink($config['SYSTEM']['ttspath'] ."/". $filename . ".wav");
 		} catch(Exception $e) {
