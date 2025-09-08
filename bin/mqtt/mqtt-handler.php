@@ -42,6 +42,18 @@ $log = LBLog::newLog($params);
 // =======================
 $enableLogMsg = false; 		// true = Logging für 'losmsg' aktiv, false = Logging für 'losmsg' deaktiviert
 
+// =======================
+// Start running only if Plugins installed
+// =======================
+$plugins = LBSystem::get_plugins();
+$plugincheck = false;
+foreach ($plugins as $plugin) {
+    $title = $plugin['PLUGINDB_TITLE'] ?? null;
+    if (!$title) continue;
+    if (in_array($title, $checkArray, true)) $plugincheck = true;
+}
+if ($plugincheck) {
+
 LOGSTART("Interface");
 
 //*************** ENDE KONFIGURATION************************
@@ -130,18 +142,10 @@ if (file_exists($InterfaceConfigFile)) {
     LOGERR("mqtt-handler.php: interfaces.json not found! No plugins loaded.");
 }
 
-$plugins = LBSystem::get_plugins();
-$plugincheck = false;
-foreach ($plugins as $plugin) {
-    $title = $plugin['PLUGINDB_TITLE'] ?? null;
-    if (!$title) continue;
-    if (in_array($title, $checkArray, true)) $plugincheck = true;
-}
-
 // =======================
 // MQTT Setup
 // =======================
-if ($plugincheck) {
+
     $creds = mqtt_connectiondetails();
     $client_id = uniqid(gethostname() . "_client");
     $mqtt = new Bluerhinos\phpMQTT($creds['brokerhost'], $creds['brokerport'], $client_id);
