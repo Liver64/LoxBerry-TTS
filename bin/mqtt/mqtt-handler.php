@@ -43,8 +43,15 @@ $log = LBLog::newLog($params);
 $enableLogMsg = false; 		// true = Logging für 'losmsg' aktiv, false = Logging für 'losmsg' deaktiviert
 
 // =======================
-// Start running only if Plugins installed
+// Plugins prüfen
 // =======================
+if (file_exists($InterfaceConfigFile)) {
+    $checkArray = json_decode(file_get_contents($InterfaceConfigFile), true);
+} else {
+    $checkArray = [];
+    LOGERR("mqtt-handler.php: interfaces.json not found! No plugins loaded.");
+}
+
 $plugins = LBSystem::get_plugins();
 $plugincheck = false;
 foreach ($plugins as $plugin) {
@@ -52,6 +59,10 @@ foreach ($plugins as $plugin) {
     if (!$title) continue;
     if (in_array($title, $checkArray, true)) $plugincheck = true;
 }
+
+// =======================
+// Start Script (logging) nur wenn Plugins installiert sind
+// =======================
 if ($plugincheck) {
 
 LOGSTART("Interface");
@@ -132,15 +143,7 @@ function logmsg($level, $message) {
 logmsg("START", "Start MQTT Handler");
 LOGOK("mqtt-handler.php: MQTT Handler started");
 
-// =======================
-// Plugins prüfen
-// =======================
-if (file_exists($InterfaceConfigFile)) {
-    $checkArray = json_decode(file_get_contents($InterfaceConfigFile), true);
-} else {
-    $checkArray = [];
-    LOGERR("mqtt-handler.php: interfaces.json not found! No plugins loaded.");
-}
+
 
 // =======================
 // MQTT Setup
