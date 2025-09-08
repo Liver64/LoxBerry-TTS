@@ -1,22 +1,17 @@
 #!/bin/bash
 set -o pipefail
 
-# 1) Basis-Variablen
-: "${LBHOMEDIR:=/opt/loxberry}"
-: "${LBPLOG:=/opt/loxberry/log/plugins}"
-: "${LBPDATA:=/opt/loxberry/data/plugins}"
-
 PACKAGE="text2speech"
 NAME="TTS-Monitor"
-LOGDIR="${LBPLOG%/}/${PACKAGE}"
-FILENAME="${LOGDIR}/monitor.log"
+LOGDIR=$LBPLOG/${PACKAGE}
+FILENAME=$LBPLOG/monitor.log
 APPEND=1
 
 # 2) Verzeichnis garantieren
-mkdir -p "$LOGDIR"
+#mkdir -p "$LOGDIR"
 
 # 3) Logging-Library laden
-. "$LBHOMEDIR/libs/bashlib/loxberry_log.sh"
+. $LBHOMEDIR/libs/bashlib/loxberry_log.sh
 
 # 4) Logging starten
 LOGSTART "TTS-Monitor started."
