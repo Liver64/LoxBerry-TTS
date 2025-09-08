@@ -13,7 +13,7 @@ ini_set('max_execution_time', 90);
 
 require_once("bin/helper.php");
 require_once('output/usb.php');
-require_once('output/tts_functions.php'); // alle TTS-Funktionen
+require_once('bin/tts_functions.php'); // alle TTS-Funktionen
 
 date_default_timezone_set(date("e"));
 
@@ -68,16 +68,8 @@ $volume = $volume/100;
 delete_all_cache();
 
 # ------------------ Input prüfen ------------------
-$tmp_content = file_get_contents("php://input");
-if($tmp_content) {
-    require_once('output/interface.php');
-    process_post_request();
-    $text = $decoded['text'];
-    $greet = $decoded['greet'] ?? "";
-} else {
-    $text = $t2s_param['text'];
-    $greet = $_GET['greet'] ?? "";
-}
+$text = $t2s_param['text'];
+$greet = $_GET['greet'] ?? "";
 
 # ------------------ Gruß-Logik ------------------
 if($greet) {
@@ -95,33 +87,48 @@ if(empty($config['TTS']['t2s_engine']) || empty($config['TTS']['messageLang'])) 
     exit;
 }
 
+# ------ wenn Test aus Plugin vorher MP3 löschen -----------
+if (is_enabled($t2s_param['testfile'])) {
+    $mp3file = $lbpdatadir . "/interfacedownload/" . $t2s_param['filename'] . ".mp3";
+
+    if (file_exists($mp3file)) {
+        @unlink($mp3file);
+        LOGDEB("tts.php: Test MP3: $mp3file has been deleted");
+    } else {
+        LOGDEB("tts.php: Test MP3: $mp3file does not exist, nothing to delete");
+    }
+}
+
 $finalfile = create_tts();
 
 if (isset($_GET['file']) && !empty($_GET['file'])) {
     $messageid = basename($_GET['file']);  // Schutz vor Pfadangaben
 }
-
-# ------------------ Soundcard abspielen ------------------
-$soundcard = $config['SYSTEM']['card'] ?? '001';
-require_once('output/alsa.php');
-switch($soundcard) {
-    case '001': exit; break; # Null
-    case '002': case '003': case '004': case '005': case '006': case '007': case '008': case '009': case '010': case '011':
-        shell_exec("export AUDIODRIVER=alsa");
-        shell_exec("export AUDIODEV=default:0");
-        alsa_ob($finalfile);
-        break;
-    case '012': case '013':
-        getusbcard();
-        shell_exec("export AUDIODRIVER=alsa");
-        shell_exec("export AUDIODEV=".$myteccard);
-        alsa_ob($finalfile);
-        break;
-    default:
-        shell_exec("export AUDIODRIVER=alsa");
-        shell_exec("export AUDIODEV=hw:1,0");
-        alsa_ob($finalfile);
-        break;
+if (is_disabled($t2s_param['testfile'])) {
+	# ------------------ Soundcard abspielen ------------------
+	$soundcard = $config['SYSTEM']['card'] ?? '001';
+	require_once('output/alsa.php');
+	switch($soundcard) {
+		case '001': exit; break; # Null
+		case '002': case '003': case '004': case '005': case '006': case '007': case '008': case '009': case '010': case '011':
+			shell_exec("export AUDIODRIVER=alsa");
+			shell_exec("export AUDIODEV=default:0");
+			alsa_ob($finalfile);
+			break;
+		case '012': case '013':
+			getusbcard();
+			shell_exec("export AUDIODRIVER=alsa");
+			shell_exec("export AUDIODEV=".$myteccard);
+			alsa_ob($finalfile);
+			break;
+		default:
+			shell_exec("export AUDIODRIVER=alsa");
+			shell_exec("export AUDIODEV=hw:1,0");
+			alsa_ob($finalfile);
+			break;
+	}
+} else {
+	LOGINF("tts.php: Test MP3: listen to your PC speaker...");
 }
 
 /**
@@ -154,14 +161,9 @@ function delete_all_cache() {
 }
 
 
-# ------------------ JSON Response für Interface ------------------
-if($tmp_content || isset($_GET['json'])) {
-    json($t2s_param['filename']);
-}
-
 function getusbcard() {
 	
-    global $config, $lbpbindir, $myteccard;
+    global $config, $lbpbindir, $t2s_param, $myteccard;
 
     $jsonFile = $lbpbindir . "/hats.json";
 

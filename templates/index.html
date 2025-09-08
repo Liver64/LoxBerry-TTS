@@ -1240,7 +1240,7 @@ async function PopulateElevenlabsLang() {
 
         // === Stimmen abrufen ===
         voiceSelect.empty();
-        const voiceResp = await fetch("https://api.elevenlabs.io/v2/voices", { headers });
+        const voiceResp = await fetch("https://api.elevenlabs.io/v1/voices", { headers });
         if (!voiceResp.ok) {
             return handleError(`Voices Request failed: ${voiceResp.status}`);
         }

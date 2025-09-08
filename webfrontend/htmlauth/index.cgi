@@ -423,7 +423,7 @@ sub form {
 	my $tv = qx(/usr/bin/php $lbphtmldir/bin/piper_tts.php);	
 
 	# Fill output Dropdown
-	my $outpath = $lbpconfigdir . "/" . $outputfile;
+	my $outpath = $lbpbindir . "/" . $outputfile;
 	open my $in, $outpath or die "$outpath: $!";
 	
 	my $i = 1;
@@ -506,9 +506,11 @@ sub save
 	$tcfg->{SYSTEM}->{path} 									= "$R::STORAGEPATH";
 	$tcfg->{SYSTEM}->{mp3path} 									= "$R::STORAGEPATH/$mp3folder";
 	$tcfg->{SYSTEM}->{ttspath} 									= "$R::STORAGEPATH/$ttsfolder";
-	$tcfg->{SYSTEM}->{interfacepath} 							= $rampath;
+	#$tcfg->{SYSTEM}->{interfacepath} 							= $rampath;
 	$tcfg->{SYSTEM}->{httpinterface} 							= "http://$lbhostname/plugins/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{cifsinterface} 							= "//$lbhostname/plugindata/$lbpplugindir/interfacedownload";
+	$tcfg->{SYSTEM}->{httpmp3interface} 						= "http://$lbhostname/plugindata/$lbpplugindir/mp3";
+	$tcfg->{SYSTEM}->{cifsmp3interface} 						= "//$lbhostname/plugindata/$lbpplugindir/mp3";
 	$tcfg->{SYSTEM}->{card}					 					= "$R::out_list";
 	if ($R::out_list eq '012' || $R::out_list eq '012')   {
 		$tcfg->{SYSTEM}->{usbcard} 									= "$R::usb_list";

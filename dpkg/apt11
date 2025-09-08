@@ -1,10 +1,11 @@
 # These packages will be installed by apt-get -y install PACKAGENAME
 # One line per package, use exact packagename as you would do for apt-get.
 #
-sox
+#sox
 libsox-fmt-all
-lame
+#lame
 #curl 
+alsa-utils
 libcurl4
 php-soap
 #raspberrypi-sys-mods 
@@ -12,3 +13,5 @@ php-soap
 bluez
 mplayer
 task-spooler
+mpeg123
+ffmpeg

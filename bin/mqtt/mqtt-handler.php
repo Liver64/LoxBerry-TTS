@@ -11,11 +11,20 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+
+//************** START KONFIGURATION **********************
+
 // =======================
-// Konfiguration
+// Ladender Konfiguration Dateien
 // =======================
 $logfile = LBPLOGDIR."/mqtt.log";
 $InterfaceConfigFile = LBPCONFIGDIR."/interfaces.json";
+
+// =======================
+// Zulässige Topics
+// =======================
+$subscribeTopic = 'tts-publish';
+$responseTopic  = 'tts-subscripe';
 
 // =======================
 // Loxberry Logging Konfiguration
@@ -28,7 +37,15 @@ $params = [
 ];
 $log = LBLog::newLog($params);
 
+// =======================
+// Globales Logging Control (logmsg( Nachrichten
+// =======================
+$enableLogMsg = false; 		// true = Logging für 'losmsg' aktiv, false = Logging für 'losmsg' deaktiviert
+
 LOGSTART("Interface");
+
+//*************** ENDE KONFIGURATION************************
+
 
 // =======================
 // Globales Log-Array
@@ -39,33 +56,42 @@ $logArray = [];
 // Logging Funktion (MQTT + eigenes Logfile)
 // =======================
 function logmsg($level, $message) {
-    global $logfile, $logArray;
+    global $logfile, $logArray, $enableLogMsg;
 
-    // Emoji je Level
-    $emojiMap = [
-        'START'  => '🛑',
-        'END'    => '🛑',
-        'OK'     => '✅',
-        'ERROR'  => '❌',
-        'INFO'   => 'ℹ️',
-        'UPDATE' => '🔄'
-    ];
-    $emoji = $emojiMap[$level] ?? '';
+    // ==========================
+    // Logfile nur schreiben, wenn aktiviert
+    // ==========================
+    if ($enableLogMsg) {
+        // Emoji je Level
+        $emojiMap = [
+            'START'  => '🛑',
+            'END'    => '🛑',
+            'OK'     => '✅',
+            'ERROR'  => '❌',
+            'INFO'   => 'ℹ️',
+            'UPDATE' => '🔄'
+        ];
+        $emoji = $emojiMap[$level] ?? '';
 
-    $timestamp = date("Y-m-d H:i:s");
-    $entry = "$timestamp $emoji";
+        $timestamp = date("H:i:s");
+        $entry = "$timestamp $emoji";
 
-    if (is_array($message)) {
-        $entry .= json_encode($message, JSON_UNESCAPED_UNICODE);
-    } else {
-        $entry .= $message;
+        if (is_array($message)) {
+            $entry .= json_encode($message, JSON_UNESCAPED_UNICODE);
+        } else {
+            $entry .= $message;
+        }
+        $entry .= "\n";
+
+        if (!is_dir(dirname($logfile))) {
+            mkdir(dirname($logfile), 0775, true);
+        }
+        file_put_contents($logfile, mb_convert_encoding($entry, "UTF-8", "auto"), FILE_APPEND | LOCK_EX);
     }
-    $entry .= "\n";
 
-    if (!is_dir(dirname($logfile))) mkdir(dirname($logfile), 0775, true);
-    file_put_contents($logfile, mb_convert_encoding($entry, "UTF-8", "auto"), FILE_APPEND | LOCK_EX);
-
-    // Für MQTT Payload ohne Emojis
+    // ==========================
+    // MQTT Payload wird IMMER erstellt
+    // ==========================
     $cleanMessage = $message;
     if (is_array($message)) {
         $parts = [];
@@ -78,12 +104,15 @@ function logmsg($level, $message) {
         }
         $cleanMessage = implode(', ', $parts);
     } else {
+        // Emojis aus MQTT-Logs entfernen
         $cleanMessage = preg_replace('/[^\x20-\x7EÄÖÜäöüß]/u', '', $cleanMessage);
     }
     $cleanMessage = preg_replace('/\s+/', ' ', $cleanMessage);
 
+    // Logs für MQTT immer mitschicken
     $logArray[] = "<$level> $cleanMessage";
 }
+
 
 // =======================
 // Startmeldung
@@ -115,9 +144,6 @@ foreach ($plugins as $plugin) {
 if ($plugincheck) {
     $creds = mqtt_connectiondetails();
     $client_id = uniqid(gethostname() . "_client");
-    $subscribeTopic = 'tts-interface';
-    $responseTopic  = 'tts-response';
-
     $mqtt = new Bluerhinos\phpMQTT($creds['brokerhost'], $creds['brokerport'], $client_id);
 
     if (!$mqtt->connect(true, NULL, $creds['brokeruser'], $creds['brokerpass'])) {
@@ -134,18 +160,16 @@ if ($plugincheck) {
     // Schema Definition
     // =======================
     $expectedSchema = [
-        "type" => "object",
-        "required" => ["text"],
-        "properties" => [
-            "text" => ["type" => "string"],
-            "nocache" => ["type" => "number"],
-            "logfile" => ["type" => "string"],
-            "logfilepath" => ["type" => "string"],
-            "plugintitle" => ["type" => "string"],
-            "optional" => ["type" => "string"]
-        ],
-        "additionalProperties" => false
-    ];
+			"type" => "object",
+			"required" => ["text"],
+			"properties" => [
+				"text"     => ["type" => "string"],
+				"nocache"  => ["type" => "number"],
+				"logging"  => ["type" => "number"],
+				"mp3files" => ["type" => "number"]
+			],
+			"additionalProperties" => false
+	];
 
     // =======================
     // MQTT Callback
@@ -155,7 +179,7 @@ if ($plugincheck) {
 
         $logArray = []; // Reset before each new publish
         logmsg("INFO", "Message received from [$topic]: $msg");
-        LOGINF("mqtt-handler.php: Message received on topic [$topic]: $msg");
+        LOGDEB("mqtt-handler.php: Message received on topic [$topic]: $msg");
 
         $data = json_decode($msg, true);
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
@@ -225,7 +249,7 @@ if ($plugincheck) {
                 sleep(5);
                 if (!$mqtt->connect(true,NULL,$creds['brokeruser'],$creds['brokerpass'])) {
                     logmsg("ERROR", "Lost connection to MQTT broker. Reconnect failed. Retrying...");
-                    LOGERR("mqtt-handler.php: Lost connection to MQTT broker. Reconnect failed. Retrying...");
+                    LOGWARN("mqtt-handler.php: Lost connection to MQTT broker. Reconnect failed. Retrying...");
                     sleep(30);
                     continue;
                 }
@@ -292,7 +316,7 @@ function createMessage(array $data) {
 
     if ($nocache === 1) {
         logmsg("INFO", "Parameter 'nocache' received, force MP3 re-creation: $fullpath");
-        LOGINF("mqtt-handler.php: Force MP3 re-creation due to nocache parameter.");
+        LOGDEB("mqtt-handler.php: Force MP3 re-creation due to nocache parameter.");
         $tmpresult = t2s($t2s_param);
 
         clearstatcache(true, $fullpath);
@@ -311,10 +335,10 @@ function createMessage(array $data) {
     } elseif (is_file($fullpath)) {
         $messresponse = "MP3 file picked from cache, no need to recreate.";
         $result = true;
-        LOGINF("mqtt-handler.php: MP3 file picked from cache: $mp3filename");
+        LOGDEB("mqtt-handler.php: MP3 file picked from cache: $mp3filename");
     } else {
         logmsg("INFO", "File not found, creating new MP3: $fullpath");
-        LOGINF("mqtt-handler.php: File not found. Creating new MP3...");
+        LOGDEB("mqtt-handler.php: File not found. Creating new MP3...");
         $tmpresult = t2s($t2s_param);
 
         $timeout  = 5; $interval = 100000; $elapsed = 0;
@@ -335,26 +359,40 @@ function createMessage(array $data) {
     }
 
     if ($result) {
-        logmsg("OK", $messresponse . ": $mp3filename");
-        $audioFiles = getAudioFiles();
-        $finalResponse = [
-            'status'        => 'done',
-            'message'       => $messresponse,
-            'file'          => $mp3filename,
-            'httpinterface' => $config['SYSTEM']['httpinterface'] ?? null,
-            'cifsinterface' => $config['SYSTEM']['cifsinterface'] ?? null,
-            'ttspath'       => $config['SYSTEM']['ttspath'] ?? null,
-            'mp3path'       => $config['SYSTEM']['mp3path'] ?? null,
-            'mp3files'      => $audioFiles,
-            'logs'          => getLogArray(),
-            'timestamp'     => date("Y-m-d H:i:s")
-        ];
-        $mqtt->publish($responseTopic, json_encode($finalResponse, JSON_UNESCAPED_UNICODE), 0);
-		LOGOK("mqtt-handler.php: OK response send on Topic: [tts-response]");
-    } else {
+		logmsg("OK", $messresponse . ": $mp3filename");
+
+		// Basis-Response
+		$finalResponse = [
+			'status'        => 'done',
+			'message'       => $messresponse,
+			'file'          => $mp3filename,
+			'httpinterface' => $config['SYSTEM']['httpinterface'] ?? null,
+			'cifsinterface' => $config['SYSTEM']['cifsinterface'] ?? null,
+			'ttspath'       => $config['SYSTEM']['ttspath'] ?? null,
+			'mp3path'       => $config['SYSTEM']['mp3path'] ?? null,
+			'httpmp3interface' => $config['SYSTEM']['httpmp3interface'] ?? null,
+			'cifsmp3interface' => $config['SYSTEM']['cifsmp3interface'] ?? null,
+			'timestamp'     => date("H:i:s")
+		];
+
+		// Nur wenn mp3files = 1
+		if (!empty($data['mp3files']) && (int)$data['mp3files'] === 1) {
+			$finalResponse['mp3files'] = getAudioFiles();
+		}
+
+		// Nur wenn logging = 1
+		if (!empty($data['logging']) && (int)$data['logging'] === 1) {
+			$finalResponse['logs'] = getLogArray();
+		}
+
+		// JSON an MQTT senden
+		$mqtt->publish($responseTopic, json_encode($finalResponse, JSON_UNESCAPED_UNICODE), 0);
+		LOGOK("mqtt-handler.php: OK response sent on Topic: [tts-subscripe]");
+
+	} else {
 		LOGERR("mqtt-handler.php: MP3 could not be created");
-        return sendMqtt($mqtt, $responseTopic, "MP3 could not be created");
-    }
+		return sendMqtt($mqtt, $responseTopic, "MP3 could not be created");
+	}
 }
 
 // =======================
@@ -380,7 +418,7 @@ function sendMqtt($mqtt, string $topic, string $message, array $details = []) {
     });
 
     logmsg("ERROR", [$message, $details]);
-    LOGOK("mqtt-handler.php: MQTT Error response sent on Topic: [tts-response] - Message: $message");
+    LOGOK("mqtt-handler.php: MQTT Error response sent on Topic: [tts-subscripe] - Message: $message");
 
     $mqtt->publish($topic, json_encode($response, JSON_UNESCAPED_UNICODE), 0);
 
