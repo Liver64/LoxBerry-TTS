@@ -22,10 +22,10 @@ function t2s($t2s_param)
     // ---------- CACHE ----------
     $ttspath  = rtrim($config['SYSTEM']['ttspath'] ?? '/tmp', '/');
     $mp3Path  = "$ttspath/$filename.mp3";
-    if (is_file($mp3Path) && filesize($mp3Path) > 0) {
-        LOGINF("voice_engines/Piper.php: Cache hit ($mp3Path)");
-        return basename($mp3Path, '.mp3');
-    }
+    //if (is_file($mp3Path) && filesize($mp3Path) > 0) {
+     //   LOGINF("voice_engines/Piper.php: Cache hit ($mp3Path)");
+    //    return basename($mp3Path, '.mp3');
+    //}
 
     // ---------- Voice-Model ----------
     $voicefile = LBPHTMLDIR . "/voice_engines/langfiles/piper_voices.json";

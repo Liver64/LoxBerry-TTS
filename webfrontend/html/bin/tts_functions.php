@@ -27,7 +27,7 @@ function create_tts() {
         $fullpath = "$mp3path/$filename";
 
         if (file_exists($fullpath)) {
-            LOGINF("tts_functions.php: Serving existing MP3 file: $fullpath");
+            LOGDEB("tts_functions.php: Serving existing MP3 file: $fullpath");
             return $fullpath;
         } else {
             LOGERR("tts_functions.php: Requested file not found: $fullpath");
@@ -42,10 +42,12 @@ function create_tts() {
         $mp3file = "$ttspath/$messageid.mp3";
 
         // Cache prüfen
-        if (file_exists($mp3file) && empty($_GET['nocache'])) {
-            LOGINF("tts_functions.php: Found cached MP3: $mp3file");
+        if (file_exists($mp3file) && !isset($_GET['nocache'])) {
+            LOGDEB("tts_functions.php: Found cached MP3: $mp3file");
             return $mp3file;
-        }
+        } else {
+			LOGDEB("tts_functions.php: 'nocache' Parameter received. Forced to re-create: '$mp3file'");
+		}
 
         // Engine-Datei laden
         $engine_file = get_engine_file($t2s_param['t2sengine']);

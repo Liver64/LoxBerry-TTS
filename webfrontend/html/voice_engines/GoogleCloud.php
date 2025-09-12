@@ -1,75 +1,116 @@
 <?php
-
-function t2s($t2s_param)
-
-// google: Erstellt basierend auf Input eine TTS Nachricht, übermittelt sie an Google.com und 
-// speichert das zurückkommende file lokal ab
-
+function t2s(array $t2s_param)
 {
-	global $config;
-		
-		if (isset($_GET['lang'])) {
-			$language = $_GET['lang'];
-		} else {
-			$language = $config['TTS']['messageLang'];
-		}
-		
-		if (isset($_GET['voice'])) {
-			$voice = $_GET['voice'];
-			$language = substr($voice, 5); 
-		} else {
-			$voice = $config['TTS']['voice'];
-		}
-								  		
-		LOGINF("voice_engines/GoogleCloud.php: Google Cloud TTS has been successful selected");	
+    global $config;
 
+    LOGINF("voice_engines/GoogleCloud.php: Start");
 
-		$params = [
-			"audioConfig"=>[
-				"audioEncoding"=>"MP3"
-			],
-			"input"=>[
-				"text"=>$textstring
-			],
-			"voice"=>[
-				"languageCode"=> $language,
-				"name" => $voice
-			]
-		];
-		$data_string = json_encode($params);
-		$speech_api_key = $config['TTS']['API-key'];
-		$url = 'https://texttospeech.googleapis.com/v1/text:synthesize';
+    // ===== 1) Parameter =====
+    $filename   = $t2s_param['filename'] ?? 'tts_output';
+    $textstring = $t2s_param['text']     ?? '';
+    $voiceName  = $t2s_param['voice']    ?? ($config['TTS']['voice'] ?? 'de-DE-Neural2-F');
 
-		$handle = curl_init($url);
+    if ($textstring === '') {
+        LOGERR("voice_engines/GoogleCloud.php: Empty text.");
+        return false;
+    }
 
-		curl_setopt($handle, CURLOPT_CUSTOMREQUEST, "POST"); 
-		curl_setopt($handle, CURLOPT_POSTFIELDS, $data_string);  
-		curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($handle, CURLOPT_HTTPHEADER, [                                                                          
-			'Content-Type: application/json',                                                                                
-			'Content-Length: ' . strlen($data_string),
-			'X-Goog-Api-Key: ' . $speech_api_key
-			]                                                                       
-		);
-		$response = curl_exec($handle);            
-		$responseDecoded = json_decode($response, true);  
-		curl_close($handle);
-		#print_r($responseDecoded);
-		
-		if (array_key_exists('audioContent', $responseDecoded)) {
-			# Speicherort der MP3 Datei
-			$file = $config['SYSTEM']['ttspath'] ."/". $filename . ".mp3";
-			file_put_contents($file, base64_decode($responseDecoded['audioContent']));  
-			LOGOK('voice_engines/GoogleCloud.php: The text has been passed to Google cloud TTS for MP3 creation');
-			return ($filename); 	
-		} else {
-			# Error handling
-			LOGERR('voice_engines/GoogleCloud.php: Google Cloud TTS failed. Please check error message snd investigate');			
-			LOGERR($responseDecoded['error']['message']);
-			exit(1);
-		}
+    // Sprache aus Voice ableiten (z.B. de-DE-Neural2-F -> de-DE)
+    $langFromVoice = static function (string $v): string {
+        $p = explode('-', $v);
+        return (count($p) >= 2) ? "$p[0]-$p[1]" : 'de-DE';
+    };
 
-		LOGOK('voice_engines/GoogleCloud.php: Something went wrong!');
-		return;
-}
+    $language = $_GET['lang'] ?? ($config['TTS']['messageLang'] ?? $langFromVoice($voiceName));
+    if (!empty($_GET['voice'])) {
+        $voiceName = $_GET['voice'];
+        $language  = $langFromVoice($voiceName);
+    }
+
+    LOGINF("voice_engines/GoogleCloud.php: Voice='{$voiceName}', Language='{$language}'");
+
+    // Zielpfad
+    $ttspath = rtrim($config['SYSTEM']['ttspath'] ?? '/tmp', '/');
+    if (!is_dir($ttspath)) @mkdir($ttspath, 0775, true);
+    $mp3Path = "{$ttspath}/{$filename}.mp3";
+
+    // Cache
+    if (is_file($mp3Path) && filesize($mp3Path) > 0) {
+        LOGINF("voice_engines/GoogleCloud.php: Cache hit ($mp3Path, ".filesize($mp3Path)." bytes)");
+        LOGOK ("voice_engines/GoogleCloud.php: Done (from cache)");
+        return basename($mp3Path, '.mp3');
+    }
+
+    // ===== 2) Auth =====
+    $apiKey      = $t2s_param['apikey']       ?? ($config['TTS']['API-key'] ?? '');
+    $accessToken = $t2s_param['access_token'] ?? ($config['TTS']['access_token'] ?? '');
+
+    $endpoint = 'https://texttospeech.googleapis.com/v1/text:synthesize';
+    if ($accessToken === '' && $apiKey !== '') {
+        $endpoint .= '?key=' . rawurlencode($apiKey);
+    }
+    if ($accessToken === '' && $apiKey === '') {
+        LOGERR("voice_engines/GoogleCloud.php: No credentials (access_token or API-key) provided.");
+        return false;
+    }
+
+    // Optionale Prosodie
+    $speakingRate = isset($t2s_param['speakingRate']) ? (float)$t2s_param['speakingRate']
+                  : (isset($_GET['rate']) ? (float)$_GET['rate'] : 1.0);
+    $pitch        = isset($t2s_param['pitch']) ? (float)$t2s_param['pitch']
+                  : (isset($_GET['pitch']) ? (float)$_GET['pitch'] : 0.0);
+
+    // ===== 3) Payload-Builder =====
+    $buildPayload = static function (string $text) use ($language, $voiceName, $speakingRate, $pitch): string {
+        return json_encode([
+            "audioConfig" => [
+                "audioEncoding" => "MP3",
+                "speakingRate"  => $speakingRate, // 0.25..4.0
+                "pitch"         => $pitch        // -20..20
+            ],
+            "input" => [ "text" => $text ],
+            "voice" => [
+                "languageCode" => $language,
+                "name"         => $voiceName
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+    };
+
+    // ===== 4) Chunking =====
+    $chunks = chunkTextForGoogleTTS($textstring, 4800);
+
+    // ===== 5) HTTP Call (mit Retry) =====
+    $callGoogle = static function (string $url, string $json, string $accessToken) {
+        $ch = curl_init($url);
+        $headers = [
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($json)
+        ];
+        if ($accessToken !== '') {
+            $headers[] = 'Authorization: Bearer ' . $accessToken;
+        }
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => 'POST',
+            CURLOPT_POSTFIELDS     => $json,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_HTTPHEADER     => $headers
+        ]);
+        $resp = curl_exec($ch);
+        $err  = curl_error($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return [$resp, $err, $code];
+    };
+
+    @unlink($mp3Path);
+    $minSize = 1024;
+    $okAll   = true;
+
+    foreach ($chunks as $i => $chunk) {
+        $payload = $buildPayload($chunk);
+
+        // Retries bei 429/5xx
+        $atte

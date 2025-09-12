@@ -1,22 +1,20 @@
 #!/bin/bash
 set -o pipefail
 
+# 1) Parameter für Logging
 PACKAGE="text2speech"
 NAME="TTS-Monitor"
 LOGDIR=$LBPLOG/${PACKAGE}
 FILENAME=$LBPLOG/monitor.log
 APPEND=1
 
-# 2) Verzeichnis garantieren
-#mkdir -p "$LOGDIR"
-
-# 3) Logging-Library laden
+# 2) Logging-Library laden
 . $LBHOMEDIR/libs/bashlib/loxberry_log.sh
 
-# 4) Logging starten
+# 3) Logging starten
 LOGSTART "TTS-Monitor started."
 
-# 5) Services (ohne sudo im Script; Service-User/Unit regeln das)
+# 4) Services (ohne sudo im Script; Service-User/Unit regeln das)
 systemctl daemon-reload
 systemctl enable mqtt-service-tts
 systemctl start  mqtt-service-tts

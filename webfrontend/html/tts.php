@@ -46,14 +46,15 @@ if(file_exists($myConfigFolder . "/t2s_config.json")) {
 
 # ------------------ T2S Parameter vorbereiten ------------------
 $t2s_param = [
-    'text'      => $_GET['text'] ?? null,
-    't2sengine' => $_GET['t2sengine'] ?? $config['TTS']['t2s_engine'],
-    'filename'  => $_GET['filename'] ?? md5(trim($_GET['text'] ?? '')),
-    'apikey'    => $_GET['apikey'] ?? $config['TTS']['apikey'],
-    'secretkey' => $_GET['secretkey'] ?? $config['TTS']['secretkey'],
-    'language'  => $_GET['language'] ?? $config['TTS']['messageLang'],
-    'voice'     => $_GET['voice'] ?? $config['TTS']['voice'],
-    'testfile'  => $_GET['testfile'] ?? null
+    'text'      	=> $_GET['text'] ?? null,
+    't2sengine' 	=> $_GET['t2sengine'] ?? $config['TTS']['t2s_engine'],
+    'filename'  	=> $_GET['filename'] ?? md5(trim($_GET['text'] ?? '')),
+    'apikey'    	=> $_GET['apikey'] ?? $config['TTS']['apikey'],
+    'secretkey' 	=> $_GET['secretkey'] ?? $config['TTS']['secretkey'],
+	#'access_token'	=> $_GET['access_token'] ?? $config['TTS']['access_token'],
+    'language'  	=> $_GET['language'] ?? $config['TTS']['messageLang'],
+    'voice'     	=> $_GET['voice'] ?? $config['TTS']['voice'],
+    'testfile'  	=> $_GET['testfile'] ?? null
 ];
 
 # ------------------ Volume ------------------
@@ -169,14 +170,14 @@ function getusbcard() {
 
     // Prüfen, ob JSON existiert
     if (!file_exists($jsonFile)) {
-        LOGERR("getusbcard(): JSON file not found: $jsonFile");
+        LOGERR("tts.php: getusbcard(): JSON file not found: $jsonFile");
         return false;
     }
 
     // JSON einlesen und parsen
     $cfg = json_decode(file_get_contents($jsonFile), true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        LOGERR("getusbcard(): Failed to parse JSON file: " . json_last_error_msg());
+        LOGERR("tts.php: getusbcard(): Failed to parse JSON file: " . json_last_error_msg());
         return false;
     }
 
@@ -186,7 +187,7 @@ function getusbcard() {
 
     // Prüfen, ob die Karte existiert
     if (!isset($cfg[$mycard]['output'])) {
-        LOGERR("getusbcard(): Card type '$mycard' not found in JSON config.");
+        LOGERR("tts.php: getusbcard(): Card type '$mycard' not found in JSON config.");
         return false;
     }
 
@@ -197,7 +198,7 @@ function getusbcard() {
         $myteccard = $cfg[$mycard]['output'] . ',DEV=' . $usbDevice;
     }
 
-    LOGINF("getusbcard(): Detected card string: $myteccard");
+    LOGINF("tts.php: getusbcard(): Detected card string: $myteccard");
     return $myteccard;
 }
 

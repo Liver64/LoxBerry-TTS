@@ -1,8 +1,9 @@
 <?php
+require_once "/opt/loxberry/libs/phplib/loxberry_system.php";
 
 $service = "mqtt-service-tts";
-$logfile = "/opt/loxberry/log/plugins/text2speech/mqtt-watchdog.log";
-$timestamp = date("Y-m-d H:i:s");
+$logfile = LBPLOGDIR."/mqtt-watchdog.log";
+$timestamp = date("d-m-Y H:i:s");
 
 // Logging-Funktion
 function logmsg($level, $message) {
@@ -39,8 +40,8 @@ if ($active !== "active") {
         logmsg("ERROR", "❌ ERROR – Failed to restart $service after error.");
         exit(1);
     }
-} else {
-    //logmsg("INFO", "✅ Service $service is running normally. ExitCode=$exitcode");
+} elseif ($active == "active")  {
+	logmsg("INFO", "✅ Service $service is running normally. ExitCode=$exitcode");
 }
 
 ?>
