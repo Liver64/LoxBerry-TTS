@@ -1,0 +1,17 @@
+# /etc/systemd/system/mqtt-config-watcher.service
+
+[Unit]
+Description=LoxBerry MQTT config watcher for general.json
+After=network-online.target
+
+[Service]
+Type=simple
+User=loxberry
+Group=loxberry
+ExecStart=/usr/bin/php /opt/loxberry/bin/plugins/text2speech/mqtt/mqtt_config_watcher.php
+Restart=always
+RestartSec=3
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

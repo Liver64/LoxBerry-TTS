@@ -7,15 +7,27 @@
 
 set -o pipefail
 
+# Immer in ein existierendes Verzeichnis wechseln
+cd / || exit 1
+
 # --- Variablen ---
-LOGFILE="/opt/loxberry/log/plugins/text2speech/monitor.log"
-MAX_RUNNING_JOBS=3          # Maximum allowed concurrent playback jobs
-MAX_JOB_RUNTIME=120         # Max runtime per job (seconds)
+LOGFILE="${LBPLOG}/text2speech/monitor.log"
+MAX_RUNNING_JOBS=3
+MAX_JOB_RUNTIME=120
 TS_SOCKET="/run/shm/ttsplugin.sock"
 export TS_SOCKET
 
-# --- Alles ins Logfile umleiten ---
-exec >>"$LOGFILE" 2>&1
+# --- Log-Guard: nur umleiten, wenn beschreibbar ---
+mkdir -p "$(dirname "$LOGFILE")"
+if [ ! -e "$LOGFILE" ]; then
+  # versucht es, falls DAEMON noch nicht angelegt hat
+  : >"$LOGFILE" 2>/dev/null || true
+fi
+if [ -w "$LOGFILE" ]; then
+  exec >>"$LOGFILE" 2>&1
+else
+  echo "WARN: $LOGFILE not writable; logging to stdout" >&2
+fi
 
 # --- Timestamp-Helfer ---
 _ts() { date +"%d.%m.%Y %H:%M:%S"; }
@@ -27,25 +39,20 @@ OK_()   { echo "$(_ts) <OK>: $*"; }
 WARN()  { echo "$(_ts) <WARNING>: $*"; }
 ERR()   { echo "$(_ts) <ERROR>: $*"; }
 ALERT() { echo "$(_ts) <ALERT>: $*"; }
-
-# Kompatibilitäts-Alias
-OK() { OK_ "$@"; }
-
-# --- Start ---
-#OK_ "TTS-Monitor started."
+OK()    { OK_ "$@"; }
 
 # --- Sanity Checks ---
 if ! command -v tsp >/dev/null 2>&1; then
-    ERR   "Task Spooler (tsp) not found in PATH. Aborting"
-    ALERT "TTS Monitor Alert: tsp binary missing. Monitoring aborted"
-    exit 1
+  ERR   "Task Spooler (tsp) not found in PATH. Aborting"
+  ALERT "TTS Monitor Alert: tsp binary missing. Monitoring aborted"
+  exit 1
+fi
+if ! tsp >/dev/null 2>&1; then
+  ERR   "Task Spooler not running or socket missing ($TS_SOCKET). Aborting"
+  ALERT "TTS Monitor Alert: Task Spooler not running. Monitoring aborted"
+  exit 1
 fi
 
-if ! tsp >/dev/null 2>&1; then
-    ERR   "Task Spooler not running or socket missing ($TS_SOCKET). Aborting"
-    ALERT "TTS Monitor Alert: Task Spooler not running. Monitoring aborted"
-    exit 1
-fi
 
 # --- Funktionen ---
 cleanup_finished() {

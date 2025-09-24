@@ -51,13 +51,16 @@ fi
 if [ ! -L /etc/systemd/system/mqtt-service-tts.service ]; then
 	# cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-service-tts.txt REPLACELBPBINDIR/mqtt/mqtt-service-tts.service
 	cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-service-tts.service /etc/systemd/system/mqtt-service-tts.service
+	cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-config-watcher.service /etc/systemd/system/mqtt-config-watcher.service
 	sudo systemctl daemon-reload
 	sudo systemctl enable mqtt-service-tts
 	sudo systemctl start mqtt-service-tts
+	sudo systemctl enable mqtt-config-watcher
+	sudo systemctl start mqtt-config-watcher
 	sudo chmod +x REPLACELBPBINDIR/mqtt/mqtt-watchdog.php
-	echo "<OK> MQTT Event handler has been installed"
+	echo "<OK> MQTT Event handler and config watcher has been installed"
 else
-	echo "<INFO> MQTT Event handler is already installed"
+	echo "<INFO> MQTT Event handler and config watcher are already installed"
 fi
 
 

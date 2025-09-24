@@ -9,4 +9,4 @@
 
 # Will be executed as user "loxberry".
 
-REPLACELBPBINDIR/cleanup_tts.php
+REPLACELBPBINDIR/cleanup.php

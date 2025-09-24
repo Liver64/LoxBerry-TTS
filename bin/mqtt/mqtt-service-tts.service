@@ -3,7 +3,7 @@ Description=MQTT Subscriber
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/php /opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-handler.php
+ExecStart=/usr/bin/php /opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-subscribe.php
 Restart=always
 RestartSec=10
 StartLimitIntervalSec=300

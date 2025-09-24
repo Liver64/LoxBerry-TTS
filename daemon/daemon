@@ -1,20 +1,106 @@
 #!/bin/bash
-set -o pipefail
+# ================================================================
+# job_daemon.sh – Log-Initialisierung + Service-Start
+#  - legt {monitor.log,mqtt-watchdog.log} an
+#  - setzt Owner/Permissions für loxberry (setgid auf Ordner)
+#  - registriert beide Logs mit LOGSTART (einmal pro Boot)
+#  - startet benötigte Services (enable/start idempotent)
+# ================================================================
 
-# 1) Parameter für Logging
+# Wichtig: kein '-u' (nounset), da loxberry_log.sh interne Variablen ungesetzt lässt
+set -e -o pipefail
+
+# --- Sanity: benötigte LoxBerry-Variablen ---
+: "${LBHOMEDIR:?LBHOMEDIR not set}"
+: "${LBPLOG:?LBPLOG not set}"
+: "${LBSLOG:?LBSLOG not set}"
+
 PACKAGE="text2speech"
-NAME="TTS-Monitor"
-LOGDIR=$LBPLOG/${PACKAGE}
-FILENAME=$LBPLOG/monitor.log
+LOGDIR_PLUGIN="${LBPLOG}/${PACKAGE}"
+MAIN_LOG="${LOGDIR_PLUGIN}/monitor.log"
+WD_LOG="${LOGDIR_PLUGIN}/mqtt-watchdog.log"
+
+# --- Logverzeichnis und Dateien vorbereiten (root, ohne sudo) ---
+# setgid-Bit sorgt dafür, dass neue Dateien die Gruppe loxberry erben
+install -d -m 2775 -o loxberry -g loxberry "$LOGDIR_PLUGIN"
+install -o loxberry -g loxberry -m 664 /dev/null "$MAIN_LOG" 2>/dev/null || true
+install -o loxberry -g loxberry -m 664 /dev/null "$WD_LOG"   2>/dev/null || true
+
+# Optional: ACL, falls mehrere Schreiber
+if command -v setfacl >/dev/null 2>&1; then
+  setfacl -m u:loxberry:rw "$MAIN_LOG" "$WD_LOG" 2>/dev/null || true
+  setfacl -m d:u:loxberry:rwX "$LOGDIR_PLUGIN"   2>/dev/null || true
+fi
+
+# --- LoxBerry-Logging einbinden ---
+. "$LBHOMEDIR/libs/bashlib/loxberry_log.sh"
+: "${LOGLEVEL:=7}"   # Defensiver Default für die Lib
+
+# ---------------------------
+# Haupt-Log (monitor.log)
+# ---------------------------
+NAME="Monitor"
+FILENAME="$MAIN_LOG"
+LOGDIR="$LBSLOG"
 APPEND=1
+ADDTIME=1
 
-# 2) Logging-Library laden
-. $LBHOMEDIR/libs/bashlib/loxberry_log.sh
+# LOGSTART für das Monitor-Log – einmal pro Boot
+MAIN_MARKER="/run/shm/${PACKAGE}.monitor.started"
+mkdir -p /run/shm 2>/dev/null
+if [ ! -f "$MAIN_MARKER" ]; then
+  date +%s > "$MAIN_MARKER"
+  LOGSTART "Job-Monitor started"
+  #LOGINF   "Monitor log registered in LoxBerry overview"
+else
+  LOGINF   "Job-Monitor already started this boot (marker exists)"
+fi
 
-# 3) Logging starten
-LOGSTART "TTS-Monitor started."
+# ---------------------------
+# Watchdog-Log (mqtt-watchdog.log) – vollständig initialisieren
+# ---------------------------
+WD_MARKER="/run/shm/${PACKAGE}.watchdog.started"
+mkdir -p /run/shm 2>/dev/null
 
-# 4) Services (ohne sudo im Script; Service-User/Unit regeln das)
+# Kontext vollständig sichern
+SAVE_NAME="$NAME"; SAVE_FILE="$FILENAME"; SAVE_PKG="$PACKAGE"
+SAVE_LOGDIR="$LOGDIR"; SAVE_APPEND="$APPEND"; SAVE_ADDTIME="$ADDTIME"
+
+# Kontext vollständig auf Watchdog setzen (ALLE Variablen!)
+NAME="Watchdog"
+PACKAGE="text2speech"          # Plugin-Ordnername
+FILENAME="$WD_LOG"             
+LOGDIR="$LBSLOG"
+APPEND=1
+ADDTIME=1
+: "${LOGLEVEL:=7}"
+
+# LOGSTART nur einmal pro Boot (Marker steuert das)
+if [ ! -f "$WD_MARKER" ]; then
+  date +%s > "$WD_MARKER"
+  LOGSTART "MQTT Watchdog started"
+  #LOGINF   "Watchdog log registered in LoxBerry overview"
+
+  # (Fallback) Registrierung in der Übersicht anschubsen, falls nötig
+  if [ -x "$LBHOMEDIR/libs/initlog.php" ]; then
+    php "$LBHOMEDIR/libs/initlog.php" \
+      --name="$NAME" \
+      --package="$PACKAGE" \
+      --filename="$FILENAME" \
+      --addtime="$ADDTIME" \
+      --append="$APPEND" \
+      --loglevel="$LOGLEVEL" >/dev/null 2>&1 || true
+  fi
+fi
+
+# Kontext zurücksetzen
+NAME="$SAVE_NAME"; FILENAME="$SAVE_FILE"
+PACKAGE="$SAVE_PKG"; LOGDIR="$SAVE_LOGDIR"
+APPEND="$SAVE_APPEND"; ADDTIME="$SAVE_ADDTIME"
+
+# --- Services (root darf systemctl) – idempotent enable/start ---
 systemctl daemon-reload
-systemctl enable mqtt-service-tts
-systemctl start  mqtt-service-tts
+for svc in mqtt-service-tts mqtt-config-watcher; do
+  systemctl is-enabled "$svc" >/dev/null 2>&1 || systemctl enable "$svc"
+  systemctl is-active  "$svc" >/dev/null 2>&1 || systemctl start  "$svc"
+done

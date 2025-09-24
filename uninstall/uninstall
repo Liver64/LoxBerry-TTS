@@ -6,5 +6,11 @@ rm /etc/systemd/system/mqtt-service-tts.service
 rm /etc/systemd/system/mqtt-service-tts # and symlinks that might be related
 rm /usr/lib/systemd/system/mqtt-service-tts 
 rm /usr/lib/systemd/system/mqtt-service-tts # and symlinks that might be related
+systemctl stop mqtt-config-watcher
+systemctl disable mqtt-config-watcher
+rm /etc/systemd/system/mqtt-config-watcher.service
+rm /etc/systemd/system/mqtt-config-watcher # and symlinks that might be related
+rm /usr/lib/systemd/system/mqtt-config-watcher 
+rm /usr/lib/systemd/system/mqtt-config-watcher # and symlinks that might be related
 systemctl daemon-reload
 systemctl reset-failed

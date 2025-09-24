@@ -64,19 +64,19 @@ else
 	echo "<INFO> Piper-Voices has been downloaded"
 fi
 
-# create interface folder
-if [ -d $LBPDATA/$3/t2s_interface ]; then
-	echo "<INFO> Interface folder already exists"
-else
-	mkdir -p $LBPDATA/$3/t2s_interface
-	echo "<OK> Interface folder has been created"
-fi
-
-# create Symlink
-if [ -L $LBPLOG/$3/t2s_interface ]; then
+# create Symlink for data Folder
+if [ -L $LBPDATA/$3/interfacedownload ]; then
 	echo "<INFO> Symlink folder already exists"
 else
-	ln -s $LBPDATA/$3/t2s_interface $LBPLOG/$3/t2s_interface
+	ln -s $LBPDATA/$3/tts $LBPDATA/$3/interfacedownload
+	echo "<OK> Symlink has been created"
+fi
+
+# create Symlink for HTML Folder
+if [ -L $LBPHTML/$3/interfacedownload ]; then
+	echo "<INFO> Symlink folder already exists"
+else
+	ln -s $LBPDATA/$3/tts $LBPHTML/$3/interfacedownload
 	echo "<OK> Symlink has been created"
 fi
 

@@ -1,8 +1,8 @@
 {
-	"usb_audio": {
-		"output": "hw:",
-		"dtoverlay": "rpi-dac",
-		"name": "USB audio"
+	"none": {
+		"output": "-",
+		"dtoverlay": "merus-amp",
+		"name": "None"
 	},
 	"allo_boss2_dac": {
 		"output": "hw:CARD=Boss2",
@@ -39,6 +39,11 @@
 		"dtoverlay": "i-sabre-q2m",
 		"name": "Audiophonics ISabre Q2M"
 	},
+	"Audio DAC SHIM": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "Audio DAC Shim (Line-out/Amp/Headphone-Amp"
+	},		
 	"cirrus_logic_audio_card": {
 		"output": "hw:CARD=RPiCirrus",
 		"dtoverlay": "rpi-cirrus-wm5102",
@@ -73,6 +78,11 @@
 		"output": "hw:CARD=sndrpihifiberry",
 		"dtoverlay": "hifiberry-amp",
 		"name": "HiFiBerry AMP (and +)"
+	},
+	"hifiberry_amp_100": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-amp100",
+		"name": "HiFiBerry AMP 100"
 	},
 	"hifiberry_dac_plus_adc": {
 		"output": "hw:CARD=sndrpihifiberry",
@@ -179,6 +189,11 @@
 		"dtoverlay": "hifiberry-dac",
 		"name": "PHAT-DAC"
 	},
+	"pirate_audio": {
+		"output": "hw:CARD=sndrpihifiberry",
+		"dtoverlay": "hifiberry-dac",
+		"name": "Pirate Audio DAC (Line-out/Amp/Headphone-Amp)"
+	},	
 		"rpi_hifi_amp_dac": {
 		"output": "hw:CARD=sndrpihifiberry",
 		"dtoverlay": "hifiberry-amp",

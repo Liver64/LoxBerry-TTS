@@ -24,13 +24,13 @@ use LoxBerry::Web;
 use LoxBerry::Log;
 use LoxBerry::Storage;
 use LoxBerry::JSON;
-
-use warnings;
-use strict;
+use HTML::Template;
+use JSON::PP qw(encode_json decode_json);
 use File::Copy;
 use Data::Dumper;
 
-use HTML::Template;
+use warnings;
+use strict;
 #use Config::Simple '-strict';
 #use CGI::Carp qw(fatalsToBrowser);
 #use CGI qw/:standard/;
@@ -38,7 +38,6 @@ use HTML::Template;
 #use LWP::UserAgent;
 #use File::HomeDir;
 #use Cwd 'abs_path';
-#use JSON qw( decode_json );
 #use utf8;
 
 ##########################################################################
@@ -247,7 +246,7 @@ $template->param("LBLANG", $lblang);
 $template->param("SELFURL", $ENV{REQUEST_URI});
 $template->param("LBPPLUGINDIR", $lbpplugindir);
 $template->param("LBPTEMPLATEDIR", $lbptemplatedir);
-$template->param("HTTPINTERFACE", "http://$lbhostname/plugins/$lbpplugindir/interfacedownload");
+$template->param("HTTPINTERFACE", "http://$lbip/plugins/$lbpplugindir/interfacedownload");
 
 LOGDEB "Read main settings from " . $languagefile . " for language: " . $lblang;
 
@@ -447,20 +446,116 @@ sub form {
     }
 	$template->param("USB_LIST", $usb_list);
 	
-	# detect Soundcards
-	system($lbpbindir . '/service.sh sc_show');
-	my $filename = '/tmp/soundcards2.txt';
-	open my $in, $filename;
-	my $sc_list;
-	while (my $line = <$in>) {
-            $sc_list.= $line.'<br>';
-        }
-    $template->param("SC_LIST", $sc_list);
-	close($in);
-	
-	# check/get filesize of determined soundcards in order to fadeIn/fadeOut
-	my $filesize = -s $devicefile;
-	$template->param("MYFILE", $filesize);
+	# ------------------------------------------------------------
+	# Soundcards-JSON besorgen (Reihenfolge der Versuche):
+	# 1) PHP liefert JSON direkt über STDOUT (empfohlen, keine Datei nötig)
+	# 2) /tmp/soundcards.json lesen, falls vorhanden
+	# 3) Fallback: JSON in-memory über _build_soundcards_json() erzeugen
+	#    (setzt voraus, dass deine Hilfsfunktion im selben File verfügbar ist)
+	# ------------------------------------------------------------
+
+	my $json = '';
+
+	# 1) Versuch: PHP-Helfer (falls vorhanden)
+	$json = qx{/usr/bin/php /opt/loxberry/bin/plugins/text2speech/detect_soundcards.php 2>/dev/null};
+	my $data = eval { decode_json($json) } || { cards => [] };
+
+	# 2) Versuch: /tmp/soundcards.json lesen
+	my $jsonfile = '/tmp/soundcards.json';
+	if ((!$json || $json !~ /\S/) && -s $jsonfile) {
+		local $/;
+		if (open my $fh, '<', $jsonfile) {
+			$json = <$fh>;
+			close $fh;
+		}
+	}
+
+	# 3) Fallback: JSON in-memory bauen (ohne Datei)
+	if (!$json || $json !~ /\S/) {
+		eval {
+			# Erwartet: deine Implementierung von _build_soundcards_json()
+			my $data = _build_soundcards_json();
+			$json = encode_json($data);
+		};
+		if ($@) {
+			# Nichts gefunden/gebaut
+			$template->param("SC_LIST" => "No sound information available");
+			$template->param("MYFILE"  => 0);
+			$template->param("SC_SELECT" => '');
+			# Früh raus; der Rest benötigt JSON
+			last;
+		}
+	}
+
+	# ------------------------------------------------------------
+	# JSON parsen
+	# ------------------------------------------------------------
+	my $sc_list  = '';
+
+	if ($json) {
+		my $data  = eval { decode_json($json) } || {};
+		my $cards = $data->{cards} // [];
+
+		if (@$cards) {
+			for my $c (@$cards) {
+				my $tag_usb = $c->{is_usb}     ? ' [USB]'     : '';
+				my $tag_def = $c->{is_default} ? ' [default]' : '';
+				my $cidx    = $c->{index};
+				my $cname   = $c->{name} // '';
+				my $cid     = $c->{id}   // '';
+				my $devs    = $c->{devices} // [];
+
+				if (@$devs) {
+					for my $d (@$devs) {
+						my $didx   = $d->{device};
+						my $dname  = $d->{name}  // '';
+						my $dvalue = $d->{value} // '';   # <-- hier steht z.B. "hw:0,0"
+
+						# Zeile in der Liste inkl. value anzeigen
+						$sc_list .= sprintf(
+						  'card %d: %s [%s]%s%s, device %d: %s <span class="sc-val">(%s)</span><br>',
+						  $cidx, $cname, $cid, $tag_usb, $tag_def, $didx, $dname, $dvalue
+						);
+
+						# Option in <select>, Label inkl. value
+						my $label = sprintf(
+							'card %d: %s [%s]%s%s, device %d: %s (%s)',
+							$cidx, $cname, $cid,
+							($c->{is_usb} ? ' (USB)' : ''),
+							($c->{is_default} ? ' [default]' : ''),
+							$didx, $dname, $dvalue
+						);
+					}
+				} else {
+					# Karte ohne explizite Devices -> device 0 annehmen, value zeigen
+					my $assumed = sprintf('hw:%d,0', $cidx);
+					$sc_list .= sprintf(
+						'card %d: %s [%s]%s%s <code>(%s)</code><br>',
+						$cidx, $cname, $cid, $tag_usb, $tag_def, $assumed
+					);
+
+					my $label = sprintf(
+						'card %d: %s [%s]%s%s, device 0: %s (%s)',
+						$cidx, $cname, $cid,
+						($c->{is_usb} ? ' (USB)' : ''),
+						($c->{is_default} ? ' [default]' : ''),
+						$cname, $assumed
+					);
+				}
+			}
+		} else {
+			$sc_list = "No devices found<br>";
+		}
+	} else {
+		$sc_list = "No sound information available<br>";
+	}
+
+	# Übergabe an Template
+	$template->param("SC_LIST"   => $sc_list);
+
+	# Optional: Dateigröße deiner JSON-Datei anzeigen (falls vorhanden)
+	my $filesize = (-s $jsonfile) || 0;
+	$template->param("MYFILE" => $filesize);
 	
 	LOGDEB "Printing template";
 	printtemplate();
@@ -507,7 +602,8 @@ sub save
 	$tcfg->{SYSTEM}->{mp3path} 									= "$R::STORAGEPATH/$mp3folder";
 	$tcfg->{SYSTEM}->{ttspath} 									= "$R::STORAGEPATH/$ttsfolder";
 	#$tcfg->{SYSTEM}->{interfacepath} 							= $rampath;
-	$tcfg->{SYSTEM}->{httpinterface} 							= "http://$lbhostname/plugins/$lbpplugindir/interfacedownload";
+	#$tcfg->{SYSTEM}->{httpinterface} 							= "http://$lbhostname/plugins/$lbpplugindir/interfacedownload";
+	$tcfg->{SYSTEM}->{httpinterface} 							= "http://$lbip/plugins/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{cifsinterface} 							= "//$lbhostname/plugindata/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{httpmp3interface} 						= "http://$lbhostname/plugindata/$lbpplugindir/mp3";
 	$tcfg->{SYSTEM}->{cifsmp3interface} 						= "//$lbhostname/plugindata/$lbpplugindir/mp3";
@@ -595,7 +691,7 @@ sub pids
 {
 	$pids{'mqttgateway'}   = trim(`pgrep mqttgateway.pl`);
 	$pids{'mosquitto'}     = trim(`pgrep mosquitto`);
-	$pids{'mqtt_handler'}  = trim(`pgrep -f mqtt-handler.php`);
+	$pids{'mqtt_handler'}  = trim(`pgrep -f mqtt-subscribe.php`);
 	$pids{'mqtt-watchdog'} = trim(`pgrep -f mqtt-watchdog.php`);
 	#LOGDEB "PIDs updated";
 }	

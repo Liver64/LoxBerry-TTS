@@ -13,4 +13,4 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 TS_SOCKET="/run/shm/ttsplugin.sock"
 
 /usr/bin/php REPLACELBPBINDIR/mqtt/mqtt-watchdog.php
-/usr/bin/bash REPLACELBPBINDIR/monitor_tts.sh
+/usr/bin/bash REPLACELBPBINDIR/job_monitor.sh
