@@ -6,36 +6,37 @@ function w2s()
  	{
 		global $config, $debug, $town, $home, $psubfolder, $myIP;
 		
+		require_once "loxberry_system.php";
 		$TL = LOAD_T2S_TEXT();
 		#print_r($TL);
 		#exit;
 				
 		// Einlesen der Daten vom Weather4Lox Plugin
-		if (!file_exists("$home/data/plugins/weather4lox/current.dat")) {
-			LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.',3);
-			LOGGING('Text2Speech: addon/weather.php: The file current.dat could not been opened. Please check Weather4Lox Plugin!',3);
+		if (!file_exists(LBHOMEDIR."/data/plugins/weather4lox/current.dat")) {
+			LOGERR('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.');
+			LOGERR('Text2Speech: addon/weather.php: The file current.dat could not been opened. Please check Weather4Lox Plugin!');
 			exit;
 		} else {
-			$current = file_get_contents("$home/data/plugins/weather4lox/current.dat");
+			$current = file_get_contents(LBHOMEDIR."/data/plugins/weather4lox/current.dat");
 			$current = explode('|',$current);
 		}
-		if (!file_exists("$home/data/plugins/weather4lox/dailyforecast.dat")) {
-			LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.',3);
-			LOGGING('Text2Speech: addon/weather.php: The file dailyforecast.dat could not been opened. Please check Weather4Lox Plugin!',3);
+		if (!file_exists(LBHOMEDIR."/data/plugins/weather4lox/dailyforecast.dat")) {
+			LOGERR('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.');
+			LOGERR('Text2Speech: addon/weather.php: The file dailyforecast.dat could not been opened. Please check Weather4Lox Plugin!');
 			exit;
 		} else {
-			$dailyforecast = file_get_contents("$home/data/plugins/weather4lox/dailyforecast.dat");
+			$dailyforecast = file_get_contents(LBHOMEDIR."/data/plugins/weather4lox/dailyforecast.dat");
 			$dailyforecast = explode('|',$dailyforecast);
 		}
-		if (!file_exists("$home/data/plugins/weather4lox/hourlyforecast.dat")) {
-			LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.',3);
-			LOGGING('Text2Speech: addon/weather.php: The file hourlyforecast.dat could not been opened. Please check Weather4Lox Plugin!',3);
+		if (!file_exists(LBHOMEDIR."/data/plugins/weather4lox/hourlyforecast.dat")) {
+			LOGERR('Text2Speech: addon/weather.php: Data from Weather4Lox could be obtainend.');
+			LOGERR('Text2Speech: addon/weather.php: The file hourlyforecast.dat could not been opened. Please check Weather4Lox Plugin!');
 			exit;
 		} else {
-			$hourlyforecast = file_get_contents("$home/data/plugins/weather4lox/hourlyforecast.dat");
+			$hourlyforecast = file_get_contents(LBHOMEDIR."/data/plugins/weather4lox/hourlyforecast.dat");
 			$hourlyforecast = explode('|',$hourlyforecast);
 		}
-		LOGGING('Text2Speech: addon/weather.php: Data from Weather4Lox has been successful obtainend.',7);
+		LOGDEB('Text2Speech: addon/weather.php: Data from Weather4Lox has been successful obtainend.');
 		#print_r($current);
 		#print_r($dailyforecast);
 		#print_r($hourlyforecast);
@@ -149,27 +150,27 @@ function w2s()
 		switch ($Stunden) {
 			# Wettervorhersage für die Zeit zwischen 06:00 und 10:00h
 			case $Stunden >=6 && $Stunden <10:
-				$text=($TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_FROM_6AM_TO_10AM']." ". ($wetter). ", ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_FROM_6AM_TO_10AM']." ".round($high0)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_FROM_6AM_TO_10AM']." ". round($temp_c)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_FROM_6AM_TO_10AM']." ". $RegenAnsage." ".$WindAnsage.". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_5_HOUR_FROM_6AM_TO_10AM']);
+				$text=($TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_FROM_6AM_TO_10AM']." ". ($wetter). ", ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_FROM_6AM_TO_10AM']." ".round($high0)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_FROM_6AM_TO_10AM']." ". round($temp_c)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_FROM_6AM_TO_10AM']." ". $RegenAnsage.". ".$WindAnsage.". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_5_HOUR_FROM_6AM_TO_10AM']);
 				break;
 			# Wettervorhersage für die Zeit zwischen 10:00 und 17:00h
 			case $Stunden >=10 && $Stunden <17:
-				$text=($TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_FROM_10AM_TO_5PM']." ". ($wetter_hc)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_FROM_10AM_TO_5PM']." ". round($temp_c)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_FROM_10AM_TO_5PM']." ".$RegenAnsage." ".$WindAnsage." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_FROM_10AM_TO_5PM']);
+				$text=($TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_FROM_10AM_TO_5PM']." ". ($wetter_hc).". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_FROM_10AM_TO_5PM']." ". round($temp_c)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_FROM_10AM_TO_5PM']." ".$RegenAnsage.". ".$WindAnsage.". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_FROM_10AM_TO_5PM']);
 				break;
 			# Wettervorhersage für die Zeit zwischen 17:00 und 22:00h
 			case $Stunden >=17 && $Stunden <22:
-				$text=$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_FROM_5PM_TO_10PM']." ". ($wetter). ". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_FROM_5PM_TO_10PM']." ". round($temp_c)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_FROM_5PM_TO_10PM']." ". round($low0). " ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_FROM_5PM_TO_10PM']." ". $RegenAnsage." ".$WindAnsage.". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_5_HOUR_FROM_5PM_TO_10PM'].". ";
+				$text=$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_FROM_5PM_TO_10PM']." ". ($wetter). ". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_FROM_5PM_TO_10PM']." ". round($temp_c)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_FROM_5PM_TO_10PM']." ". round($low0). " ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_FROM_5PM_TO_10PM']." ". $RegenAnsage.". ".$WindAnsage.". ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_5_HOUR_FROM_5PM_TO_10PM'].". ";
 				break;
 			# Wettervorhersage für den morgigen Tag nach 22:00h
 			case $Stunden >=22:
-				$text=$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_AFTER_10PM']." ".($conditions1). ", ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_AFTER_10PM']." ". round($high1) ." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_AFTER_10PM']." ". round($low1)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_AFTER_10PM']." ".$regenwahrscheinlichkeit1." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_5_HOUR_AFTER_10PM'].".";
+				$text=$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_1_HOUR_AFTER_10PM']." ".($conditions1). ", ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_2_HOUR_AFTER_10PM']." ". round($high1) ." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_3_HOUR_AFTER_10PM']." ". round($low1)." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_4_HOUR_AFTER_10PM'].". ".$regenwahrscheinlichkeit1." ".$TL['WEATHER-TO-SPEECH']['WEATHERTEXT_5_HOUR_AFTER_10PM'].".";
 				break;
 			default:
 				$text="";
 				break;
 		}
 		$textcode = ($text);
-		LOGGING('Text2Speech: addon/weather.php: Weather announcement: '.($text),5);
-		LOGGING('Text2Speech: addon/weather.php: Message been generated and pushed to T2S creation',7);
+		LOGOK('Text2Speech: addon/weather.php: Weather announcement: '.($text));
+		LOGDEB('Text2Speech: addon/weather.php: Message been generated and pushed to T2S creation');
 		return $textcode;
 	}
 ?>

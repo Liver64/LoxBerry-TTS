@@ -9,8 +9,12 @@
 
 # Will be executed as user "loxberry".
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
 TS_SOCKET="/run/shm/ttsplugin.sock"
 
-/usr/bin/php REPLACELBPBINDIR/mqtt/mqtt-watchdog.php
-# /usr/bin/bash REPLACELBPBINDIR/job_monitor.sh
+FILE="REPLACELBPDATADIR/mqtt/remote_mqtt_config.json"
+if [ -e "$FILE" ]; then
+  rm -f -- "$FILE" || echo "WARN: could not remove $FILE" >&2
+fi
+
+/usr/bin/bash REPLACELBPBINDIR/mqtt/watchdog_bridge.sh
+/usr/bin/bash REPLACELBPBINDIR/job_monitor.sh

@@ -24,21 +24,17 @@ use LoxBerry::Web;
 use LoxBerry::Log;
 use LoxBerry::Storage;
 use LoxBerry::JSON;
+use LWP::UserAgent;
+use HTTP::Request;
 use HTML::Template;
 use JSON::PP qw(encode_json decode_json);
+use Encode ();
+use URI::Escape qw(uri_unescape);
 use File::Copy;
 use Data::Dumper;
 
 use warnings;
 use strict;
-#use Config::Simple '-strict';
-#use CGI::Carp qw(fatalsToBrowser);
-#use CGI qw/:standard/;
-#use LWP::Simple;
-#use LWP::UserAgent;
-#use File::HomeDir;
-#use Cwd 'abs_path';
-#use utf8;
 
 ##########################################################################
 # Generic exception handler
@@ -69,6 +65,8 @@ my $template;
 our $lbpbindir;
 my %SL;
 
+use LWP::UserAgent;
+use HTTP::Request;
 my $languagefile 				= "tts_all.ini";
 my $maintemplatefilename	 	= "index.html";
 my $outputfile 					= 'output.cfg';
@@ -182,6 +180,26 @@ if ( $R::delete_log )
 
 $saveformdata = defined $R::saveformdata ? $R::saveformdata : undef;
 $do = defined $R::do ? $R::do : "form";
+
+# --- AJAX: Validator für ICS/JSON ---
+if (defined $R::action && $R::action eq 'validate_ics') {
+    my $url  = defined $R::url  ? $R::url  : '';
+    my $mode = defined $R::mode ? $R::mode : 'ics';
+
+    my ($ok, $msg, $events) = _validate_url($url, $mode);
+
+    # Keine CGI::header – reine Prints (vermeidet 500, falls CGI nicht geladen ist)
+    print "Content-Type: application/json; charset=utf-8\n";
+    print "Cache-Control: no-store, no-cache, must-revalidate\n\n";
+    print encode_json({
+        ok     => $ok ? JSON::PP::true : JSON::PP::false,
+        msg    => $ok ? undef : $msg,
+        events => $ok ? ($events // 0) : undef,
+    });
+    exit; # ganz wichtig – sonst läuft die normale Seite weiter
+}
+
+
 
 ##########################################################################
 # Init Main Template
@@ -457,7 +475,8 @@ sub form {
 	my $json = '';
 
 	# 1) Versuch: PHP-Helfer (falls vorhanden)
-	$json = qx{/usr/bin/php /opt/loxberry/bin/plugins/text2speech/detect_soundcards.php 2>/dev/null};
+	#$json = qx{/usr/bin/php /opt/loxberry/bin/plugins/text2speech/detect_soundcards.php 2>/dev/null};
+	$json = qx{/usr/bin/php $lbpbindir/detect_soundcards.php 2>/dev/null};
 	my $data = eval { decode_json($json) } || { cards => [] };
 
 	# 2) Versuch: /tmp/soundcards.json lesen
@@ -684,6 +703,137 @@ sub print_save
 
 
 ######################################################################
+# --- Helpers for CalDAV validation ---
+######################################################################
+
+sub _mask_url 
+{
+    my ($u) = @_;
+    return '' unless defined $u;
+    $u =~ s/(pass=)([^&]+)/$1***MASKED***/ig;
+    $u =~ s{(https?://)([^:/\s]+):([^@/]+)\@}{$1$2:***MASKED***@}ig;
+    return $u;
+}
+
+sub _validate_url {
+    my ($url, $mode) = @_;
+    $mode ||= 'ics';
+
+    return (0, "No URL entered") unless defined $url && $url ne '';
+
+    # --- Resolve actual target for ICS: take calURL=... if present ---
+    my $target_url = $url;
+    if ($mode eq 'ics') {
+        if ($url =~ /(?:^|[?&])calURL=([^&]+)/i) {
+            my $enc = $1;
+            my $dec = uri_unescape($enc);          # e.g. https%3A// -> https://
+            $dec =~ s/^webcal:\/\//https:\/\//i;   # normalize webcal://
+            $target_url = $dec if $dec =~ m{^https?://}i;
+        }
+    }
+
+    # --- HTTP client ---
+    my $ua = LWP::UserAgent->new(
+        timeout      => 12,
+        max_size     => 512 * 1024,   # up to ~512 KB
+        max_redirect => 5,
+        env_proxy    => 1,
+        agent        => "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                      . "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    );
+
+    # --- Build request (no Range on first try) ---
+    my $req = HTTP::Request->new(GET => $target_url);
+    if ($mode eq 'ics') {
+        $req->header('Accept' => 'text/calendar, text/plain, application/octet-stream');
+    } else { # json
+        $req->header('Accept' => 'application/json, text/plain');
+    }
+    $req->header('Connection' => 'close');
+
+    my $res = $ua->request($req);
+    return (0, sprintf("HTTP error %s at %s", $res->status_line, _mask_url($target_url)))
+        unless $res->is_success;
+
+    my $ct_header = $res->header('Content-Type') // '';
+    my $ct        = lc $ct_header;
+
+    # Prefer raw content; normalize BOM/encodings
+    my $bytes = $res->content // '';
+    my $body  = $bytes;
+    $body =~ s/^\xEF\xBB\xBF//;   # UTF-8 BOM
+
+    # Detect UTF-16/32 BOMs and decode
+    if ($body =~ /^\xFF\xFE\x00\x00/) {              # UTF-32 LE with BOM
+        $body = Encode::decode('UTF-32LE', $body);
+    } elsif ($body =~ /^\x00\x00\xFE\xFF/) {         # UTF-32 BE with BOM
+        $body = Encode::decode('UTF-32BE', $body);
+    } elsif ($body =~ /^\xFF\xFE/) {                 # UTF-16 LE
+        $body = Encode::decode('UTF-16LE', $body);
+    } elsif ($body =~ /^\xFE\xFF/) {                 # UTF-16 BE
+        $body = Encode::decode('UTF-16BE', $body);
+    }
+
+    # Trim leading whitespace/newlines that might precede VCALENDAR
+    $body =~ s/^\s+//;
+
+    if ($mode eq 'ics') {
+        my $has_vcal = ($body =~ /BEGIN:VCALENDAR/i) ? 1 : 0;
+
+        # If server clearly returned JSON, tell the user
+        if ($ct =~ /json/) {
+            return (0, sprintf("Got JSON instead of ICS (Content-Type: %s)", $ct_header));
+        }
+        # If HTML and no VCALENDAR → likely error/login page
+        if ($ct =~ /html/ && !$has_vcal) {
+            my $snip = substr($body, 0, 200); $snip =~ s/\s+/ /g;
+            return (0, sprintf("Got HTML instead of ICS (Content-Type: %s): %s", $ct_header, $snip));
+        }
+
+        # Accept ICS if VCALENDAR marker is present (even with wrong Content-Type)
+        unless ($has_vcal) {
+            my $snip = substr($body, 0, 200); $snip =~ s/\s+/ /g;
+            return (0, sprintf(
+                "No iCalendar (BEGIN:VCALENDAR missing). Content-Type: %s. Snippet: %s",
+                $ct_header, $snip
+            ));
+        }
+
+        my $events = () = ($body =~ /BEGIN:VEVENT/ig);
+        return (0, "No events found") if $events < 1;
+        return (1, "OK", $events);
+    }
+    elsif ($mode eq 'json') {
+        # Wrong type for JSON?
+        if ($ct =~ /calendar|ics/) {
+            return (0, sprintf("Got ICS instead of JSON (Content-Type: %s)", $ct_header));
+        }
+
+        my $data;
+        eval { $data = decode_json($body) };
+        if ($@ || !defined $data) {
+            my $snip = substr($body, 0, 200); $snip =~ s/\s+/ /g;
+            return (0, sprintf("Invalid JSON. Snippet: %s", $snip));
+        }
+
+        # Count appointment-like objects (ignore 'now')
+        my $count = 0;
+        if (ref $data eq 'HASH') {
+            for my $k (keys %$data) {
+                next if lc($k) eq 'now';
+                $count++ if ref $data->{$k} eq 'HASH';
+            }
+        }
+        return (0, "No appointments found in JSON") if $count < 1;
+
+        return (1, "OK", $count);
+    }
+
+    return (0, "Unknown mode");
+}
+
+
+######################################################################
 # AJAX functions
 ######################################################################
 
@@ -789,6 +939,5 @@ sub END
 		}
 	}
 }
-
 
 

@@ -10,30 +10,27 @@ function c2s()
 	#********************** NEW get text variables*********** ***********
 	$TL = LOAD_T2S_TEXT();
 			
-	$Stunden = intval(strftime("%H"));
-	$Minuten = intval(strftime("%M"));
-	switch ($Stunden) 
-	{
-		# Uhrzeitansage für die Zeit zwischen 06:00 und 11:00h
-		case $Stunden >=6 && $Stunden <11:
-			$Vorspann=$TL['CLOCK-TO-SPEECH']['GREETING_6AM_to_11AM'];
-			break;
-		# Uhrzeitansage für die Zeit zwischen 11:00 und 17:00h
-		case $Stunden >=11 && $Stunden <17:
-			$Vorspann=$TL['CLOCK-TO-SPEECH']['GREETING_11AM_to_5PM'];
-			break;
-		# Uhrzeitansage für die Zeit zwischen 17:00 und 22:00h
-		case $Stunden >=17 && $Stunden <22:
-			$Vorspann=$TL['CLOCK-TO-SPEECH']['GREETING_5PM_to_10PM'];
-			break;
-		# Uhrzeitansage für die Zeit nach 22:00h
-		case $Stunden >=22 :
-			$Vorspann=$TL['CLOCK-TO-SPEECH']['GREETING_AFTER_10PM'];
-			break;
-		default:
-			$Vorspann=$TL['CLOCK-TO-SPEECH']['GREETING_DEFAULT'];
-			break;
+	$Stunden = (int)strftime("%H");
+	$Minuten = (int)strftime("%M");
+
+	if ($Stunden >= 6 && $Stunden < 11) {
+		$Vorspann = $TL['CLOCK-TO-SPEECH']['GREETING_6AM_to_11AM'];
+	} elseif ($Stunden >= 11 && $Stunden < 17) {
+		$Vorspann = $TL['CLOCK-TO-SPEECH']['GREETING_11AM_to_5PM'];
+	} elseif ($Stunden >= 17 && $Stunden < 22) {
+		$Vorspann = $TL['CLOCK-TO-SPEECH']['GREETING_5PM_to_10PM'];
+	} elseif ($Stunden >= 22) {
+		$Vorspann = $TL['CLOCK-TO-SPEECH']['GREETING_AFTER_10PM'];
+	} else {
+		$Vorspann = $TL['CLOCK-TO-SPEECH']['GREETING_DEFAULT'];
 	}
+
+	if ($Stunden >= 6 && $Stunden < 8) {
+		$Nachsatz = " ";
+	} else {
+		$Nachsatz = "";
+	}
+
 	
 	switch ($Stunden) 
 	{
@@ -52,9 +49,10 @@ function c2s()
 	
 	$ttext = $Vorspann." ".$TL['CLOCK-TO-SPEECH']['TEXT_BEFORE_HOUR_ANNOUNCEMENT']." ".$Stunden." ".$TL['CLOCK-TO-SPEECH']['TEXT_BEFORE_MINUTE_ANNOUNCEMENT']." ".$Minuten. " ".$TL['CLOCK-TO-SPEECH']['TEXT_AFTER_MINUTE_ANNOUNCEMENT']." ".$Nachsatz;
 	$text = ($ttext);
+	$_GET['nocache'] = '1';
 	
-	LOGGING('Text2Speech: addon/clock.php: Time Announcement: '.$ttext,7);
-	LOGGING('Text2Speech: addon/clock.php: Message been generated and pushed to T2S creation',6);
+	LOGINF('Text2Speech: addon/clock.php: Time Announcement: '.$ttext);
+	LOGINF('Text2Speech: addon/clock.php: Message been generated and pushed to T2S creation');
 	return ($text);
 }	
 ?>

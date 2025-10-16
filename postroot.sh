@@ -47,9 +47,12 @@ if [ ! -L /usr/bin/piper ]; then
 	echo "<INFO> Symlink 'piper' has been created in /usr/bin"
 fi
 
+# Install Mosquitto Bridge
+sudo perl REPLACELBPBINDIR/mqtt/generate_mosquitto_certs.pl --write-conf --bundle --debug
+echo "<OK> Mosquitto Bridge for T2S has been installed"
+
 # Install MQTT event handler as service + watchdog
 if [ ! -L /etc/systemd/system/mqtt-service-tts.service ]; then
-	# cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-service-tts.txt REPLACELBPBINDIR/mqtt/mqtt-service-tts.service
 	cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-service-tts.service /etc/systemd/system/mqtt-service-tts.service
 	cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-config-watcher.service /etc/systemd/system/mqtt-config-watcher.service
 	sudo systemctl daemon-reload

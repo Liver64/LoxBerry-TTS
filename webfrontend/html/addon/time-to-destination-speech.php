@@ -1,121 +1,131 @@
- <?php
-
+<?php
 function tt2t()
 {
-	// https://developers.google.com/maps/documentation/distance-matrix/intro#DistanceMatrixRequests
-	
-	global $config, $debug, $traffic, $home, $myIP;
-	
-	$TL = LOAD_T2S_TEXT();
-	    	
-	$valid_traffic_models = array("pessimistic","best_guess","optimistic");
-	if (empty($_GET['to'])) {
-		LOGGING('Text2Speech: addon/time2Dest.php: You do not have a destination address maintained in syntax. Please enter address!',3);
-		exit;
-    } else {
-		$arrival = $_GET['to'];
-		LOGGING('Text2Speech: addon/time2Dest.php: Valid destination address has been found!',5);
-	}
-	$key 		= trim($config['LOCATION']['googlekey']);
-	$street		= $config['LOCATION']['googlestreet'];
-	$town 		= $config['LOCATION']['googletown'];
-	if (isset($_GET['traffic'])) {
-		$traffic = '1';
-	} else {
-		$traffic = '0';
-	}
-	$start = $street. ', '.$town;
-	if (!isset($_GET['model'])) {
-		$traffic_model 	= "best_guess";
-	} else {
-		$traffic_model 	= $_GET['model'];
-		if (in_array($traffic_model, $valid_traffic_models)) {
-			$traffic_model 	= $_GET['model'];
-			LOGGING('Text2Speech: addon/time2Dest.php: Valid traffic model has been entered!',5);
-		} else {
-			LOGGING('Text2Speech: addon/time2Dest.php: The traffic model you have entered is invalid. Please correct!',3);
-			exit;
-		}
-	}
-	$lang		= "de"; // https://developers.google.com/maps/faq#languagesupport
-	$mode 		= "driving"; // walking, bicycling, transit
-	$units		= "metric"; // imperial
-	$departure_time = time();
-    $start      = urlencode($start);
-    $arrival    = urlencode($arrival);
-	$time 		= time(); # + 900; // +15 Minuten Abfahrtzeit
-	$request    = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" . $start . "&destinations=" . $arrival . "&departure_time=" . $time . "&traffic_model=" . $traffic_model . "&mode=" . $mode . "&units=" . $units . "&key=" . $key . "&language=" . $lang;
-    $jdata      = file_get_contents($request);
-	#print_R($jdata);
-	$data       = json_decode($jdata, true);
-	if (empty($data)) {
-		LOGGING('Text2Speech: addon/time2Dest.php: Data from Google Maps could not be obtainend! Please check your syntax',3);
-		exit;
-	} else {
-		LOGGING('Text2Speech: addon/time2Dest.php: Data from Google Maps has been successful obtainend.',6);
-	}	
-	$status     = $data["status"];
-    $row_status = $data["rows"][0]["elements"][0]["status"];
-    if ($status == "OK" && $row_status == "OK") {
-        $distance = $data["rows"][0]["elements"][0]["distance"]["value"];
-        $distance = round(($distance / 1000), 0);
-        $duration = $data["rows"][0]["elements"][0]["duration"]["value"];
-        $dhours   = floor($duration / 3600);
-        $dminutes = floor($duration % 3600 / 60);
-        $dseconds = $duration % 60;
-        if ($dseconds >= 30) {
-            $dminutes = $dminutes + 1;
-        }
-		$duration_in_traffic = $data["rows"][0]["elements"][0]["duration_in_traffic"]["value"];
-        $dthours             = floor($duration_in_traffic / 3600);
-        $dtminutes           = floor($duration_in_traffic % 3600 / 60);
-        $dtseconds           = $duration_in_traffic % 60;
-		$start     = urldecode($start);
-        $arrival   = urldecode($arrival);
-        if ($dtseconds >= 30) {
-            $dtminutes = $dtminutes + 1;
-        }
-		if ($traffic == '0') {
-            $hours   = $dhours;
-            $minutes = $dminutes;    
-			$textpart1 = $TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT1']." ".$distance." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT2']." ".$arrival." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT3']." ". date("H", $time) ." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT4']." ".date("i", $time)." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT5']." ";
-        } else {
-            $hours   = $dthours;
-            $minutes = $dtminutes;
-			$textpart1 = $TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT1']." ".$distance." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT2']." ".$arrival." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT3']." ". date("H", $time) ." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT4']." ".date("i", $time)." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT6']." ";
-        }
-		if ($hours == 0 && $minutes == 1) {
-            $textpart2 = $TL['DESTINATION-TO-SPEECH']['ONE_MINUTE'];
-        } else if ($hours == 0 && $minutes > 1) {
-            $textpart2 = $minutes . $TL['DESTINATION-TO-SPEECH']['MORE_THEN_ONE_MINUTE'];
-        } else if ($hours == 1 && $minutes == 1) {
-            $textpart2 = $TL['DESTINATION-TO-SPEECH']['ONE_HOUR_AND_MINUTES'];
-        } else if ($hours == 1 && $minutes >= 1) {
-            $textpart2 = $TL['DESTINATION-TO-SPEECH']['ONE_HOUR_AND']." ".$minutes." ".$TL['DESTINATION-TO-SPEECH']['MORE_THEN_ONE_MINUTE'];
-        } else if ($hours > 1 && $minutes > 1) {
-            $textpart2 = $hours . " ".$TL['DESTINATION-TO-SPEECH']['HOUR_AND_MINUTES']." ". $minutes." ".$TL['DESTINATION-TO-SPEECH']['MORE_THEN_ONE_MINUTE'];
-        }
-        $text = $textpart1 . $textpart2;
-    } else {
-		LOGGING('Text2Speech: addon/time2Dest.php: The entered URL is not complete or invalid. Please check URL!',3);
-        exit;
+    // https://developers.google.com/maps/documentation/distance-matrix/intro#DistanceMatrixRequests
+    global $config, $traffic;
+
+    $TL = LOAD_T2S_TEXT();
+
+    // Destination check
+    if (empty($_GET['to'])) {
+        LOGERR('Text2Speech: addon/time2Dest.php: No destination address provided (?to=...).');
+        return '';
     }
-    $words = $text;
-	#echo $request;
-	
-		$ttd = "Text = " . $text . "\r\n";
-		$ttd .= "starting address = " . $start . "\r\n";
-		$ttd .= "destination address = " . $arrival . "\r\n";
-		$ttd .= "planned departuretime = " . date("H:i", $time) . "\r\n";
-		$ttd .= "Traffic Model = " . $traffic_model . "\r\n";
-		$ttd .= "Mode = " . $mode . "\r\n";
-		$ttd .= "Dictance = " . $distance . "km / Zeit = " . $hours . " Stunden " . $minutes . " Minuten";
+    $arrivalRaw = (string)$_GET['to'];
+    LOGOK('Text2Speech: addon/time-to-destination-speech.php: Destination address detected.');
 
-	#echo $text;
-	LOGGING('Text2Speech: addon/time2Dest.php: Destination announcement: '.($ttd),7);
-	LOGGING('Text2Speech: addon/time2Dest.php: Message been generated and pushed to T2S creation',5);
-	return $words;
+    // API key check
+    $key = trim((string)($config['LOCATION']['googlekey'] ?? ''));
+    if ($key === '') {
+        LOGWARN('Text2Speech: addon/time-to-destination-speech.php: Google Maps API key is missing in Plugin Config');
+        return '';
+    }
+
+    // Origin from config
+    $street   = (string)($config['LOCATION']['googlestreet'] ?? '');
+    $town     = (string)($config['LOCATION']['googletown']   ?? '');
+    $startRaw = trim($street . ', ' . $town);
+
+    // Traffic/model
+    $traffic = isset($_GET['traffic']) ? '1' : '0';
+    $valid   = ['pessimistic','best_guess','optimistic'];
+    $traffic_model = (string)($_GET['model'] ?? 'best_guess');
+    if (!in_array($traffic_model, $valid, true)) {
+        LOGWARN('Text2Speech: addon/time-to-destination-speech.php: Invalid traffic model. Falling back to best_guess.');
+        $traffic_model = 'best_guess';
+    }
+
+    $lang = 'de'; $mode = 'driving'; $units = 'metric'; $time = time();
+
+    // Request
+    $params = [
+        'origins'        => $startRaw,
+        'destinations'   => $arrivalRaw,
+        'departure_time' => $time,
+        'traffic_model'  => $traffic_model,
+        'mode'           => $mode,
+        'units'          => $units,
+        'key'            => $key,
+        'language'       => $lang,
+    ];
+    $request = 'https://maps.googleapis.com/maps/api/distancematrix/json?' .
+               http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+
+    // Fetch (short timeouts)
+    $ctx = stream_context_create([
+        'http' => ['timeout' => 5],
+        'ssl'  => ['verify_peer' => true, 'verify_peer_name' => true],
+    ]);
+    $jdata = @file_get_contents($request, false, $ctx);
+    if ($jdata === false) {
+        LOGERR('Text2Speech: addon/time-to-destination-speech.php: Network/timeout fetching Distance Matrix.');
+        return '';
+    }
+
+    $data = json_decode($jdata, true, 512, JSON_INVALID_UTF8_SUBSTITUTE);
+    if (!is_array($data)) {
+        LOGERR('Text2Speech: addon/time-to-destination-speech.php: Invalid JSON response.');
+        return '';
+    }
+
+    $status = $data['status'] ?? 'UNKNOWN';
+    if ($status !== 'OK') {
+        LOGERR("Text2Speech: addon/time-to-destination-speech.php: API status not OK ($status).");
+        return '';
+    }
+
+    // Elements
+    $elem = $data['rows'][0]['elements'][0] ?? null;
+    if (!$elem || ($elem['status'] ?? '') !== 'OK') {
+        $rowStatus = $elem['status'] ?? 'MISSING';
+        LOGWARN("Text2Speech: addon/time-to-destination-speech.php: Element status not OK ($rowStatus).");
+        return '';
+    }
+
+    // Distance & durations
+    $distanceMeters = (int)($elem['distance']['value'] ?? 0);
+    $distanceKm     = (int)round($distanceMeters / 1000, 0);
+
+    $durationSec    = (int)($elem['duration']['value'] ?? 0);
+    $durTrafficSec  = (int)($elem['duration_in_traffic']['value'] ?? 0);
+    $useSec         = ($traffic === '1' && $durTrafficSec > 0) ? $durTrafficSec : $durationSec;
+
+    $hours   = (int)floor($useSec / 3600);
+    $minutes = (int)floor(($useSec % 3600) / 60);
+    $seconds = $useSec % 60;
+    if ($seconds >= 30) { $minutes++; }
+
+    $arrival = $arrivalRaw;
+
+    // Build text (success path)
+    if ($traffic === '0') {
+        $textpart1 = $TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT1']." ".$distanceKm." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT2']." ".$arrival." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT3']." ". date("H", $time) ." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT4']." ".date("i", $time)." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT5']." ";
+    } else {
+        $textpart1 = $TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT1']." ".$distanceKm." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT2']." ".$arrival." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT3']." ". date("H", $time) ." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT4']." ".date("i", $time)." ".$TL['DESTINATION-TO-SPEECH']['TEXT_ANNOUNCEMENT6']." ";
+    }
+
+    if ($hours == 0 && $minutes == 1) {
+        $textpart2 = $TL['DESTINATION-TO-SPEECH']['ONE_MINUTE'];
+    } elseif ($hours == 0 && $minutes > 1) {
+        $textpart2 = $minutes . $TL['DESTINATION-TO-SPEECH']['MORE_THEN_ONE_MINUTE'];
+    } elseif ($hours == 1 && $minutes == 1) {
+        $textpart2 = $TL['DESTINATION-TO-SPEECH']['ONE_HOUR_AND_MINUTES'];
+    } elseif ($hours == 1 && $minutes >= 1) {
+        $textpart2 = $TL['DESTINATION-TO-SPEECH']['ONE_HOUR_AND']." ".$minutes." ".$TL['DESTINATION-TO-SPEECH']['MORE_THEN_ONE_MINUTE'];
+    } elseif ($hours > 1 && $minutes > 1) {
+        $textpart2 = $hours . " ".$TL['DESTINATION-TO-SPEECH']['HOUR_AND_MINUTES']." ". $minutes." ".$TL['DESTINATION-TO-SPEECH']['MORE_THEN_ONE_MINUTE'];
+    } else {
+        $textpart2 = $TL['DESTINATION-TO-SPEECH']['ZERO_MINUTES'] ?? 'weniger als eine Minute';
+    }
+
+    $text = trim($textpart1 . $textpart2);
+
+    LOGDEB(sprintf(
+        'Text2Speech: addon/time-to-destination-speech.php: OK distance=%skm time=%s:%02d traffic=%s model=%s',
+        $distanceKm, $hours, $minutes, $traffic, $traffic_model
+    ));
+    LOGOK('Text2Speech: addon/time-to-destination-speech.php: Text generated and passed to T2S.');
+
+    return $text; // success → TTS text
 }
-
-
 ?>

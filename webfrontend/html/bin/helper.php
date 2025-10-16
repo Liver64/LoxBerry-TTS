@@ -135,18 +135,63 @@ function GetTTSParameter($config, $data)    {
 * @return: array 
 **/
 
-function load_t2s_text(){
-	global $config, $t2s_langfile, $t2s_text_stand, $templatepath;
-	
-	if (file_exists($templatepath.'/lang/'.$t2s_langfile)) {
-		$TL = parse_ini_file($templatepath.'/lang/'.$t2s_langfile, true);
-	} else {
-		LOGERR("helper.php: For selected T2S language no translation file still exist! Please go to LoxBerry Plugin translation and create a file for selected language ".substr($config['TTS']['messageLang'],0,2));
-		exit;
-	}
-	return $TL;
-}
+function load_t2s_text(?string $langOverride = null) {
+    global $config, $lbptemplatedir;
 
+    // 1) Sprache bestimmen (Request > Config > en)
+    $lang = trim((string)($langOverride !== null ? $langOverride : ($config['TTS']['messageLang'] ?? 'en')));
+    $lang = strtolower($lang);                 // z.B. "de-de"
+    $lang2 = substr($lang, 0, 2);              // "de"
+    $lang_us = str_replace('-', '_', $lang);   // "de_de"
+
+    // 2) Verzeichnisse
+    $templatepath = rtrim($lbptemplatedir ?? '', '/'); // z.B. /opt/loxberry/templates/plugins/text2speech
+    $langdir = $templatepath . '/lang';
+
+    // 3) Kandidaten in Priorität (de → de_DE/us → fallback en)
+    //    -> deckt t2s-text_de.ini (Bindestrich), t2s_text_de.ini (Unterstrich), tts_text_de.ini (altes Muster) ab
+    $candidates = [
+        $langdir . '/t2s-text_' . $lang2 . '.ini',   // bevorzugt: t2s-text_de.ini
+        $langdir . '/t2s_text_' . $lang2 . '.ini',   // alternative: t2s_text_de.ini
+        $langdir . '/tts_text_' . $lang2 . '.ini',   // legacy:     tts_text_de.ini
+        // Falls du regionalspezifische Files hast, optional mit aufnehmen:
+        $langdir . '/t2s-text_' . $lang_us . '.ini', // t2s-text_de_de.ini
+        $langdir . '/t2s_text_' . $lang_us . '.ini', // t2s_text_de_de.ini
+        $langdir . '/tts_text_' . $lang_us . '.ini', // tts_text_de_de.ini
+    ];
+
+    $fallbacks = [
+        $langdir . '/t2s-text_en.ini',
+        $langdir . '/t2s_text_en.ini',
+        $langdir . '/tts_text_en.ini',
+    ];
+
+    // 4) Erste existierende Datei wählen
+    $path = null;
+    foreach (array_merge($candidates, $fallbacks) as $p) {
+        if (is_file($p)) { $path = $p; break; }
+    }
+
+    if (!$path) {
+        LOGERR("helper.php: No language file found (looked for ".implode(', ', array_map('basename', array_merge($candidates, $fallbacks))).").");
+        exit;
+    }
+
+    // Logging je nach Treffer
+    $pickedBase = basename($path);
+    if (!in_array($path, $candidates, true)) {
+        LOGWARN("helper.php: Language '$lang' not found. Falling back to '$pickedBase'.");
+    } else {
+        LOGDEB("helper.php: Using language file: $pickedBase");
+    }
+
+    $TL = parse_ini_file($path, true);
+    if ($TL === false) {
+        LOGERR("helper.php: Failed to parse language file: $path");
+        exit;
+    }
+    return $TL;
+}
 
 
 /**

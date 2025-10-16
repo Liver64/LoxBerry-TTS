@@ -199,6 +199,11 @@
 		"dtoverlay": "hifiberry-amp",
 		"name": "RPI HiFi AMP HAT TAS5713"
 	},
+	"terratec_aureon_71": {
+		"output": "hw:CARD=USB",
+		"dtoverlay": "",
+		"name": "Terratec Aureon 7.1 USB"
+	},
 	"rpi_dac": {
 		"output": "hw:CARD=sndrpirpidac",
 		"dtoverlay": "rpi-dac",

@@ -20,7 +20,7 @@ error_reporting(E_ALL);
 $logfile            = "REPLACELBPLOGDIR/mqtt.log";
 $InterfaceConfigFile= "REPLACELBPCONFIGDIR/interfaces.json";
 
-$subscribeTopic     = 'tts-publish';     // Steuerkanal: eingehende TTS-JSONs
+$subscribeTopic     = 'tts-publish/#';   // Steuerkanal: eingehende TTS-JSONs
 $responseTopic      = 'tts-subscribe';   // Rückkanal: Handler-Antworten
 
 /* LoxBerry Logging (Datei für allgemeine Interface-Logs) */
@@ -34,6 +34,8 @@ $log = LBLog::newLog($params);
 
 /* Globales Logging für MQTT-Status (eigenes, optionales Logfile) */
 $enableLogMsg = false; // true aktiviert zusätzlich $logfile-Ausgaben
+
+umask(0002); // Dateien entstehen als 664, Ordner als 775
 
 /* Plugins prüfen (nur starten, wenn aktiv) */
 if (file_exists($InterfaceConfigFile)) {
@@ -127,16 +129,24 @@ if ($plugincheck) {
      * Schema für TTS-JSON
      * ======================= */
     $expectedSchema = [
-        "type" => "object",
-        "required" => ["text"],
-        "properties" => [
-            "text"     => ["type" => "string"],
-            "nocache"  => ["type" => "number"],
-            "logging"  => ["type" => "number"],
-            "mp3files" => ["type" => "number"],
-        ],
-        "additionalProperties" => false
-    ];
+		"type" => "object",
+		"required" => ["text"],
+		"properties" => [
+			"text"     => ["type" => "string"],
+			"nocache"  => ["type" => "number"],
+			"logging"  => ["type" => "number"],
+			"mp3files" => ["type" => "number"],
+
+			// NEU – nur validieren, kein Subscribe:
+			"client"   => ["type" => "string"],
+			"instance" => ["type" => "string"],
+			"corr"     => ["type" => "string"],
+			"reply_to" => ["type" => "string"],
+		],
+		"additionalProperties" => false
+	];
+
+
 
     /* =======================
      * TTS-Callback (tts-publish)
@@ -264,18 +274,33 @@ function validate_type($value, string $type): bool {
 
 /* Erzeugt die TTS-Datei und sendet eine JSON-Antwort auf $responseTopic */
 function createMessage(array $data) {
+
     global $config, $t2s_param, $mqtt, $responseTopic, $logArray;
 
+    // Config laden
     $config = LoadConfig();
     if ($config === null) {
         LOGERR('mqtt-subscribe.php: t2s_config.json could not be loaded!');
-        return sendMqtt($mqtt, $responseTopic, "Config load failed");
+        return sendMqtt($mqtt, $responseTopic ?? 'tts-subscribe', "Config load failed");
     }
 
-    $mp3path    = rtrim($config['SYSTEM']['ttspath'], '/');
-    $t2s_param  = GetTTSParameter($config, $data);
-    $mp3filename= $t2s_param['filename'] . ".mp3";
-    $fullpath   = $mp3path . '/' . $mp3filename;
+    // Antwort-Topic ausschließlich aus Payload ableiten (kein Subscribe hier!)
+    if (!empty($data['reply_to']) && is_string($data['reply_to'])) {
+        $responseTopic = $data['reply_to'];
+    } else {
+        $client   = isset($data['client'])   && is_string($data['client'])   ? $data['client']   : 'text2sip';
+        $instance = isset($data['instance']) && is_string($data['instance']) ? $data['instance'] : 'default';
+        $corr     = isset($data['corr']) ? (string)$data['corr'] : '';
+        $responseTopic = $corr !== ''
+            ? "tts-subscribe/$client/$instance/$corr"
+            : "tts-subscribe";
+    }
+
+    // Pfade/Parameter
+    $mp3path     = rtrim($config['SYSTEM']['ttspath'], '/');
+    $t2s_param   = GetTTSParameter($config, $data);
+    $mp3filename = $t2s_param['filename'] . ".mp3";
+    $fullpath    = $mp3path . '/' . $mp3filename;
 
     clearstatcache(true, $fullpath);
 
@@ -288,11 +313,13 @@ function createMessage(array $data) {
         return sendMqtt($mqtt, $responseTopic, "Directory not writable: $mp3path");
     }
 
+    // Engine wählen
     select_t2s_engine($t2s_param['t2sengine']);
 
-    $nocache = isset($data['nocache']) ? (int)$data['nocache'] : 0;
-    $minSize = 1024;
-    $result  = false;
+    // Cache/Erzeugung
+    $nocache   = isset($data['nocache']) ? (int)$data['nocache'] : 0;
+    $minSize   = 1024;
+    $result    = false;
     $messresponse = '';
 
     if ($nocache === 1) {
@@ -335,25 +362,49 @@ function createMessage(array $data) {
             logmsg("ERROR", "MP3 creation failed: file missing or too small.");
         } else {
             $messresponse = "MP3 file created successfully.";
+			@chmod($fullpath, 0664);
             $result = true;
             LOGOK("mqtt-subscribe.php: MP3 file created successfully: $mp3filename");
         }
     }
 
+    // Antwort publishen (QoS 0, nicht retained)
     if ($result) {
         logmsg("OK", $messresponse . ": $mp3filename");
 
+        $httpiface    = $config['SYSTEM']['httpinterface']    ?? null;
+        $httpmp3iface = $config['SYSTEM']['httpmp3interface'] ?? null;
+
         $finalResponse = [
-            'status'        => 'done',
-            'message'       => $messresponse,
-            'file'          => $mp3filename,
-            'httpinterface' => $config['SYSTEM']['httpinterface']  ?? null,
-            'cifsinterface' => $config['SYSTEM']['cifsinterface']  ?? null,
-            'ttspath'       => $config['SYSTEM']['ttspath']        ?? null,
-            'mp3path'       => $config['SYSTEM']['mp3path']        ?? null,
-            'httpmp3interface'=> $config['SYSTEM']['httpmp3interface'] ?? null,
-            'cifsmp3interface'=> $config['SYSTEM']['cifsmp3interface'] ?? null,
-            'timestamp'     => date("H:i:s"),
+            'status'            => 'done',
+            'message'           => $messresponse,
+            'file'              => $mp3filename,
+
+            // Legacy/top-level:
+            'httpinterface'     => $httpiface,
+            'httpmp3interface'  => $httpmp3iface,
+            'cifsinterface'     => $config['SYSTEM']['cifsinterface']    ?? null,
+            'ttspath'           => $config['SYSTEM']['ttspath']          ?? null,
+            'mp3path'           => $config['SYSTEM']['mp3path']          ?? null,
+            'cifsmp3interface'  => $config['SYSTEM']['cifsmp3interface'] ?? null,
+            'timestamp'         => date("H:i:s"),
+
+            // Korrelation spiegeln (keine Subscribe-Logik nötig)
+            'corr'              => isset($data['corr']) ? (string)$data['corr'] : null,
+
+            // Alternatives Interfaces-Objekt:
+            'interfaces'        => [
+                'httpinterface'    => $httpiface,
+                'httpmp3interface' => $httpmp3iface,
+            ],
+
+            // Original-Felder zurückspiegeln (optional hilfreich fürs Matching)
+            'original'          => [
+                'corr'     => isset($data['corr']) ? (string)$data['corr'] : null,
+                'reply_to' => isset($data['reply_to']) ? (string)$data['reply_to'] : null,
+                'client'   => isset($data['client']) ? (string)$data['client'] : null,
+                'instance' => isset($data['instance']) ? (string)$data['instance'] : null,
+            ],
         ];
 
         if (!empty($data['mp3files']) && (int)$data['mp3files'] === 1) {
@@ -362,7 +413,7 @@ function createMessage(array $data) {
         if (!empty($data['logging']) && (int)$data['logging'] === 1) {
             $finalResponse['logs'] = getLogArray();
         }
-        #logmsg('ERR', ['response' => $finalResponse]);
+
         $mqtt->publish($responseTopic, json_encode($finalResponse, JSON_UNESCAPED_UNICODE), 0);
         LOGOK("mqtt-subscribe.php: OK response sent on Topic: [$responseTopic]");
     } else {
@@ -370,6 +421,7 @@ function createMessage(array $data) {
         return sendMqtt($mqtt, $responseTopic, "MP3 could not be created");
     }
 }
+
 
 /* Zentrale MQTT-Error-Response */
 function sendMqtt($mqtt, string $topic, string $message, array $details = []) {

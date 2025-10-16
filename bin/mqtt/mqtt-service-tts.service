@@ -3,13 +3,13 @@ Description=MQTT Subscriber
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/php /opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-subscribe.php
+ExecStart=/usr/bin/php REPLACELBPBINDIR/mqtt/mqtt-subscribe.php
 Restart=always
 RestartSec=10
 StartLimitIntervalSec=300
 StartLimitBurst=5
 User=loxberry
-WorkingDirectory=/opt/loxberry/bin/plugins/text2speech/mqtt
+WorkingDirectory=REPLACELBPBINDIR/mqtt
 StandardOutput=journal
 StandardError=journal
 

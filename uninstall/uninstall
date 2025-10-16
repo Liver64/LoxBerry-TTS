@@ -1,16 +1,143 @@
-#!/bin/sh
+#!/usr/bin/env perl
+# uninstall (T2S Master)
+# - Löscht KEINE Zertifikate
+# - Rollenmarker: Nur eigenen Marker entfernen; Verzeichnis nur löschen, wenn leer
+# - ACLs auf /etc/mosquitto* nur zurücknehmen, wenn keine anderen Marker vorhanden sind
+# - KEIN deps_ok, KEIN flagfile
 
-systemctl stop mqtt-service-tts
-systemctl disable mqtt-service-tts
-rm /etc/systemd/system/mqtt-service-tts.service
-rm /etc/systemd/system/mqtt-service-tts # and symlinks that might be related
-rm /usr/lib/systemd/system/mqtt-service-tts 
-rm /usr/lib/systemd/system/mqtt-service-tts # and symlinks that might be related
-systemctl stop mqtt-config-watcher
-systemctl disable mqtt-config-watcher
-rm /etc/systemd/system/mqtt-config-watcher.service
-rm /etc/systemd/system/mqtt-config-watcher # and symlinks that might be related
-rm /usr/lib/systemd/system/mqtt-config-watcher 
-rm /usr/lib/systemd/system/mqtt-config-watcher # and symlinks that might be related
-systemctl daemon-reload
-systemctl reset-failed
+use strict;
+use warnings;
+use utf8;
+use File::Spec;
+use File::Path qw(make_path);
+use Time::HiRes qw(gettimeofday);
+use open ':std', ':utf8';
+binmode STDOUT, ':utf8';
+
+# ---------- Pfade (REPLACEBY) ----------
+my $LBP_CONFIGDIR = 'REPLACELBPCONFIGDIR';
+my $LBP_LOGDIR    = 'REPLACELBPLOGDIR';
+
+# Systempfade
+my $MOSQ_BASE   = '/etc/mosquitto';
+my $MOSQ_CA_DIR = File::Spec->catdir($MOSQ_BASE, 'ca');
+my $MOSQ_CE_DIR = File::Spec->catdir($MOSQ_BASE, 'certs');
+
+# Optional .env zum Lesen der effektiven Pfade (wird NICHT gelöscht)
+my $ENV_FILE  = File::Spec->catfile($LBP_CONFIGDIR, 'sip_perl.env');
+my $CA_FILE   = File::Spec->catfile($MOSQ_CA_DIR, 'mosq-ca.crt');
+my $CERT_FILE = File::Spec->catfile($MOSQ_CE_DIR, 'sip_bridge.crt');
+my $KEY_FILE  = File::Spec->catfile($MOSQ_CE_DIR, 'sip_bridge.key');
+
+# ---------- Logging ----------
+my $LOG_DIR  = $LBP_LOGDIR;
+my $LOG_FILE = File::Spec->catfile($LOG_DIR, 'uninstall_t2s_master.log');
+
+sub ts { my ($s,$us)=gettimeofday(); my @t=localtime($s);
+  sprintf("%02d-%02d-%04d %02d:%02d:%02d.%03d",$t[3],$t[4]+1,$t[5]+1900,$t[2],$t[1],$t[0],int($us/1000)) }
+sub _line { my($lvl,$m)=@_; sprintf("%s <%s> %s\n", ts(), $lvl, $m) }
+sub logx { my($lvl,$m)=@_; my $L=_line($lvl,$m); print $L; print LOG $L if *LOG{IO}; }
+sub OK   { logx('OK',   shift) } sub INFO{ logx('INFO', shift) } sub WARN{ logx('WARN', shift) }
+sub _sudo { system('/usr/bin/sudo','-n', @_) == 0 }
+
+# ---------- Start ----------
+eval { make_path($LOG_DIR) unless -d $LOG_DIR; 1; };
+open(LOG, ">>:utf8", $LOG_FILE); select((select(LOG), $|=1)[0]);
+INFO("=== T2S Master Uninstall ===");
+
+# .env optional einlesen (nur zum Loggen/ACL-Revert)
+if (-f $ENV_FILE) {
+  eval {
+    open my $fh,'<:utf8',$ENV_FILE or die $!;
+    while (my $line = <$fh>) {
+      next if $line =~ /^\s*#/;
+      if ($line =~ /^\s*CA_FILE\s*=\s*(\S+)/)   { $CA_FILE   = $1 }
+      if ($line =~ /^\s*CERT_FILE\s*=\s*(\S+)/) { $CERT_FILE = $1 }
+      if ($line =~ /^\s*KEY_FILE\s*=\s*(\S+)/)  { $KEY_FILE  = $1 }
+    }
+    close $fh;
+    INFO("Parsed env: CA_FILE=$CA_FILE CERT_FILE=$CERT_FILE KEY_FILE=$KEY_FILE");
+    1;
+  } or do { WARN("Could not parse $ENV_FILE: $@") };
+} else {
+  INFO("No env file at $ENV_FILE (ok) – using defaults");
+}
+
+# ---------- Rollen-Marker sicher bereinigen ----------
+my $ROLE_DIR  = File::Spec->catdir($MOSQ_BASE, 'tts-role');
+# ✎ Falls dein Master-Marker anders heißt, HIER anpassen:
+my $ROLE_FILE = File::Spec->catfile($ROLE_DIR, 't2s-master.role');
+
+my $other_markers = 0;
+
+if (-d $ROLE_DIR) {
+  # 1) eigenen Marker entfernen
+  if (-f $ROLE_FILE) {
+    unlink $ROLE_FILE
+      ? OK("Removed master role marker: $ROLE_FILE")
+      : WARN("Failed to remove master role marker: $ROLE_FILE ($!)");
+  } else {
+    INFO("Master role marker not present (ok): $ROLE_FILE");
+  }
+
+  # 2) prüfen, ob noch weitere Marker vorhanden sind
+  eval {
+    opendir(my $dh, $ROLE_DIR) or die "$!";
+    while (my $e = readdir($dh)) {
+      next if $e eq '.' or $e eq '..';
+      my $p = File::Spec->catfile($ROLE_DIR, $e);
+      next unless -e $p;
+      next if $p eq $ROLE_FILE; # unser bereits entfernter/fehlender Marker
+      $other_markers++;
+    }
+    closedir($dh);
+    1;
+  } or do {
+    WARN("Cannot read $ROLE_DIR: $@"); $other_markers = 1; # konservativ
+  };
+
+  # 3) wenn leer -> Verzeichnis löschen, sonst bestehen lassen
+  if ($other_markers == 0) {
+    my $resolved = eval { require Cwd; Cwd->import('realpath'); realpath($ROLE_DIR) // '' };
+    if (($resolved//'') eq $ROLE_DIR) {
+      INFO("Role directory empty – removing: $ROLE_DIR");
+      system('/bin/rm','-rf','--',$ROLE_DIR) == 0
+        or _sudo('/bin/rm','-rf','--',$ROLE_DIR);
+      OK("Role directory removed");
+    } else {
+      WARN("Unexpected resolve for $ROLE_DIR ($resolved) – skip rm -rf");
+    }
+  } else {
+    INFO("Role directory kept (other markers present): $ROLE_DIR");
+  }
+} else {
+  INFO("Role directory not present (ok)");
+}
+
+# ---------- ACLs zurücknehmen – nur wenn keine anderen Marker mehr da ----------
+my $SETFACL = -x '/usr/bin/setfacl' ? '/usr/bin/setfacl'
+             : -x '/bin/setfacl'    ? '/bin/setfacl' : '';
+
+if ($SETFACL) {
+  if ($other_markers == 0) {
+    INFO("Reverting ACLs on mosquitto directories/files (no other role markers)");
+    for my $d ($MOSQ_BASE, $MOSQ_CA_DIR, $MOSQ_CE_DIR) {
+      next unless -d $d;
+      _sudo($SETFACL,'-x','u:loxberry',$d);
+      _sudo($SETFACL,'-x','u:www-data',$d);
+    }
+    for my $f ($CA_FILE, $CERT_FILE, $KEY_FILE) {
+      next unless -e $f;
+      _sudo($SETFACL,'-x','u:loxberry',$f);
+      _sudo($SETFACL,'-x','u:www-data',$f);
+    }
+    OK("ACLs reverted (where present)");
+  } else {
+    INFO("Skipping ACL revert (other role markers present)");
+  }
+} else {
+  INFO("setfacl not found – skipping ACL revert");
+}
+
+OK("=== Uninstall finished (T2S Master) ===");
+exit 0;

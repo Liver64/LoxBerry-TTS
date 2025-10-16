@@ -12,7 +12,7 @@ $region = $config['LOCATION']['region'];
 $town = htmlentities($town);
 
 if (empty($town) or empty($region)) {
-	LOGGING('Text2Speech: addon/weather_warning.php: Es ist keine Stadt bzw. Gemeinde oder Bundesland in der Konfiguration gepflegt. Bitte erst eingeben!',3);
+	LOGERR('Text2Speech: addon/weather_warning.php: Es ist keine Stadt bzw. Gemeinde oder Bundesland in der Konfiguration gepflegt. Bitte erst eingeben!');
 	exit;
 }
 
@@ -34,16 +34,17 @@ $stadtgemeinde = str_replace('km/h', 'Kilometer pro Stunde', $stadtgemeinde);
 $stadtgemeinde = str_replace('&deg;C', 'Grad', $stadtgemeinde);
 
 if (empty($stadtgemeinde)) {
-	LOGGING('Text2Speech: addon/weather_warning.php: Es konnten keine Daten vom Deutschen Wetterdienst bezogen werden',3);
+	LOGERR('Text2Speech: addon/weather_warning.php: Es konnten keine Daten vom Deutschen Wetterdienst bezogen werden');
 	exit;
 } else {
-	LOGGING('Text2Speech: addon/weather_warning.php: Daten vom Deutschen Wetterdienst wurden erfolgreich bezogen.',6);
+	LOGDEB('Text2Speech: addon/weather_warning.php: Daten vom Deutschen Wetterdienst wurden erfolgreich bezogen.');
 }	
 #print_r(substr($stadtgemeinde,0 , 12));
 
 // Falls kein Wetterhinweis oder Warnung vorliegt abbrechen
 if (substr($stadtgemeinde,0 , 12) == 'er und Klima') {
-	LOGGING('Text2Speech: addon/weather_warning.php: Es liegen derzeit keine Wetter Hinweise oder Warnungen für ihre Stadt bzw. Gemeinde vor.',5);
+	$mess = utf8_encode("Es liegen derzeit keine Wetter Hinweise oder Warnungen für ihre Stadt bzw. Gemeinde vor.");
+	LOGOK('Text2Speech: addon/weather_warning.php: '.$mess);
 	exit;
 }
 
@@ -75,11 +76,12 @@ $text = html_entity_decode($text);
 $text = str_replace("Warnzeitraum", "Warn Zeitraum", $text);
 $text = str_replace(" M ", " Metern ", $text);
 $text = str_replace(" m ", " Metern ", $text);
+$text = utf8_encode($text);
 
 $url = $text;
 #echo $url;
-LOGGING('Text2Speech: addon/weather_warning.php: Wetter Warnung Ansage: '.($url),7);
-LOGGING('Text2Speech: addon/weather_warning.php: Message been generated and pushed to T2S creation',5);
+LOGDEB('Text2Speech: addon/weather_warning.php: Wetter Warnung Ansage: '.($url));
+LOGOK('Text2Speech: addon/weather_warning.php: Message been generated and pushed to T2S creation');
 #return $url;
 
 curl_setopt($curl, CURLOPT_URL, $url);
@@ -103,7 +105,7 @@ $region = $config['LOCATION']['region'];
 $town = htmlentities($town);
 
 if (empty($town) or empty($region)) {
-	LOGGING('Text2Speech: addon/weather_warning.php: Prüfung ob eine aktuelle Warnung vorliegt wurde ausgeführt',7);
+	LOGDEB('Text2Speech: addon/weather_warning.php: Prüfung ob eine aktuelle Warnung vorliegt wurde ausgeführt');
 	exit;
 }
 
@@ -125,16 +127,17 @@ $stadtgemeinde = str_replace('km/h', 'Kilometer pro Stunde', $stadtgemeinde);
 $stadtgemeinde = str_replace('&deg;C', 'Grad', $stadtgemeinde);
 
 if (empty($stadtgemeinde)) {
-	LOGGING('Text2Speech: addon/weather_warning.php: Es konnten keine Daten vom Deutschen Wetterdienst bezogen werden',3);
+	LOGERR('Text2Speech: addon/weather_warning.php: Es konnten keine Daten vom Deutschen Wetterdienst bezogen werden');
 	return false;
 } else {
-	LOGGING('Text2Speech: addon/weather_warning.php: Daten vom Deutschen Wetterdienst wurden erfolgreich bezogen.',6);
+	LOGINF('Text2Speech: addon/weather_warning.php: Daten vom Deutschen Wetterdienst wurden erfolgreich bezogen.');
 }	
 #print_r(substr($stadtgemeinde,0 , 12));
 
 // Falls kein Wetterhinweis oder Warnung vorliegt abbrechen
 if (substr($stadtgemeinde,0 , 12) == 'er und Klima') {
-	LOGGING('Text2Speech: addon/weather_warning.php: Es liegen derzeit keine Wetter Hinweise oder Warnungen für ihre Stadt bzw. Gemeinde vor.',5);
+	$mess = utf8_encode("Es liegen derzeit keine Wetter Hinweise oder Warnungen für ihre Stadt bzw. Gemeinde vor.");
+	LOGOK('Text2Speech: addon/weather_warning.php: '.$mess);
 	return false;
 }
 }
