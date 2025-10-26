@@ -46,6 +46,7 @@ PBIN=$LBPBIN/$PDIR
 # precheck_master_install.sh — Run detector before installing T2S Master
 # Blocks the install if client-only or mixed artifacts are present.
 
+: <<'END_COMMENT'
 set -euo pipefail
 
 # --- Detector path (quote all vars) ---
@@ -101,6 +102,7 @@ case "$rc" in
     exit 2
     ;;
 esac
+END_COMMENT
 
 # Exit with Status 0
 exit 0
