@@ -163,7 +163,7 @@ if ($FULL) {
 
 # ---------- Restart broker & gateway (UI-like, simple) ----------
 # If you run as non-root, ensure sudoers allow these commands.
-system('sudo timeout 15 /opt/loxberry/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true');
+system('sudo timeout 15 REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true');
 OK("Mosquitto has been restarted");
 
 OK("=== Uninstall finished (T2S Master) ===");
