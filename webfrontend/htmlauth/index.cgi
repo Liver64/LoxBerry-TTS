@@ -19,22 +19,27 @@
 # Modules
 ##########################################################################
 
+use strict;
+use warnings;
+
 use LoxBerry::System;
 use LoxBerry::Web;
 use LoxBerry::Log;
 use LoxBerry::Storage;
 use LoxBerry::JSON;
+
+use JSON::PP qw(encode_json decode_json); 
+use HTML::Template;
 use LWP::UserAgent;
 use HTTP::Request;
-use HTML::Template;
-use JSON::PP qw(encode_json decode_json);
 use Encode ();
+use CGI;
 use URI::Escape qw(uri_unescape);
-use File::Copy;
-use Data::Dumper;
 
-use warnings;
-use strict;
+# Optional (z. B. entfernen, wenn ungenutzt):
+# use File::Copy;
+# use Data::Dumper qw(Dumper);
+
 
 ##########################################################################
 # Generic exception handler
@@ -65,14 +70,12 @@ my $template;
 our $lbpbindir;
 my %SL;
 
-use LWP::UserAgent;
-use HTTP::Request;
 my $languagefile 				= "tts_all.ini";
 my $maintemplatefilename	 	= "index.html";
 my $outputfile 					= 'output.cfg';
 my $outputusbfile 				= 'hats.json';
 my $pluginlogfile				= "text2speech.log";
-my $interfaceconfigfilefile		= "interfaces.json";
+my $clients_dir 				= '/etc/mosquitto/tts-role/clients/text2sip';
 my $devicefile					= "/tmp/soundcards2.txt";
 my $lbhostname 					= lbhostname();
 my $lbip 						= LoxBerry::System::get_localip();
@@ -80,12 +83,14 @@ my $ttsfolder					= "tts";
 my $mp3folder					= "mp3";
 my $azureregion					= "westeurope"; # Change here if you have a Azure API key for diff. region
 my $rampath						= $lbpdatadir."/t2s_interface";
-
-my $ms4hpluginname				= "AudioServer4Home";
-my $sonospluginname				= "Sonos";
-my $text2sippluginname			= "Text2SIP";
-
+# Array der bekannten Plugins die potentiell TTS nutzen
+my @WANTED_PLUGINS = qw(
+    text2sip
+    AudioServer4Home
+);
 my $log							= LoxBerry::Log->new (name => 'Webinterface', filename => $lbplogdir ."/". $pluginlogfile, append => 1, addtime => 1);
+our $LOG_ENDED 					= 0;
+our $IS_AJAX 					= 0;
 my $helplink 					= "https://wiki.loxberry.de/plugins/text2speech/start";
 my $configfile 					= "t2s_config.json";
 my $jsonobj 					= LoxBerry::JSON->new();
@@ -150,17 +155,16 @@ my $q = $cgi->Vars;
 # get Pids of Services
 #########################################################################
 my %pids;
-if( $q->{ajax} ) 
-{
-	my %response;
-		
-	ajax_header();
-	if( $q->{ajax} eq "getpids" ) {
-		pids();
-		$response{pids} = \%pids;
-		print JSON::encode_json(\%response);
-	}
-	exit;
+if( $q->{ajax} ) {
+    $IS_AJAX = 1;     # <— markieren, dass dieser Durchlauf AJAX ist
+    my %response;
+    ajax_header();
+    if( $q->{ajax} eq "getpids" ) {
+        pids();
+        $response{pids} = \%pids;
+        print encode_json(\%response);
+    }
+    exit;             # END läuft, aber wir filtern unten
 }
 
 LOGSTART "T2S UI started";
@@ -212,37 +216,53 @@ if ($R::getkeys)
 }
 
 ##########################################################################
-# check installed Plugins (needed for Interface)
+# check/get installed Plugins (needed for Interface)
 ##########################################################################
 
-if (-r $lbpconfigdir . "/" . $interfaceconfigfilefile) 
-{	
-	my $jsonobjic = LoxBerry::JSON->new();
-	our $icfg = $jsonobjic->open(
-		filename      => $lbpconfigdir . "/" . $interfaceconfigfilefile,
-		writeonclose  => 0
-	);
-	my @plugins         = LoxBerry::System::get_plugins();
-	my @plugins_enabled;
-	my $plugincheck;
+# Primär: dynamische Clients aus dem Verzeichnis /etc/mosquitto/tts-role/clients
+my $clients = read_text2sip_clients_list($clients_dir);  # [ { client=>..., version=>..., ip=>..., host=>... }, ... ]
+my @plugins_enabled = map { { name => $_->{client} } } @$clients;
+my %WANTED = map { lc($_) => 1 } @WANTED_PLUGINS;
+my $plugincheck     = @plugins_enabled ? 1 : 0;
 
-	# JSON-Array -> Hash für schnellen Lookup
-	my %wanted = map { $_ => 1 } @$icfg;
+# Sekundär (Fallback): wenn keine Clients gefunden, nimm installierte Plugins
+# gemäß @WANTED_PLUGINS aus Header
+if (!$plugincheck) {
+    my @plugins = LoxBerry::System::get_plugins();
+    foreach my $plugin (@plugins) {
+        my $title = $plugin->{PLUGINDB_TITLE} or next;
+        next unless $WANTED{ lc $title };              # <-- nur gewünschte
 
-	foreach my $plugin (@plugins) {
-		my $title = $plugin->{PLUGINDB_TITLE} or next;
-		if (exists $wanted{$title}) {
-			push @plugins_enabled, { name => $title };   # String als Hash mit key 'name'
-			LOGDEB("Plugin $title ist installiert und im JSON gewünscht");
-			$plugincheck = 1;
-		}
-	}
-	$template->param(
-		INTERFACE => $plugincheck,
-		PLUGINS   => \@plugins_enabled,
-		PLUGINDIR => $lbpplugindir,
-	);
+        push @plugins_enabled, { name => $title };
+        LOGDEB("Plugin $title (Fallback get_plugins, wanted)");
+    }
+    $plugincheck = @plugins_enabled ? 1 : 0;
 }
+
+# Optional
+# Logging-Zusammenfassung (vor Übergabe ans Template)
+my @names = map { $_->{name} } @plugins_enabled;
+
+if (@$clients) {
+    LOGDEB("Interfaces via JSON-Loop gefunden: " . (@names ? join(', ', @names) : '–'));
+} else {
+    LOGDEB("Keine JSON-Clients gefunden – Fallback get_plugins() aktiv.");
+    if (@names) {
+        LOGOK("Installierte (Wanted) Plugins: " . join(', ', @names));
+    } else {
+        LOGWARN("Keine passenden (Wanted) Plugins installiert gefunden.");
+    }
+}
+
+LOGINF("INTERFACE (plugincheck) = $plugincheck");
+
+# Übergabe ans Template: TMPL_LOOP PLUGINS erwartet Arrayref von Hashrefs
+$template->param(
+    INTERFACE => $plugincheck,
+    PLUGINS   => \@plugins_enabled,
+    PLUGINDIR => $lbpplugindir,
+);
+
 
 ##########################################################################
 # Set LoxBerry SDK to debug in plugin is in debug
@@ -475,7 +495,7 @@ sub form {
 	my $json = '';
 
 	# 1) Versuch: PHP-Helfer (falls vorhanden)
-	#$json = qx{/usr/bin/php /opt/loxberry/bin/plugins/text2speech/detect_soundcards.php 2>/dev/null};
+	#$json = qx{/usr/bin/php LBHOMEDIR/bin/plugins/text2speech/detect_soundcards.php 2>/dev/null};
 	$json = qx{/usr/bin/php $lbpbindir/detect_soundcards.php 2>/dev/null};
 	my $data = eval { decode_json($json) } || { cards => [] };
 
@@ -842,9 +862,10 @@ sub pids
 	$pids{'mqttgateway'}   = trim(`pgrep mqttgateway.pl`);
 	$pids{'mosquitto'}     = trim(`pgrep mosquitto`);
 	$pids{'mqtt_handler'}  = trim(`pgrep -f mqtt-subscribe.php`);
-	$pids{'mqtt-watchdog'} = trim(`pgrep -f mqtt-watchdog.php`);
+	$pids{'mqtt_watchdog'} = trim(`pgrep -f 'mqtt-watchdog.php'`);
+	$pids{'mqtt_handshake'} = trim(`pgrep -f 'mqtt_handshake.php'`);
 	#LOGDEB "PIDs updated";
-}	
+}
 
 sub ajax_header
 {
@@ -855,7 +876,6 @@ sub ajax_header
 	);	
 	#LOGOK "AJAX posting received and processed";
 }	
-
 
 #####################################################
 # Get Engine keys (AJAX)
@@ -871,6 +891,50 @@ sub getkeys
 	exit;
 }
 
+
+#####################################################
+# Get connected MQTT clients
+#####################################################
+
+# Liest *.json aus $dir und dedupliziert nach client (neueste Datei gewinnt).
+# Rückgabe: Hashref  { client => { version=>..., ip=>..., host=>... }, ... }
+sub read_text2sip_clients_map {
+    my ($dir) = @_;
+    my %by_client;
+
+    for my $file (glob("$dir/*.json")) {
+        open my $fh, '<', $file or next;
+        local $/;
+        my $raw = <$fh>;
+        close $fh;
+
+        my $data = eval { decode_json($raw) } or next;
+
+        my $client = $data->{client} or next;
+        my $ver    = $data->{version} // '';
+        my $ip     = $data->{ip}      // $data->{remote_ip} // '';
+        my $host   = $data->{host}    // $data->{hostname}  // '';
+
+        my $mtime = (stat($file))[9] // 0;
+
+        # Dedupe: neueste Datei je client gewinnt
+        my $cur = $by_client{$client};
+        if (!defined $cur || $mtime >= ($cur->{_mtime} // -1)) {
+            $by_client{$client} = { version => $ver, ip => $ip, host => $host, _mtime => $mtime };
+        }
+    }
+
+    # _mtime entfernen
+    delete $_->{_mtime} for values %by_client;
+    return \%by_client;
+}
+
+# Rückgabe: $client_array [ {client=>..., version=>..., ip=>..., host=>...}, ... ]
+sub read_text2sip_clients_list {
+    my ($dir) = @_;
+    my $map = read_text2sip_clients_map($dir);
+    return my $client_array = [ map { { client => $_, %{ $map->{$_} } } } sort keys %$map ];
+}
 
 
 ##########################################################################
@@ -923,21 +987,25 @@ sub printtemplate
 ##########################################################################
 # END routine - is called on every exit (also on exceptions)
 ##########################################################################
-sub END 
-{	
-	our @reason;
-	
-	if ($log) {
-		if (@reason) {
-			LOGCRIT "Unhandled exception catched:";
-			LOGERR @reason;
-			LOGEND "Finished with an exception";
-		} elsif ($error_message) {
-			LOGEND "Finished with handled error";
-		} else {
-			LOGEND "Finished successful";
-		}
-	}
+END {
+    our @reason;
+    our $error_message;
+    our $IS_AJAX;
+
+    return if $IS_AJAX;  # <— kein LOGEND bei AJAX
+
+    if ($log) {
+        if (@reason) {
+            LOGCRIT "Unhandled exception catched:";
+            LOGERR  @reason;
+            LOGEND "Finished with an exception";
+        } elsif ($error_message) {
+            LOGEND "Finished with handled error";
+        } else {
+            LOGEND "Finished successful";
+        }
+    }
 }
+
 
 

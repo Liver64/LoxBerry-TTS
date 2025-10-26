@@ -8,9 +8,9 @@
 # cron script will not be uninstalled cleanly.
 
 # Will be executed as user "loxberry".
-export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+#export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-TS_SOCKET="/run/shm/ttsplugin.sock"
+#TS_SOCKET="/run/shm/ttsplugin.sock"
 
-sleep 20;
-/usr/bin/php REPLACELBPBINDIR/mqtt/mqtt-watchdog.php
+sleep 10;
+/usr/bin/bash REPLACELBPBINDIR/mqtt/job-monitor.sh

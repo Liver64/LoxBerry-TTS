@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Bash script which is executed by bash *BEFORE* installation is started (but
 # *AFTER* preupdate). Use with caution and remember, that all systems may be
@@ -42,6 +42,65 @@ PLOG=$LBPLOG/$PDIR # Note! This is stored on a Ramdisk now!
 PCONFIG=$LBPCONFIG/$PDIR
 PSBIN=$LBPSBIN/$PDIR
 PBIN=$LBPBIN/$PDIR
+
+# precheck_master_install.sh — Run detector before installing T2S Master
+# Blocks the install if client-only or mixed artifacts are present.
+
+set -euo pipefail
+
+# --- Detector path (quote all vars) ---
+DETECTOR="$5/data/system/tmp/uploads/$1/bin/detect_bridge_config.sh"
+DETECTOR_FLAGS="--debug"
+
+# --- Sanity checks ---
+if [[ ! -e "$DETECTOR" ]]; then
+  echo "<FAIL> Detector not found: $DETECTOR"
+  exit 2
+fi
+
+# Make sure it's executable (do this *after* existence check)
+chmod +x "$DETECTOR" || {
+  echo "<FAIL> Could not chmod +x $DETECTOR"
+  exit 2
+}
+
+if [[ ! -x "$DETECTOR" ]]; then
+  echo "<FAIL> Detector not executable: $DETECTOR"
+  exit 2
+fi
+
+# --- Run detector (shield against 'set -e') ---
+if "$DETECTOR" $DETECTOR_FLAGS; then
+  rc=0
+else
+  rc=$?
+fi
+
+# --- Decide outcome (use official tags only) ---
+case "$rc" in
+  0)
+    echo "<OK> Mosquitto role check: safe to proceed."
+    ;;
+  1)
+    echo "<WARNING> Client artifacts detected, but continuing due to soft mode."
+	echo "<WARNING> Please check if Mosquitto is up and running post Installation."
+    ;;
+  2)
+    echo "<FAIL> TLS Client/Master conflict detected by detector. Installation aborted."
+	echo "<FAIL> Please uninstall the Plugin using TLS first and then try again."
+    exit 2
+    ;;
+  3)
+    echo "<FAIL> Indeterminate Mosquitto state. Please inspect and fix."
+	echo "<FAIL> Please uninstall the Plugin using TLS first and then try again."
+    exit 2
+    ;;
+  *)
+    echo "<FAIL> Unexpected detector return code: $rc"
+	echo "<FAIL> T2S Plugin could not be installed!" 
+    exit 2
+    ;;
+esac
 
 # Exit with Status 0
 exit 0

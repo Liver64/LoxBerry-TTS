@@ -25,3 +25,14 @@
 			[Enhancement] USB-Soundkarten Unterstützung
  1.3.0		[Bugfix] Fixed Cleanup TTS files
  1.3.1		[Bugfix] Fixed missing link
+ 1.6.0		[Enhancement] Voice Engines Pico/OSX durch ElevenLabs/Piper (Offline) ersetzt
+			[Enhancement] Vorbereitung zur Interface Nutzung (mTLS mit Zertifikaten)
+			[Enhancement] Stimmentest on-the-fly am PC
+			[Enhancement] optimierte Installation
+			[Enhancement] TTS Funktionen optimiert
+			[Enhancement] Validierung der Kalender bei Eingabe der CalDAV-4-Lox Syntax
+			[Enhancement] Syntax für Add-on's geändert
+			[Enhancement] Logging optimiert
+			[Enhancement] Multihandling API-key wenn mehrere TTS Engines genutzt werden
+			[Bugfix] Fixed automatische Findung von Soundkarten inkl. technischer Details
+			[Bugfix] Fixed addons

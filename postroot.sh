@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Will be executed as user "root".
 
 INST=false
@@ -48,23 +48,46 @@ if [ ! -L /usr/bin/piper ]; then
 fi
 
 # Install Mosquitto Bridge
-sudo perl REPLACELBPBINDIR/mqtt/generate_mosquitto_certs.pl --write-conf --bundle --debug
-echo "<OK> Mosquitto Bridge for T2S has been installed"
+perl REPLACELBPBINDIR/mqtt/setup-mqtt-interface.pl --write-conf --bundle --debug
+echo "<OK> Mosquitto Master (bridged) for T2S has been installed"
 
-# Install MQTT event handler as service + watchdog
+# Install MQTT event handler as service
 if [ ! -L /etc/systemd/system/mqtt-service-tts.service ]; then
 	cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-service-tts.service /etc/systemd/system/mqtt-service-tts.service
-	cp -p -v -r REPLACELBPBINDIR/mqtt/mqtt-config-watcher.service /etc/systemd/system/mqtt-config-watcher.service
 	sudo systemctl daemon-reload
 	sudo systemctl enable mqtt-service-tts
 	sudo systemctl start mqtt-service-tts
-	sudo systemctl enable mqtt-config-watcher
-	sudo systemctl start mqtt-config-watcher
-	sudo chmod +x REPLACELBPBINDIR/mqtt/mqtt-watchdog.php
-	echo "<OK> MQTT Event handler and config watcher has been installed"
+	echo "<OK> MQTT Event handler has been installed"
 else
-	echo "<INFO> MQTT Event handler and config watcher are already installed"
+	echo "<INFO> MQTT Event handler is already installed"
 fi
 
+# Install MQTT handshake listener as service
+if [ ! -L /etc/systemd/system/mqtt-handshake.service ]; then
+	chmod 0755 REPLACELBPBINDIR/mqtt/mqtt-handshake.php
+	cp -p -v REPLACELBPBINDIR/mqtt/mqtt-handshake.service /etc/systemd/system/mqtt-handshake.service
+	sudo systemctl daemon-reload
+	sudo systemctl enable mqtt-handshake
+	sudo systemctl start mqtt-handshake
+	echo "<OK> MQTT Handshake listener has been installed"
+else
+	echo "<INFO> MQTT Handshake listener is already installed"
+fi
+
+# prepare Watchdog listener as service
+if [ ! -L REPLACELBPBINDIR/mqtt/mqtt-watchdog.service ]; then
+	cp -p -v REPLACELBPBINDIR/mqtt/mqtt-watchdog.service /etc/systemd/system/mqtt-watchdog.service
+	sudo systemctl daemon-reload
+	sudo systemctl enable mqtt-watchdog
+	sudo systemctl start mqtt-watchdog
+	echo "<INFO> MQTT Watchdog Initialization has been installed"
+else
+	echo "<ERROR> MQTT Watchdog Initialization is already installed"
+	exit 12
+fi
+
+# Restart Moqsuitto
+sudo REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway
+echo "<OK> Mosquitto has been restarted."
 
 exit 0

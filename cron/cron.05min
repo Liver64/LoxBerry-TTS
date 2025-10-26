@@ -16,5 +16,4 @@ if [ -e "$FILE" ]; then
   rm -f -- "$FILE" || echo "WARN: could not remove $FILE" >&2
 fi
 
-/usr/bin/bash REPLACELBPBINDIR/mqtt/watchdog_bridge.sh
-/usr/bin/bash REPLACELBPBINDIR/job_monitor.sh
+/usr/bin/bash REPLACELBPBINDIR/mqtt/mqtt-watchdog-bridge.sh

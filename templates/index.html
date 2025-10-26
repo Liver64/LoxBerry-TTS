@@ -71,7 +71,7 @@
 	<input type="hidden" name="regionOptions" id="regionOptions" value="<TMPL_VAR TTS.regionms>">
 	<input type="hidden" name="myFile" id="myFile" value="<TMPL_VAR MYFILE>">
 	<!--<link rel="stylesheet" href="/plugins/<TMPL_VAR PLUGINDIR>/radio.css"/>
-	<!--<link rel="stylesheet" href="/plugins/<TMPL_VAR PLUGINDIR>/web/table.css"/>-->
+	<!--<link rel="stylesheet" href="/plugins/<TMPL_VAR PLUGINDIR>/web/table.css"/>
 	<TMPL_IF NAME="INTERFACE">
 		<TMPL_LOOP NAME="PLUGINS">
 			<img class="ic_icons"
@@ -83,15 +83,8 @@
 				title="<TMPL_VAR NAME>">
 			&nbsp;
 		</TMPL_LOOP>
-	</TMPL_IF>
-		<div class="form-group">
-		<TMPL_IF NAME="INTERFACE">
-		<div class="gate" style="display:flex;align-items:center;justify-content:center;">
-			&nbsp;<span id="handlerstate"></span>&nbsp;<!--| 
-			&nbsp;<span id="watchdogstate"></span>&nbsp; &nbsp;
-			<!--&nbsp;<font COLOR="blue"><TMPL_VAR SAVE></font>-->
-		</div>
-		</TMPL_IF>
+	</TMPL_IF>-->
+<div class="form-group">
 <table class="formtable" border="0" width="100%" cellpadding="10">
 	<tr>
 		<td valign="middle" style="height: 33px; width: 25%; text-align: center;">
@@ -605,6 +598,8 @@
 		</td>
 	</tr>
 
+		
+
 <script>
 (function($){
   const TAG = '[caldav-validate]';
@@ -813,6 +808,16 @@
 				<button type="submit" form="main_form" id="btnsubmit" data-role="button" data-inline="true" data-mini="true" data-icon="check"><TMPL_VAR SAVE.SAVE_BUTTON></button>
 			</center>
 		</p>
+		
+		<TMPL_IF NAME="INTERFACE">
+			<div class="gate" style="display:flex;align-items:center;justify-content:center;font-size:12px;">
+				&nbsp;<span id="handlerstate"></span>&nbsp;|
+				&nbsp;<span id="watchdogstate"></span>&nbsp;|
+				&nbsp;<span id="handshake"></span>&nbsp;|
+				<!--&nbsp;<span id="mqttgateway"></span>&nbsp;|
+				&nbsp;<span id="mosquitto"></span>&nbsp;|-->
+			</div>
+		</TMPL_IF>
 		
 	
 	
@@ -1162,11 +1167,26 @@ function update_pids() {
 		} else {
 			$("#handlerstate").attr("style", "color:red").html("MQTT Handler not running");
 		}
-		//if(resp.pids.mqtt_watchdog != null) {
-		//	$("watchdogstate").attr("style", "color:green").html("Watchdog running (PID"+resp.pids.mqtt_watchdog+")");
-		//} else {
-		//	$("watchdogstate").attr("style", "color:red").html("Watchdog not running");
-		//}
+		if(resp.pids.mqtt_watchdog != null) {
+			$("#watchdogstate").attr("style", "color:green").html("Watchdog running (PID"+resp.pids.mqtt_watchdog+")");
+		} else {
+			$("#watchdogstate").attr("style", "color:red").html("Watchdog not running");
+		}
+		if(resp.pids.mqttgateway != null) {
+			$("#mqttgateway").attr("style", "color:green").html("MQTT Gateway running (PID"+resp.pids.mqttgateway+")");
+		} else {
+			$("#mqttgateway").attr("style", "color:red").html("MQTT Gateway not running");
+		}
+		if(resp.pids.mosquitto != null) {
+			$("#mosquitto").attr("style", "color:green").html("Mosquitto running (PID"+resp.pids.mosquitto+")");
+		} else {
+			$("#mosquitto").attr("style", "color:red").html("Mosquitto not running");
+		}
+		if(resp.pids.mqtt_handshake != null) {
+			$("#handshake").attr("style", "color:green").html("Handshake Connection running (PID"+resp.pids.mqtt_handshake+")");
+		} else {
+			$("#handshake").attr("style", "color:red").html("Handshake Connection not running");
+		}
 		
 	})
 	.fail(function(resp) {
@@ -1177,6 +1197,7 @@ function update_pids() {
 		//console.log( "ajax_post", "finished", resp );
 	});
 }
+
 
 /*************************************************************************************************************
 /* Funktion : PopulateGoogleCloudVoices --> Populates voices from Google Cloud into Dropdown

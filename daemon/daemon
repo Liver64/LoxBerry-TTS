@@ -1,106 +1,53 @@
-#!/bin/bash
+#!/usr/bin/perl
 # ================================================================
-# job_daemon.sh – Log-Initialisierung + Service-Start
-#  - legt {monitor.log,mqtt-watchdog.log} an
-#  - setzt Owner/Permissions für loxberry (setgid auf Ordner)
-#  - registriert beide Logs mit LOGSTART (einmal pro Boot)
-#  - startet benötigte Services (enable/start idempotent)
+# daemon – Watchdog/Bootstrap
+#  - creates mqtt-watchdog.log
+#  - sets owner/permissions for loxberry (ACL optional)
+#  - LOGSTART once per boot
+#  - delegates service orchestration to set_role.pl --start-services
 # ================================================================
 
-# Wichtig: kein '-u' (nounset), da loxberry_log.sh interne Variablen ungesetzt lässt
-set -e -o pipefail
+use strict;
+use warnings;
+use LoxBerry::System;
+use LoxBerry::Log;
+use File::Path qw(make_path);
 
-# --- Sanity: benötigte LoxBerry-Variablen ---
-: "${LBHOMEDIR:?LBHOMEDIR not set}"
-: "${LBPLOG:?LBPLOG not set}"
-: "${LBSLOG:?LBSLOG not set}"
+my $pluginlogfile    = "mqtt-watchdog.log";
+my $WD_MARKER        = "/run/shm/text2speech.watchdog.started";
 
-PACKAGE="text2speech"
-LOGDIR_PLUGIN="${LBPLOG}/${PACKAGE}"
-MAIN_LOG="${LOGDIR_PLUGIN}/monitor.log"
-WD_LOG="${LOGDIR_PLUGIN}/mqtt-watchdog.log"
+# Pfad zu set_role.pl (anpassen, falls bei dir anders):
+#my $ROLE_HANDLER_DIR  = "REPLACELBHOMEDIR/bin/plugins/text2speech";
+#my $ROLE_HANDLER_FILE = "set_role.pl";
+#my $ROLE_HANDLER_PATH = "$ROLE_HANDLER_DIR/$ROLE_HANDLER_FILE";
 
-# --- Logverzeichnis und Dateien vorbereiten (root, ohne sudo) ---
-# setgid-Bit sorgt dafür, dass neue Dateien die Gruppe loxberry erben
-install -d -m 2775 -o loxberry -g loxberry "$LOGDIR_PLUGIN"
-install -o loxberry -g loxberry -m 664 /dev/null "$MAIN_LOG" 2>/dev/null || true
-install -o loxberry -g loxberry -m 664 /dev/null "$WD_LOG"   2>/dev/null || true
+# --- LoxBerry Log init ---
+my $log = LoxBerry::Log->new(
+    name     => 'Watchdog',
+    filename => "REPLACELBHOMEDIR/log/plugins/text2speech/$pluginlogfile",
+    append   => 1,
+    addtime  => 1
+);
 
-# Optional: ACL, falls mehrere Schreiber
-if command -v setfacl >/dev/null 2>&1; then
-  setfacl -m u:loxberry:rw "$MAIN_LOG" "$WD_LOG" 2>/dev/null || true
-  setfacl -m d:u:loxberry:rwX "$LOGDIR_PLUGIN"   2>/dev/null || true
-fi
+if ($log->loglevel() eq "7") {
+    $LoxBerry::System::DEBUG = 1;
+    $LoxBerry::Log::DEBUG    = 1;
+}
 
-# --- LoxBerry-Logging einbinden ---
-. "$LBHOMEDIR/libs/bashlib/loxberry_log.sh"
-: "${LOGLEVEL:=7}"   # Defensiver Default für die Lib
+# Optional: ACL setzen
+if (system("command -v setfacl >/dev/null 2>&1") == 0) {
+    system("setfacl -m u:loxberry:rw REPLACELBHOMEDIR/log/plugins/text2speech/$pluginlogfile 2>/dev/null");
+}
 
-# ---------------------------
-# Haupt-Log (monitor.log)
-# ---------------------------
-NAME="Monitor"
-FILENAME="$MAIN_LOG"
-LOGDIR="$LBSLOG"
-APPEND=1
-ADDTIME=1
+# LOGSTART nur einmal pro Boot
+unless (-f $WD_MARKER) {
+    if (open my $fh, '>', $WD_MARKER) {
+        print $fh time;
+        close $fh;
+    }
+    LOGSTART("Watchdog started"); 
+} else {
+    LOGINF("Watchdog already started this boot (marker exists)");
+}
 
-# LOGSTART für das Monitor-Log – einmal pro Boot
-MAIN_MARKER="/run/shm/${PACKAGE}.monitor.started"
-mkdir -p /run/shm 2>/dev/null
-if [ ! -f "$MAIN_MARKER" ]; then
-  date +%s > "$MAIN_MARKER"
-  LOGSTART "Job-Monitor started"
-  #LOGINF   "Monitor log registered in LoxBerry overview"
-else
-  LOGINF   "Job-Monitor already started this boot (marker exists)"
-fi
-
-# ---------------------------
-# Watchdog-Log (mqtt-watchdog.log) – vollständig initialisieren
-# ---------------------------
-WD_MARKER="/run/shm/${PACKAGE}.watchdog.started"
-mkdir -p /run/shm 2>/dev/null
-
-# Kontext vollständig sichern
-SAVE_NAME="$NAME"; SAVE_FILE="$FILENAME"; SAVE_PKG="$PACKAGE"
-SAVE_LOGDIR="$LOGDIR"; SAVE_APPEND="$APPEND"; SAVE_ADDTIME="$ADDTIME"
-
-# Kontext vollständig auf Watchdog setzen (ALLE Variablen!)
-NAME="Watchdog"
-PACKAGE="text2speech"          # Plugin-Ordnername
-FILENAME="$WD_LOG"             
-LOGDIR="$LBSLOG"
-APPEND=1
-ADDTIME=1
-: "${LOGLEVEL:=7}"
-
-# LOGSTART nur einmal pro Boot (Marker steuert das)
-if [ ! -f "$WD_MARKER" ]; then
-  date +%s > "$WD_MARKER"
-  LOGSTART "MQTT Watchdog started"
-  #LOGINF   "Watchdog log registered in LoxBerry overview"
-
-  # (Fallback) Registrierung in der Übersicht anschubsen, falls nötig
-  if [ -x "$LBHOMEDIR/libs/initlog.php" ]; then
-    php "$LBHOMEDIR/libs/initlog.php" \
-      --name="$NAME" \
-      --package="$PACKAGE" \
-      --filename="$FILENAME" \
-      --addtime="$ADDTIME" \
-      --append="$APPEND" \
-      --loglevel="$LOGLEVEL" >/dev/null 2>&1 || true
-  fi
-fi
-
-# Kontext zurücksetzen
-NAME="$SAVE_NAME"; FILENAME="$SAVE_FILE"
-PACKAGE="$SAVE_PKG"; LOGDIR="$SAVE_LOGDIR"
-APPEND="$SAVE_APPEND"; ADDTIME="$SAVE_ADDTIME"
-
-# --- Services (root darf systemctl) – idempotent enable/start ---
-systemctl daemon-reload
-for svc in mqtt-service-tts mqtt-config-watcher; do
-  systemctl is-enabled "$svc" >/dev/null 2>&1 || systemctl enable "$svc"
-  systemctl is-active  "$svc" >/dev/null 2>&1 || systemctl start  "$svc"
-done
+exit 0;

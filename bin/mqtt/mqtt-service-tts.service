@@ -1,17 +1,21 @@
 [Unit]
-Description=MQTT Subscriber
-After=network.target
+Description=MQTT Subscriber (T2S)
+After=network-online.target
+Wants=network-online.target
+
+# Start-Limits -> hierher (nicht in [Service])
+StartLimitIntervalSec=60
+StartLimitBurst=5
+StartLimitAction=none
 
 [Service]
-ExecStart=/usr/bin/php REPLACELBPBINDIR/mqtt/mqtt-subscribe.php
-Restart=always
-RestartSec=10
-StartLimitIntervalSec=300
-StartLimitBurst=5
+Type=simple
 User=loxberry
-WorkingDirectory=REPLACELBPBINDIR/mqtt
-StandardOutput=journal
-StandardError=journal
+Group=loxberry
+ExecStart=/usr/bin/php /opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-subscribe.php
+Restart=always
+RestartSec=2
+# (keine StartLimit* hier!)
 
 [Install]
 WantedBy=multi-user.target

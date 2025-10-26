@@ -10,9 +10,9 @@ declare(strict_types=1);
  * - Gibt IMMER eine JSON-Response zurück (auch bei Fehlern)
  */
 
-require_once "/opt/loxberry/libs/phplib/loxberry_system.php";
-require_once "/opt/loxberry/libs/phplib/loxberry_io.php";
-require_once LBPHTMLDIR . "/bin/phpmqtt/phpMQTT.php";
+require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
+require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_io.php";
+require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2spech/bin/phpmqtt/phpMQTT.php";
 
 use Bluerhinos\phpMQTT;
 

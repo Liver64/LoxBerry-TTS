@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+
 use strict;
 use warnings;
 use utf8;
@@ -9,35 +10,16 @@ use File::Spec;
 use File::Path qw(make_path);
 use File::Basename qw(dirname);
 use POSIX qw(strftime);
+use Fcntl qw(:mode);
 use Socket;
 use LoxBerry::System;
-
-# === Role bootstrap (optional, failsafe) ===
-use FindBin qw($Bin);
-BEGIN {
-  # Only add dirs that actually exist
-  for my $dir (
-    'REPLACELBPBINDIR/mqtt/lib',   # shared MQTT utils
-    'REPLACELBPHTMLAUTHDIR/lib',   # shared plugin libs
-    "$Bin/lib",                    # script-local libs
-  ) {
-    next unless -d $dir;
-    eval "use lib q{$dir}; 1;" or warn "WARN: cannot add lib $dir: $@\n";
-  }
-
-  # Optional Role support
-  eval { require T2S::Role; T2S::Role->import(); 1; }
-    or warn "INFO: T2S::Role not available (optional): $@\n";
-}
-sub _role_available { eval { T2S::Role->can('read_role') } ? 1 : 0 }
-
 
 # ========= Pfade =========
 my $CERTDIR       = "/etc/mosquitto/certs";                # Mosquitto Cert-Dir
 my $CA_PERSIST    = "/etc/mosquitto/ca";                   # Persistente CA (Debian-konform)
 my $CA_PRIVDIR    = File::Spec->catdir($CA_PERSIST, "private");
-my $BRIDGE_DIR    = "REPLACELBPCONFIGDIR/bridge"; # Bundle-Ziel
-my $LOGFILE       = "REPLACELBPLOGDIR/generate_mosquitto_certs.log";
+my $BRIDGE_DIR    = "REPLACELBHOMEDIR/config/plugins/text2speech/bridge"; # Bundle-Ziel
+my $LOGFILE       = "REPLACELBHOMEDIR/log/plugins/text2speech/setup-mqtt-interface.log";
 
 # CA Dateien (persistent)
 my $CA_KEY        = File::Spec->catfile($CA_PRIVDIR, "mosq-ca.key");
@@ -75,7 +57,8 @@ my $help            = 0;
 # TLS-Config-Steuerung:
 my $listener_port   = 8883;
 my $listener_addr   = "";
-my $acl_file_path   = "/etc/mosquitto/aclfile";
+my $acl_file_name	= "tts-aclfile";
+my $acl_file_path   = "/etc/mosquitto/".$acl_file_name;
 
 GetOptions(
   "force"           => \$force,
@@ -141,11 +124,14 @@ sub ensure_dir { my($d)=@_; make_path($d) unless -d $d; }
 sub ensure_loxb_acl {
   my ($ca_crt,$cli_dir,$cli_key,$cli_crt)=@_;
 
-  # Basispfade begehbar
+  # Basispfade begehbar + richtiger Gruppenbesitz für Traversal
+  sh("chgrp -R mosquitto /etc/mosquitto/certs");
   sh("chmod 0750 /etc/mosquitto/certs");
   sh("chmod 0750 /etc/mosquitto/certs/clients");
-  sh("chmod 0750 ".esc($cli_dir));
+
+  # Client-Unterordner (redundant, aber idempotent & sicher)
   sh("chgrp -R mosquitto ".esc($cli_dir));
+  sh("chmod 0750 ".esc($cli_dir));
 
   # setfacl vorhanden?
   return if system("command -v setfacl >/dev/null 2>&1");
@@ -167,6 +153,37 @@ sub ensure_loxb_acl {
   sh("setfacl -d -m u:loxberry:rx ".esc($cli_dir));
 }
 
+# Ensure the T2S log path exists and is writable by user/group 'loxberry'
+sub ensure_tts_log_path {
+  my $log_dir  = 'REPLACELBHOMEDIR/log/plugins/text2speech';
+  my $log_file = "$log_dir/interface.log";
+  my ($uid) = (getpwnam('loxberry'))[2];
+  my ($gid) = (getgrnam('loxberry'))[2];
+
+  # Create dir 0775 if missing
+  make_path($log_dir, { mode => 0775 }) unless -d $log_dir;
+
+  # Fix dir owner/perms if needed
+  my @st = stat($log_dir);
+  if (!@st || $st[4] != $uid || $st[5] != $gid || (S_IMODE($st[2]) != 0775)) {
+    chown $uid, $gid, $log_dir or die "chown $log_dir: $!";
+    chmod 0775, $log_dir      or die "chmod $log_dir: $!";
+  }
+
+  # Ensure file exists 0664
+  if (!-e $log_file) {
+    open my $fh, '>>', $log_file or die "touch $log_file: $!";
+    close $fh;
+  }
+
+  # Fix file owner/perms if needed
+  @st = stat($log_file);
+  if (!@st || $st[4] != $uid || $st[5] != $gid || (S_IMODE($st[2]) != 0664)) {
+    chown $uid, $gid, $log_file or die "chown $log_file: $!";
+    chmod 0664, $log_file      or die "chmod $log_file: $!";
+  }
+}
+
 sub print_help {
   my $defaults = <<"DEF";
 Defaults:
@@ -185,10 +202,10 @@ Defaults:
 DEF
 
   print <<"USAGE";
-generate_mosquitto_certs.pl - Create/maintain persistent CA + Server/Client certs for Mosquitto (TLS v1.2)
+setup-mqtt-interface.pl - Create/maintain persistent CA + Server/Client certs for Mosquitto (TLS v1.2)
 
 USAGE:
-  sudo ./generate_mosquitto_certs.pl [OPTIONS]
+  sudo ./setup-mqtt-interface.pl [OPTIONS]
 
 OPTIONS:
   --force                 Recreate CA/Server/Client even if present (global)
@@ -222,37 +239,25 @@ BEHAVIOR:
 
 EXAMPLES:
   # Fresh install (write confs, build bundle):
-  sudo ./generate_mosquitto_certs.pl --write-conf --bundle
+  sudo ./setup-mqtt-interface.pl --write-conf --bundle
 
   # Reissue server only:
-  sudo ./generate_mosquitto_certs.pl --force-server
+  sudo ./setup-mqtt-interface.pl --force-server
 
 $defaults
 USAGE
 }
 
 # ========= Start =========
-logp("INFO", "=== generate_mosquitto_certs start ===");
+logp("INFO", "=== setup-mqtt-interface start ===");
 ensure_dir($CA_PERSIST);
 ensure_dir($CA_PRIVDIR);
 ensure_dir($CERTDIR);
 ensure_dir($CLI_DIR);
 ensure_dir($BRIDGE_DIR);
+ensure_tts_log_path();
 
-# Role markers (optional)
-if (_role_available()) {
-  eval {
-    T2S::Role::set_role_if_empty('master','text2speech');
-    T2S::Role::touch_present('text2speech');
-    my $r = T2S::Role::read_role() // 'master';
-    logp("INFO","Role detected: $r (owner=text2speech)");
-    1;
-  } or do {
-    logp("WARN","Role integration failed: $@");
-  };
-} else {
-  logp("INFO","Role.pm not present – continuing without role markers");
-}
+# (keine Role-Marker mehr)
 
 # Sichere Basisrechte für CA-Privatbereich (WinSCP-Sichtbarkeit; Key bleibt 0600)
 sh("chown -R root:root ".esc($CA_PERSIST));
@@ -270,7 +275,7 @@ $friendly_dns =~ s/^-+//; $friendly_dns =~ s/-+$//;
 
 my @auto_sans;
 push @auto_sans, "DNS:$lb_host"        if defined $lb_host && $lb_host ne '';
-push @auto_sans, "DNS:$friendly_dns"   if defined $friendly_dns && $friendly_dns ne '' && $friendly_dns ne $lb_host;
+push @auto_sans, "DNS:$friendly_dns"   if defined $lb_friendly && $friendly_dns ne '' && $friendly_dns ne $lb_host;
 push @auto_sans, "IP:$lb_ip"           if defined $lb_ip && $lb_ip ne '' && $lb_ip ne '127.0.0.1';
 
 # ========= (1) CA persistent nutzen/erstellen =========
@@ -424,7 +429,7 @@ if ($write_conf) {
   # 00-global: nur wirklich globale Settings
   open my $f1, ">", $conf_per or die "Cannot write $conf_per: $!";
   print $f1 <<"PER";
-# Auto-generated by generate_mosquitto_certs.pl
+# Auto-generated by Text2Speech Plugin
 per_listener_settings true
 sys_interval 10
 PER
@@ -434,11 +439,13 @@ PER
 
   # 10-tls: Listener + TLS/mTLS + allow_anonymous false HIER
   open my $f2, ">", $conf_tls or die "Cannot write $conf_tls: $!";
-  print $f2 "# Auto-generated by generate_mosquitto_certs.pl\n";
+  print $f2 "# Auto-generated by setup-mqtt-interface.pl\n";
   if (defined $listener_addr && $listener_addr ne '') {
     print $f2 "bind_address $listener_addr\n";
   }
   print $f2 <<"TLS";
+# Auto-generated by Text2Speech Plugin
+
 listener $listener_port
 protocol mqtt
 
@@ -464,30 +471,15 @@ TLS
 
   logp("OK","Mosquitto TLS config written: $conf_per, $conf_tls");
 
-  # ACL-Datei erzeugen/aktualisieren
+  # ACL-Datei erzeugen/aktualisieren (statisches Fallback – ohne Role)
   my $server_cn_acl = $server_cn;
   my ($rsubj,$subj) = sh("openssl x509 -in ".esc($SRV_CRT)." -noout -subject");
   if (!$rsubj && $subj =~ /CN\s*=\s*([^\/\n]+)/) {
     $server_cn_acl = $1;
     logp("OK","Detected server CN for ACL: $server_cn_acl");
   }
-  my $acl;
-  if (_role_available() && eval { T2S::Role->can('render_acl') }) {
-    eval {
-      $acl = T2S::Role::render_acl(
-        server_cn => $server_cn_acl,
-        sip_cn    => 'sip_bridge',
-        extras    => [ "topic read \$SYS/#" ],
-      );
-      1;
-    } or do {
-      logp("WARN","Role render_acl failed, using fallback: $@");
-      undef $acl;
-    };
-    $acl && logp("OK","ACL generated via T2S::Role");
-  }
-  $acl = <<"ACL" unless $acl;
-# Auto-written by generate_mosquitto_certs.pl
+  my $acl = <<"ACL";
+# Auto-generated by Text2Speech Plugin
 
 # SIP client identity (from client cert CN)
 user sip_bridge
@@ -498,6 +490,11 @@ topic read  tts-subscribe/#
 user $server_cn_acl
 topic write tts-subscribe/#
 topic read  tts-publish/#
+
+# T2S handshake
+user sip_bridge
+topic write tts-handshake/request
+topic read  tts-handshake/response/#
 
 # optional diagnostics:
 topic read \$SYS/#
@@ -564,5 +561,5 @@ logp("INFO", sprintf("Summary: CA valid %s days; Server %s days; Client %s days"
   (defined $cli_days ? $cli_days : "n/a"),
 ));
 logp("INFO", "Certs dir: $CERTDIR ; Persistent CA: $CA_PERSIST");
-logp("INFO", "=== generate_mosquitto_certs end ===");
+logp("INFO", "=== setup-mqtt-interface end ===");
 exit 0;

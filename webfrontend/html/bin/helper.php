@@ -145,7 +145,7 @@ function load_t2s_text(?string $langOverride = null) {
     $lang_us = str_replace('-', '_', $lang);   // "de_de"
 
     // 2) Verzeichnisse
-    $templatepath = rtrim($lbptemplatedir ?? '', '/'); // z.B. /opt/loxberry/templates/plugins/text2speech
+    $templatepath = rtrim($lbptemplatedir ?? '', '/'); // z.B. REPLACELBHOMEDIR/templates/plugins/text2speech
     $langdir = $templatepath . '/lang';
 
     // 3) Kandidaten in Priorität (de → de_DE/us → fallback en)

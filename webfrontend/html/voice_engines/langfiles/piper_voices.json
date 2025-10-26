@@ -10,14 +10,14 @@
       "name" : "cori"
    },
    {
+      "filename" : "de_DE-thorsten-low.onnx",
+      "language" : "de_DE",
+      "name" : "thorsten"
+   },
+   {
       "filename" : "fr_FR-gilles-low.onnx",
       "language" : "fr_FR",
       "name" : "gilles"
-   },
-   {
-      "filename" : "de_DE-thorsten-high.onnx",
-      "language" : "de_DE",
-      "name" : "thorsten"
    },
    {
       "filename" : "en_US-danny-low.onnx",

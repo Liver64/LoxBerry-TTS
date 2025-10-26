@@ -5,8 +5,8 @@
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_io.php";
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_log.php";
-require_once "REPLACELBPHTMLDIR/bin/helper.php";
-require_once "REPLACELBPHTMLDIR/bin/phpmqtt/phpMQTT.php";
+require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php";
+require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
 
 use Bluerhinos\phpMQTT;
 
@@ -17,16 +17,13 @@ error_reporting(E_ALL);
 /* =======================
  * Grundkonfiguration
  * ======================= */
-$logfile            = "REPLACELBPLOGDIR/mqtt.log";
-$InterfaceConfigFile= "REPLACELBPCONFIGDIR/interfaces.json";
-
-$subscribeTopic     = 'tts-publish/#';   // Steuerkanal: eingehende TTS-JSONs
-$responseTopic      = 'tts-subscribe';   // Rückkanal: Handler-Antworten
+$logfile            = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt.log";
+$responseTopic      = 'tts-subscribe';   // Rückkanal: Handler-Antworten (Default)
 
 /* LoxBerry Logging (Datei für allgemeine Interface-Logs) */
 $params = [
-    "name"    => "Interface",
-    "filename"=> "REPLACELBPLOGDIR/interface.log",
+    "name"    => "TTS-Interface",
+    "filename"=> "REPLACELBHOMEDIR/log/plugins/text2speech/interface.log",
     "append"  => 1,
     "addtime" => 1,
 ];
@@ -37,227 +34,221 @@ $enableLogMsg = false; // true aktiviert zusätzlich $logfile-Ausgaben
 
 umask(0002); // Dateien entstehen als 664, Ordner als 775
 
-/* Plugins prüfen (nur starten, wenn aktiv) */
-if (file_exists($InterfaceConfigFile)) {
-    $checkArray = json_decode(file_get_contents($InterfaceConfigFile), true);
-} else {
-    $checkArray = [];
-    LOGERR("mqtt-subscribe.php: interfaces.json not found! No plugins loaded.");
-}
-$plugins = LBSystem::get_plugins();
-$plugincheck = false;
-foreach ($plugins as $plugin) {
-    $title = $plugin['PLUGINDB_TITLE'] ?? null;
-    if (!$title) continue;
-    if (in_array($title, $checkArray, true)) $plugincheck = true;
-}
+/* =======================
+ * Subscribe-Topic (breit)
+ * ======================= */
+$subscribeTopic = 'tts-publish/#';
 
 $GLOBALS['__last_msg_hash'] = null;
 $GLOBALS['__last_msg_time'] = 0;
 
-if ($plugincheck) {
-    LOGSTART("Interface");
+/* =======================
+ * internes Log-Array für optionale Rückgabe
+ * ======================= */
+$logArray = [];
 
-    /* =======================
-     * internes Log-Array für optionale Rückgabe
-     * ======================= */
-    $logArray = [];
+/* =======================
+ * Hilfs-Loggingfunktion
+ * ======================= */
+function logmsg($level, $message) {
+    global $logfile, $logArray, $enableLogMsg;
 
-    /* =======================
-     * Hilfs-Loggingfunktion
-     * ======================= */
-    function logmsg($level, $message) {
-        global $logfile, $logArray, $enableLogMsg;
-
-        if ($enableLogMsg) {
-            $emojiMap = [
-                'START'=>'🛑','END'=>'🛑','OK'=>'✅','ERROR'=>'❌','INFO'=>'ℹ️','UPDATE'=>'🔄'
-            ];
-            $emoji = $emojiMap[$level] ?? '';
-            $timestamp = date("H:i:s");
-            $entry = "$timestamp $emoji";
-            $entry .= is_array($message)
-                ? json_encode($message, JSON_UNESCAPED_UNICODE)
-                : $message;
-            $entry .= "\n";
-            if (!is_dir(dirname($logfile))) { @mkdir(dirname($logfile), 0775, true); }
-            file_put_contents($logfile, mb_convert_encoding($entry, "UTF-8", "auto"), FILE_APPEND | LOCK_EX);
-        }
-
-        // MQTT-Logeinträge neutral & einzeilig sammeln
-        $clean = $message;
-        if (is_array($message)) {
-            $parts=[];
-            foreach ($message as $k=>$v) {
-                if (is_scalar($v) || $v===null) { $parts[]="$k: $v"; }
-                else { $parts[]="$k: ".json_encode($v, JSON_UNESCAPED_UNICODE); }
-            }
-            $clean = implode(', ', $parts);
-        } else {
-            $clean = preg_replace('/[^\x20-\x7EÄÖÜäöüß]/u', '', $clean);
-        }
-        $clean = preg_replace('/\s+/', ' ', $clean);
-        $logArray[] = "<$level> $clean";
+    if ($enableLogMsg) {
+        $emojiMap = [
+            'START'=>'🛑','END'=>'🛑','OK'=>'✅','ERROR'=>'❌','INFO'=>'ℹ️','UPDATE'=>'🔄'
+        ];
+        $emoji = $emojiMap[$level] ?? '';
+        $timestamp = date("H:i:s");
+        $entry = "$timestamp $emoji";
+        $entry .= is_array($message)
+            ? json_encode($message, JSON_UNESCAPED_UNICODE)
+            : $message;
+        $entry .= "\n";
+        if (!is_dir(dirname($logfile))) { @mkdir(dirname($logfile), 0775, true); }
+        file_put_contents($logfile, mb_convert_encoding($entry, "UTF-8", "auto"), FILE_APPEND | LOCK_EX);
     }
 
-    /* Startmeldung */
-    logmsg("START", "Start MQTT Handler");
-    LOGOK("mqtt-subscribe.php: MQTT Handler started");
-
-    /* =======================
-     * MQTT-Verbindung
-     * ======================= */
-    $creds     = mqtt_connectiondetails();
-    $broker    = $creds['brokerhost'] ?? '127.0.0.1';
-    $port      = (int)($creds['brokerport'] ?? 1883);
-    $user      = $creds['brokeruser'] ?? '';
-    $pass      = $creds['brokerpass'] ?? '';
-    $client_id = uniqid((gethostname() ?: 'lb') . "_client_");
-    $mqtt      = new phpMQTT($broker, $port, $client_id);
-
-    if (!$mqtt->connect(true, NULL, $user, $pass)) {
-        logmsg("ERROR", "MQTT connection could not be established. Check broker settings.");
-        LOGERR("mqtt-subscribe.php: MQTT connection could not be established. Check broker settings. Retry in 30 Seconds...");
-        sleep(30);
-        exit(1);
+    // MQTT-Logeinträge neutral & einzeilig sammeln
+    $clean = $message;
+    if (is_array($message)) {
+        $parts=[];
+        foreach ($message as $k=>$v) {
+            if (is_scalar($v) || $v===null) { $parts[]="$k: $v"; }
+            else { $parts[]="$k: ".json_encode($v, JSON_UNESCAPED_UNICODE); }
+        }
+        $clean = implode(', ', $parts);
+    } else {
+        $clean = preg_replace('/[^\x20-\x7EÄÖÜäöüß]/u', '', $clean);
     }
-
-    logmsg("OK", "MQTT connected – listening to Topics: [$subscribeTopic]");
-    LOGINF("mqtt-subscribe.php: MQTT connected – listening to Topics: [$subscribeTopic]");
-
-    /* =======================
-     * Schema für TTS-JSON
-     * ======================= */
-    $expectedSchema = [
-		"type" => "object",
-		"required" => ["text"],
-		"properties" => [
-			"text"     => ["type" => "string"],
-			"nocache"  => ["type" => "number"],
-			"logging"  => ["type" => "number"],
-			"mp3files" => ["type" => "number"],
-
-			// NEU – nur validieren, kein Subscribe:
-			"client"   => ["type" => "string"],
-			"instance" => ["type" => "string"],
-			"corr"     => ["type" => "string"],
-			"reply_to" => ["type" => "string"],
-		],
-		"additionalProperties" => false
-	];
-
-
-
-    /* =======================
-     * TTS-Callback (tts-publish)
-     * ======================= */
-    $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $expectedSchema) {
-        global $logArray;
-
-        // --- Dedupe-Window: 25s ---
-        $now  = time();
-        $hash = sha1($msg);
-        if ($GLOBALS['__last_msg_hash'] === $hash && ($now - $GLOBALS['__last_msg_time']) < 25) {
-            LOGINF("mqtt-subscribe.php: Duplicate payload within 25s window -> ignored");
-            return;
-        }
-        $GLOBALS['__last_msg_hash'] = $hash;
-        $GLOBALS['__last_msg_time'] = $now;
-
-        $logArray = []; // Reset pro Nachricht
-        logmsg("INFO", "Payload received from [$topic]: $msg");
-        LOGDEB("mqtt-subscribe.php: Payload received on topic [$topic]: $msg");
-
-        $data = json_decode($msg, true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-            logmsg("ERROR", ['Invalid JSON received:', json_last_error_msg(), $msg]);
-            LOGERR("mqtt-subscribe.php: Invalid JSON received: " . json_last_error_msg());
-            return sendMqtt($mqtt, $responseTopic, "Invalid JSON syntax", [
-                'error'    => json_last_error_msg(),
-                'original' => $msg
-            ]);
-        }
-
-        // Emojis/Steuerzeichen aus allen Strings entfernen
-        array_walk_recursive($data, function (&$item) {
-            if (is_string($item)) {
-                $item = preg_replace('/[^\x20-\x7EÄÖÜäöüß]/u', '', $item);
-            }
-        });
-
-        // Ungültige Keys prüfen
-        $allowedKeys = array_keys($expectedSchema['properties']);
-        $inputKeys   = array_keys($data);
-        $invalidKeys = array_diff($inputKeys, $allowedKeys);
-        if (!empty($invalidKeys)) {
-            logmsg("ERROR", ['Invalid keys', $invalidKeys]);
-            LOGERR("mqtt-subscribe.php: Invalid keys in JSON: " . implode(',', $invalidKeys));
-            return sendMqtt($mqtt, $responseTopic, "Invalid keys in JSON", [
-                'invalid_keys' => array_values($invalidKeys),
-                'original'     => $data
-            ]);
-        }
-
-        // Schema-Validierung
-        $invalid = [];
-        $missing = [];
-        foreach ($expectedSchema['required'] as $key) {
-            if (!array_key_exists($key, $data)) $missing[] = $key;
-        }
-        foreach ($data as $key => $value) {
-            $def = $expectedSchema['properties'][$key] ?? null;
-            if (!$def) continue;
-            if (!validate_type($value, $def['type'])) $invalid[$key] = "expected " . $def['type'];
-        }
-        if (!empty($missing) || !empty($invalid)) {
-            logmsg("ERROR", ['Invalid or incomplete JSON', 'missing'=>$missing, 'invalid'=>$invalid]);
-            LOGERR("mqtt-subscribe.php: Invalid or incomplete JSON. Missing: " . implode(',', $missing));
-            return sendMqtt($mqtt, $responseTopic, "Invalid or incomplete JSON", [
-                'missing'=>$missing,
-                'invalid'=>$invalid,
-                'original'=>$data
-            ]);
-        }
-
-        logmsg("OK", "Valid JSON received. Processing TTS request...");
-        LOGOK("mqtt-subscribe.php: Valid JSON received. Processing TTS request...");
-        createMessage($data);
-    };
-
-    /* Einmalig abonnieren – nur TTS-Topic */
-    $mqtt->subscribe([
-        $subscribeTopic => ['qos'=>0,'function'=>$callback],
-    ]);
-
-    /* Event-Loop + Reconnect-Handling */
-    $lastCheck = time();
-    while ($mqtt->proc()) {
-        if (time() - $lastCheck >= 120) {
-            if (!$mqtt->ping()) {
-                $mqtt->close();
-                usleep(500000);
-                if (!$mqtt->connect(true, NULL, $user, $pass)) {
-                    logmsg("ERROR", "Lost connection to MQTT broker. Reconnect failed. Retrying...");
-                    LOGWARN("mqtt-subscribe.php: Lost connection to MQTT broker. Reconnect failed. Retrying...");
-                    sleep(5);
-                    continue;
-                }
-                // nach Reconnect Topic neu abonnieren
-                $mqtt->subscribe([
-                    $subscribeTopic => ['qos'=>0,'function'=>$callback],
-                ]);
-            }
-            $lastCheck = time();
-        }
-        usleep(20000);
-    }
-
-    $mqtt->close();
-    logmsg("INFO", "MQTT connection closed");
-    logmsg("END", "End MQTT Handler");
-    LOGOK("mqtt-subscribe.php: MQTT handler stopped successfully");
-    LOGEND("Interface");
+    $clean = preg_replace('/\s+/', ' ', $clean);
+    $logArray[] = "<$level> $clean";
 }
+
+/* Startmeldung */
+logmsg("START", "Start listening for MQTT publish...");
+LOGSTART("Start listening for MQTT publish...");
+
+/* =======================
+ * MQTT-Verbindung
+ * ======================= */
+$creds     = mqtt_connectiondetails();
+#$broker    = $creds['brokerhost'] ?? $creds['brokeraddress'] ?? '127.0.0.1';
+# ---- New -----
+$port      = (int)($creds['brokerport'] ?? 1883);
+// Wenn kein Plain-Listener existiert, TLS auf localhost erzwingen
+$brokerHost = $creds['brokerhost'] ?? $creds['brokeraddress'] ?? '127.0.0.1';
+$useTls     = ($port != 1883); // simple Heuristik für „TLS-only-Broker“
+$broker     = $useTls ? "tls://$brokerHost" : $brokerHost;
+# ---- End New ----
+$user      = $creds['brokeruser'] ?? $creds['mqttuser'] ?? '';
+$pass      = $creds['brokerpass'] ?? $creds['mqttpass'] ?? '';
+$client_id = uniqid((gethostname() ?: 'lb') . "_client_");
+$mqtt      = new phpMQTT($broker, $port, $client_id);
+
+/* === Retry-Schleife (alle 5s) statt Exit === */
+$__retries = 0;
+while (!$mqtt->connect(true, NULL, $user, $pass)) {
+    if ($__retries % 6 === 0) {
+        logmsg("ERROR", "MQTT connect failed – will retry.");
+        LOGWARN("mqtt-subscribe.php: MQTT connect failed – retrying in 5s");
+    }
+    $__retries++;
+    sleep(5);
+}
+
+logmsg("OK", "MQTT connected – listening to Topics: [$subscribeTopic]");
+LOGINF("mqtt-subscribe.php: MQTT connected – listening to Topics: [$subscribeTopic]");
+
+/* =======================
+ * Schema für TTS-JSON
+ * ======================= */
+$expectedSchema = [
+    "type" => "object",
+    "required" => ["text"],
+    "properties" => [
+        "text"     => ["type" => "string"],
+        "nocache"  => ["type" => "number"],
+        "logging"  => ["type" => "number"],
+        "mp3files" => ["type" => "number"],
+
+        // optional, nur validieren:
+        "client"   => ["type" => "string"],
+        "instance" => ["type" => "string"],
+        "corr"     => ["type" => "string"],
+        "reply_to" => ["type" => "string"],
+    ],
+    "additionalProperties" => false
+];
+
+/* =======================
+ * TTS-Callback (tts-publish)
+ * ======================= */
+$callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $expectedSchema) {
+    global $logArray;
+
+    // --- Dedupe-Window: 25s ---
+    $now  = time();
+    $hash = sha1($msg);
+    if ($GLOBALS['__last_msg_hash'] === $hash && ($now - $GLOBALS['__last_msg_time']) < 25) {
+        LOGINF("mqtt-subscribe.php: Duplicate payload within 25s window -> ignored");
+        return;
+    }
+    $GLOBALS['__last_msg_hash'] = $hash;
+    $GLOBALS['__last_msg_time'] = $now;
+
+    $logArray = []; // Reset pro Nachricht
+    logmsg("INFO", "Payload received from [$topic]: $msg");
+    LOGDEB("mqtt-subscribe.php: Payload received on topic [$topic]: $msg");
+
+    $data = json_decode($msg, true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+        logmsg("ERROR", ['Invalid JSON received:', json_last_error_msg(), $msg]);
+        LOGERR("mqtt-subscribe.php: Invalid JSON received: " . json_last_error_msg());
+        return sendMqtt($mqtt, $responseTopic, "Invalid JSON syntax", [
+            'error'    => json_last_error_msg(),
+            'original' => $msg
+        ]);
+    }
+
+    // Emojis/Steuerzeichen aus allen Strings entfernen
+    array_walk_recursive($data, function (&$item) {
+        if (is_string($item)) {
+            $item = preg_replace('/[^\x20-\x7EÄÖÜäöüß]/u', '', $item);
+        }
+    });
+
+    // Ungültige Keys prüfen
+    $allowedKeys = array_keys($expectedSchema['properties']);
+    $inputKeys   = array_keys($data);
+    $invalidKeys = array_diff($inputKeys, $allowedKeys);
+    if (!empty($invalidKeys)) {
+        logmsg("ERROR", ['Invalid keys', $invalidKeys]);
+        LOGERR("mqtt-subscribe.php: Invalid keys in JSON: " . implode(',', $invalidKeys));
+        return sendMqtt($mqtt, $responseTopic, "Invalid keys in JSON", [
+            'invalid_keys' => array_values($invalidKeys),
+            'original'     => $data
+        ]);
+    }
+
+    // Schema-Validierung
+    $invalid = [];
+    $missing = [];
+    foreach ($expectedSchema['required'] as $key) {
+        if (!array_key_exists($key, $data)) $missing[] = $key;
+    }
+    foreach ($data as $key => $value) {
+        $def = $expectedSchema['properties'][$key] ?? null;
+        if (!$def) continue;
+        if (!validate_type($value, $def['type'])) $invalid[$key] = "expected " . $def['type'];
+    }
+    if (!empty($missing) || !empty($invalid)) {
+        logmsg("ERROR", ['Invalid or incomplete JSON', 'missing'=>$missing, 'invalid'=>$invalid]);
+        LOGERR("mqtt-subscribe.php: Invalid or incomplete JSON. Missing: " . implode(',', $missing));
+        return sendMqtt($mqtt, $responseTopic, "Invalid or incomplete JSON", [
+            'missing'=>$missing,
+            'invalid'=>$invalid,
+            'original'=>$data
+        ]);
+    }
+
+    logmsg("OK", "Valid JSON received. Processing TTS request...");
+    LOGOK("mqtt-subscribe.php: Valid JSON received. Processing TTS request...");
+    createMessage($data);
+};
+
+/* Einmalig abonnieren – nur TTS-Topic */
+$mqtt->subscribe([
+    $subscribeTopic => ['qos'=>0,'function'=>$callback],
+]);
+
+/* Event-Loop + Reconnect-Handling */
+$lastCheck = time();
+while ($mqtt->proc()) {
+    if (time() - $lastCheck >= 120) {
+        if (!$mqtt->ping()) {
+            $mqtt->close();
+            usleep(500000);
+            if (!$mqtt->connect(true, NULL, $user, $pass)) {
+                logmsg("ERROR", "Lost connection to MQTT broker. Reconnect failed. Retrying...");
+                LOGWARN("mqtt-subscribe.php: Lost connection to MQTT broker. Reconnect failed. Retrying...");
+                sleep(5);
+                continue;
+            }
+            // nach Reconnect Topic neu abonnieren
+            $mqtt->subscribe([
+                $subscribeTopic => ['qos'=>0,'function'=>$callback],
+            ]);
+        }
+        $lastCheck = time();
+    }
+    usleep(20000);
+}
+
+$mqtt->close();
+logmsg("INFO", "MQTT connection closed");
+logmsg("END", "End MQTT Handler");
+LOGOK("mqtt-subscribe.php: MQTT handler stopped successfully");
+LOGEND("Interface");
 
 /* =======================
  * Hilfsfunktionen
@@ -362,7 +353,7 @@ function createMessage(array $data) {
             logmsg("ERROR", "MP3 creation failed: file missing or too small.");
         } else {
             $messresponse = "MP3 file created successfully.";
-			@chmod($fullpath, 0664);
+            @chmod($fullpath, 0664);
             $result = true;
             LOGOK("mqtt-subscribe.php: MP3 file created successfully: $mp3filename");
         }
