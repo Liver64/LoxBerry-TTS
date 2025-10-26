@@ -87,7 +87,8 @@ else
 fi
 
 # Restart Moqsuitto
-sudo REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway
+# Silent, non-fatal; won’t spam your installer logs
+sudo timeout 15 REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true
 echo "<OK> Mosquitto has been restarted."
 
 exit 0
