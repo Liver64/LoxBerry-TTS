@@ -46,20 +46,25 @@ PBIN=$LBPBIN/$PDIR
 # precheck_master_install.sh — Run detector before installing T2S Master
 # Blocks the install if client-only or mixed artifacts are present.
 
-: <<'END_COMMENT'
 set -euo pipefail
 
-# --- Detector path (quote all vars) ---
-DETECTOR="$5/data/system/tmp/uploads/$1/bin/detect_bridge_config.sh"
+UPLOAD_DIR="$5/data/system/tmp/uploads/$1"
 DETECTOR_FLAGS="--debug"
 
-# --- Sanity checks ---
-if [[ ! -e "$DETECTOR" ]]; then
-  echo "<FAIL> Detector not found: $DETECTOR"
+# --- Try to find plugin subdir ---
+PLUGIN_SUBDIR="$(find "$UPLOAD_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+
+# --- Determine where to look for the detector ---
+if [[ -n "$PLUGIN_SUBDIR" && -e "$PLUGIN_SUBDIR/bin/detect_bridge_config.sh" ]]; then
+  DETECTOR="$PLUGIN_SUBDIR/bin/detect_bridge_config.sh"
+elif [[ -e "$UPLOAD_DIR/bin/detect_bridge_config.sh" ]]; then
+  DETECTOR="$UPLOAD_DIR/bin/detect_bridge_config.sh"
+else
+  echo "<FAIL> Could not locate detect_bridge_config.sh under $UPLOAD_DIR"
   exit 2
 fi
 
-# Make sure it's executable (do this *after* existence check)
+# --- Sanity checks ---
 chmod +x "$DETECTOR" || {
   echo "<FAIL> Could not chmod +x $DETECTOR"
   exit 2
@@ -70,39 +75,34 @@ if [[ ! -x "$DETECTOR" ]]; then
   exit 2
 fi
 
-# --- Run detector (shield against 'set -e') ---
+# --- Run detector ---
 if "$DETECTOR" $DETECTOR_FLAGS; then
   rc=0
 else
   rc=$?
 fi
 
-# --- Decide outcome (use official tags only) ---
+# --- Decide outcome ---
 case "$rc" in
   0)
     echo "<OK> Mosquitto role check: safe to proceed."
     ;;
   1)
     echo "<WARNING> Client artifacts detected, but continuing due to soft mode."
-	echo "<WARNING> Please check if Mosquitto is up and running post Installation."
     ;;
   2)
     echo "<FAIL> TLS Client/Master conflict detected by detector. Installation aborted."
-	echo "<FAIL> Please uninstall the Plugin using TLS first and then try again."
     exit 2
     ;;
   3)
     echo "<FAIL> Indeterminate Mosquitto state. Please inspect and fix."
-	echo "<FAIL> Please uninstall the Plugin using TLS first and then try again."
     exit 2
     ;;
   *)
     echo "<FAIL> Unexpected detector return code: $rc"
-	echo "<FAIL> T2S Plugin could not be installed!" 
     exit 2
     ;;
 esac
-END_COMMENT
 
 # Exit with Status 0
 exit 0

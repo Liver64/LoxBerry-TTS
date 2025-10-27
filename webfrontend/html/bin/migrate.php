@@ -28,7 +28,7 @@ if (file_exists($newJsonFile)) {
  * 2️⃣ Alte CFG-Datei laden
  */
 if (!file_exists($oldCfgFile)) {
-    echo "<ERROR> No old CFG config file found. Migration aborted." . PHP_EOL;
+    echo "<WARN> No old CFG config file found. Migration aborted." . PHP_EOL;
     exit(1);
 }
 

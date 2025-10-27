@@ -35,19 +35,20 @@ my $ACL_FILE     = '/etc/mosquitto/tts-aclfile';
 my $CERTDIR      = '/etc/mosquitto/certs';
 my $CA_PERSIST   = '/etc/mosquitto/ca';
 my $CA_PRIVDIR   = File::Spec->catdir($CA_PERSIST, 'private');
+my $CLIENT_ID 	  = "t2s-bridge";
 
 my $SRV_KEY      = File::Spec->catfile($CERTDIR, 't2s.key');
 my $SRV_CRT      = File::Spec->catfile($CERTDIR, 't2s.crt');
 my $CA_CRT_LINK  = File::Spec->catfile($CERTDIR, 'mosq-ca.crt');
 my $CA_KEY_LINK  = File::Spec->catfile($CERTDIR, 'mosq-ca.key');
 
-my $CLI_DIR      = File::Spec->catdir($CERTDIR, 'clients', 'sip_bridge');
+my $CLI_DIR      = File::Spec->catdir($CERTDIR, 'clients', $CLIENT_ID);
 my $CLI_CRT      = File::Spec->catfile($CLI_DIR, 'client.crt');
 my $CLI_KEY      = File::Spec->catfile($CLI_DIR, 'client.key');
 
 # Bridge bundle (created by generator --bundle)
 my $BRIDGE_DIR   = 'REPLACELBHOMEDIR/config/plugins/text2speech/bridge';
-my $BUNDLE       = File::Spec->catfile($BRIDGE_DIR, 'sip_bundle.tar.gz');
+my $BUNDLE       = File::Spec->catfile($BRIDGE_DIR, 't2s-bundle.tar.gz');
 
 # ---------- Logging (persistent; not tied to plugin dirs) ----------
 my $LOG_DIR   = '/var/log';
@@ -140,7 +141,7 @@ if ($FULL) {
   _facl_x($SRV_CRT); _safe_unlink($SRV_CRT);
   _facl_x($SRV_KEY); _safe_unlink($SRV_KEY);
 
-  INFO("Removing client (sip_bridge) material …");
+  INFO("Removing client (t2s-bridge) material …");
   _facl_x($CLI_DIR);
   _safe_unlink($CLI_CRT);
   _safe_unlink($CLI_KEY);

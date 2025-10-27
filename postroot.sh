@@ -86,6 +86,11 @@ else
 	exit 12
 fi
 
+# Copy uninstall.pl to Mosquitto /etc/mosquitto
+cp -p -v REPLACELBPBINDIR/uninstall.pl /etc/mosquitto/uninstall.pl
+echo "<OK> uninstall.pl has been copied to /etc/mosquitto"
+
+
 # Restart Moqsuitto
 # Silent, non-fatal; won’t spam your installer logs
 #sudo timeout 15 REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true
