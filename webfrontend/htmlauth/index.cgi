@@ -219,39 +219,32 @@ if ($R::getkeys)
 # check/get installed Plugins (needed for Interface)
 ##########################################################################
 
-# Primär: dynamische Clients aus dem Verzeichnis /etc/mosquitto/tts-role/clients
-my $clients = read_text2sip_clients_list($clients_dir);  # [ { client=>..., version=>..., ip=>..., host=>... }, ... ]
-my @plugins_enabled = map { { name => $_->{client} } } @$clients;
 my %WANTED = map { lc($_) => 1 } @WANTED_PLUGINS;
-my $plugincheck     = @plugins_enabled ? 1 : 0;
 
-# Sekundär (Fallback): wenn keine Clients gefunden, nimm installierte Plugins
-# gemäß @WANTED_PLUGINS aus Header
-if (!$plugincheck) {
-    my @plugins = LoxBerry::System::get_plugins();
-    foreach my $plugin (@plugins) {
-        my $title = $plugin->{PLUGINDB_TITLE} or next;
-        next unless $WANTED{ lc $title };              # <-- nur gewünschte
+# Collect installed plugins and filter to wanted ones
+my @plugins_enabled;
+my @plugins = LoxBerry::System::get_plugins();
 
-        push @plugins_enabled, { name => $title };
-        LOGDEB("Plugin $title (Fallback get_plugins, wanted)");
-    }
-    $plugincheck = @plugins_enabled ? 1 : 0;
+foreach my $plugin (@plugins) {
+    # Robust: match by folder name and by title (both lowercased)
+    my $p_name  = lc($plugin->{PLUGINDB_NAME}  // '');
+    my $p_title = lc($plugin->{PLUGINDB_TITLE} // '');
+
+    next unless $WANTED{$p_name} || $WANTED{$p_title};
+
+    my $title_print = $plugin->{PLUGINDB_TITLE} || $plugin->{PLUGINDB_NAME} || 'unknown';
+    push @plugins_enabled, { name => $title_print };
+    LOGDEB("Detected local plugin: $title_print");
 }
 
-# Optional
-# Logging-Zusammenfassung (vor Übergabe ans Template)
-my @names = map { $_->{name} } @plugins_enabled;
+my $plugincheck = @plugins_enabled ? 1 : 0;
 
-if (@$clients) {
-    LOGDEB("Interfaces via JSON-Loop gefunden: " . (@names ? join(', ', @names) : '–'));
+# Optional summary logging
+my @names = map { $_->{name} } @plugins_enabled;
+if (@names) {
+    LOGOK("Local-only check: wanted plugins installed: " . join(', ', @names));
 } else {
-    LOGDEB("Keine JSON-Clients gefunden – Fallback get_plugins() aktiv.");
-    if (@names) {
-        LOGOK("Installierte (Wanted) Plugins: " . join(', ', @names));
-    } else {
-        LOGWARN("Keine passenden (Wanted) Plugins installiert gefunden.");
-    }
+    LOGWARN("Local-only check: no matching wanted plugins installed.");
 }
 
 LOGINF("INTERFACE (plugincheck) = $plugincheck");
@@ -863,7 +856,6 @@ sub pids
 	$pids{'mosquitto'}     = trim(`pgrep mosquitto`);
 	$pids{'mqtt_handler'}  = trim(`pgrep -f mqtt-subscribe.php`);
 	$pids{'mqtt_watchdog'} = trim(`pgrep -f 'mqtt-watchdog.php'`);
-	$pids{'mqtt_handshake'} = trim(`pgrep -f 'mqtt_handshake.php'`);
 	#LOGDEB "PIDs updated";
 }
 

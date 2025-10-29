@@ -43,66 +43,56 @@ PCONFIG=$LBPCONFIG/$PDIR
 PSBIN=$LBPSBIN/$PDIR
 PBIN=$LBPBIN/$PDIR
 
-# precheck_master_install.sh — Run detector before installing T2S Master
-# Blocks the install if client-only or mixed artifacts are present.
+# preinstall.sh — prepare T2S installation without touching system paths (no sudo)
+# - Detect bridge-role conflicts
+# - Set a volatile skip marker in /dev/shm if a conflict exists
+# - Request (defer) creation of /etc/mosquitto/role/t2s-master for postroot.sh (root)
 
 set -euo pipefail
 
-UPLOAD_DIR="$5/data/system/tmp/uploads/$1"
-DETECTOR_FLAGS="--debug"
+ROLE_DIR="/etc/mosquitto/role"
+MASTER_MARKER="$ROLE_DIR/t2s-master"
 
-# --- Try to find plugin subdir ---
-PLUGIN_SUBDIR="$(find "$UPLOAD_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+# Volatile markers in tmpfs
+SKIP_DIR="/dev/shm/t2s-installer"
+SKIP_FILE="$SKIP_DIR/skip-bridge.t2s"
+DEFER_MARKER="$SKIP_DIR/defer-master-marker.t2s"
 
-# --- Determine where to look for the detector ---
-if [[ -n "$PLUGIN_SUBDIR" && -e "$PLUGIN_SUBDIR/bin/detect_bridge_config.sh" ]]; then
-  DETECTOR="$PLUGIN_SUBDIR/bin/detect_bridge_config.sh"
-elif [[ -e "$UPLOAD_DIR/bin/detect_bridge_config.sh" ]]; then
-  DETECTOR="$UPLOAD_DIR/bin/detect_bridge_config.sh"
+# Ensure volatile dir exists
+mkdir -p "$SKIP_DIR"
+chmod 0777 "$SKIP_DIR" || true
+
+# --- Conflict detection (read-only on /etc) ---
+OFFENDER="$(find "$ROLE_DIR" -mindepth 1 -maxdepth 1 -type f ! -name 't2s-master' -print -quit 2>/dev/null || true)"
+
+if [[ -n "${OFFENDER}" ]]; then
+  echo "<WARNING> Conflicting role marker detected: ${OFFENDER}"
+  echo "<WARNING> Will SKIP installing the Mosquitto bridge for T2S to protect broker."
+
+  # Write skip marker with context
+  {
+    echo "reason=conflicting_role"
+    echo "offender=${OFFENDER}"
+    echo "ts=$(date -Iseconds)"
+    echo "who=t2s-preinstall"
+  } > "$SKIP_FILE"
+  chmod 0644 "$SKIP_FILE" || true
+
+  # No system writes here (no sudo)
 else
-  echo "<FAIL> Could not locate detect_bridge_config.sh under $UPLOAD_DIR"
-  exit 2
+  # No conflict → request master marker creation for postroot (root, idempotent)
+  {
+    echo "ts=$(date -Iseconds)"
+    echo "path=$MASTER_MARKER"
+    echo "who=t2s-preinstall"
+  } > "$DEFER_MARKER"
+  chmod 0644 "$DEFER_MARKER" || true
+
+  # Clean up any old skip marker from previous runs
+  rm -f "$SKIP_FILE" || true
+
+  echo "<OK> Preinstall ready — defer role marker creation to postroot"
 fi
-
-# --- Sanity checks ---
-chmod +x "$DETECTOR" || {
-  echo "<FAIL> Could not chmod +x $DETECTOR"
-  exit 2
-}
-
-if [[ ! -x "$DETECTOR" ]]; then
-  echo "<FAIL> Detector not executable: $DETECTOR"
-  exit 2
-fi
-
-# --- Run detector ---
-if "$DETECTOR" $DETECTOR_FLAGS; then
-  rc=0
-else
-  rc=$?
-fi
-
-# --- Decide outcome ---
-case "$rc" in
-  0)
-    echo "<OK> Mosquitto role check: safe to proceed."
-    ;;
-  1)
-    echo "<WARNING> Client artifacts detected, but continuing due to soft mode."
-    ;;
-  2)
-    echo "<FAIL> TLS Client/Master conflict detected by detector. Installation aborted."
-    exit 2
-    ;;
-  3)
-    echo "<FAIL> Indeterminate Mosquitto state. Please inspect and fix."
-    exit 2
-    ;;
-  *)
-    echo "<FAIL> Unexpected detector return code: $rc"
-    exit 2
-    ;;
-esac
 
 # Exit with Status 0
 exit 0

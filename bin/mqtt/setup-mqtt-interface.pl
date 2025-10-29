@@ -18,8 +18,8 @@ use LoxBerry::System;
 my $CERTDIR       = "/etc/mosquitto/certs";                # Mosquitto Cert-Dir
 my $CA_PERSIST    = "/etc/mosquitto/ca";                   # Persistente CA (Debian-konform)
 my $CA_PRIVDIR    = File::Spec->catdir($CA_PERSIST, "private");
-my $BRIDGE_DIR    = "/opt/loxberry/config/plugins/text2speech/bridge"; # Bundle-Ziel
-my $LOGFILE       = "/opt/loxberry/log/plugins/text2speech/setup-mqtt-interface.log";
+my $BRIDGE_DIR    = "REPLACELBHOMEDIR/config/plugins/text2speech/bridge"; # Bundle-Ziel
+my $LOGFILE       = "REPLACELBHOMEDIR/log/plugins/text2speech/setup-mqtt-interface.log";
 my $CLIENT_ID 	  = "t2s-bridge";
 
 # CA Dateien (persistent)
@@ -89,10 +89,14 @@ sub ts { strftime("%d-%m-%Y %H:%M:%S", localtime) }
 sub logp {
   my ($lvl,$msg)=@_;
   my $line = sprintf("%s <%s> %s\n", ts(), $lvl, $msg);
+
+  # immer auf STDOUT ausgeben (STDOUT hast du bereits auf UTF-8 gesetzt)
   print $line;
+
+  # Logfile UTF-8-sicher öffnen
   eval {
     make_path(dirname($LOGFILE)) unless -d dirname($LOGFILE);
-    open my $fh, ">>", $LOGFILE or die $!;
+    open my $fh, ">>:encoding(UTF-8)", $LOGFILE or die $!;
     print $fh $line;
     close $fh;
   };
@@ -156,7 +160,7 @@ sub ensure_loxb_acl {
 
 # Ensure the T2S log path exists and is writable by user/group 'loxberry'
 sub ensure_tts_log_path {
-  my $log_dir  = '/opt/loxberry/log/plugins/text2speech';
+  my $log_dir  = 'REPLACELBHOMEDIR/log/plugins/text2speech';
   my $log_file = "$log_dir/interface.log";
   my ($uid) = (getpwnam('loxberry'))[2];
   my ($gid) = (getgrnam('loxberry'))[2];
@@ -257,8 +261,6 @@ ensure_dir($CERTDIR);
 ensure_dir($CLI_DIR);
 ensure_dir($BRIDGE_DIR);
 ensure_tts_log_path();
-
-# (keine Role-Marker mehr)
 
 # Sichere Basisrechte für CA-Privatbereich (WinSCP-Sichtbarkeit; Key bleibt 0600)
 sh("chown -R root:root ".esc($CA_PERSIST));
@@ -472,7 +474,7 @@ TLS
 
   logp("OK","Mosquitto TLS config written: $conf_per, $conf_tls");
 
-  # ACL-Datei erzeugen/aktualisieren (statisches Fallback – ohne Role)
+  # ACL-Datei erzeugen/aktualisieren (statisches Fallback)
   my $server_cn_acl = $server_cn;
   my ($rsubj,$subj) = sh("openssl x509 -in ".esc($SRV_CRT)." -noout -subject");
   if (!$rsubj && $subj =~ /CN\s*=\s*([^\/\n]+)/) {

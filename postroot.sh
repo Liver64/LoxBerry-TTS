@@ -47,9 +47,71 @@ if [ ! -L /usr/bin/piper ]; then
 	echo "<INFO> Symlink 'piper' has been created in /usr/bin"
 fi
 
-# Install Mosquitto Bridge
-perl REPLACELBPBINDIR/mqtt/setup-mqtt-interface.pl --write-conf --bundle --debug
-echo "<OK> Mosquitto Master (bridged) for T2S has been installed"
+
+# postroot.sh — finalize T2S installation (root)
+# - Fulfill deferred creation of /etc/mosquitto/role/t2s-master
+# - Respect skip marker to avoid installing bridge when conflicting
+# - Run setup-mqtt-interface.pl (deine bestehende Version) unverändert
+
+set -euo pipefail
+
+ROLE_DIR="/etc/mosquitto/role"
+MASTER_MARKER="$ROLE_DIR/t2s-master"
+
+# Volatile markers matching preinstall.sh
+SKIP_DIR="/dev/shm/t2s-installer"
+SKIP_FILE="$SKIP_DIR/skip-bridge.t2s"
+DEFER_MARKER="$SKIP_DIR/defer-master-marker.t2s"
+
+SETUP_PL="REPLACELBPBINDIR/mqtt/setup-mqtt-interface.pl"
+
+cleanup() {
+  # Always remove volatile markers at the end to avoid stale state
+  rm -f "$SKIP_FILE" "$DEFER_MARKER" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+# ---- 1) Fulfill deferred master-role marker creation (idempotent) ----
+if [[ -f "$DEFER_MARKER" ]]; then
+  echo "<INFO> Creating deferred role marker for T2S Master"
+  install -d -o root -g root -m 0755 "$ROLE_DIR"
+  if [[ ! -f "$MASTER_MARKER" ]]; then
+    install -m 0644 -o root -g root /dev/null "$MASTER_MARKER"
+    echo "<OK> Created role marker: $MASTER_MARKER"
+  else
+    echo "<INFO> Role marker already present: $MASTER_MARKER"
+  fi
+fi
+
+# ---- 2) Bridge setup (skip if marker present) ----
+if [[ -f "$SKIP_FILE" ]]; then
+  REASON="$(grep -E '^reason=' "$SKIP_FILE" 2>/dev/null | cut -d= -f2- || echo '')"
+  OFFENDER="$(grep -E '^offender=' "$SKIP_FILE" 2>/dev/null | cut -d= -f2- || echo '')"
+  TS="$(grep -E '^ts=' "$SKIP_FILE" 2>/dev/null | cut -d= -f2- || echo '')"
+
+  echo "<INFO> Skip-bridge marker found ($TS, reason=$REASON, offender=$OFFENDER)"
+  echo "<OK> Skipping Mosquitto Bridge setup for T2S (safeguard)."
+  echo "<OK> Skip processed. Marker will be removed."
+  exit 0
+fi
+
+# ---- 3) Run your existing setup-mqtt-interface.pl (unchanged) ----
+if [[ ! -x "$SETUP_PL" ]]; then
+  echo "<ERROR> Missing or non-executable: $SETUP_PL"
+  exit 2
+fi
+
+# Execute exactly as before (your script kümmert sich selbst um Restart etc.)
+perl "$SETUP_PL" --write-conf --bundle
+rc=$?
+
+if [[ $rc -eq 0 ]]; then
+  echo "<OK> Mosquitto Master (bridged) for T2S has been installed"
+else
+  echo "<FAIL> setup-mqtt-interface.pl returned rc=$rc"
+  exit $rc
+fi
+
 
 # Install MQTT event handler as service
 if [ ! -L /etc/systemd/system/mqtt-service-tts.service ]; then
@@ -57,43 +119,67 @@ if [ ! -L /etc/systemd/system/mqtt-service-tts.service ]; then
 	sudo systemctl daemon-reload
 	sudo systemctl enable mqtt-service-tts
 	sudo systemctl start mqtt-service-tts
-	echo "<OK> MQTT Event handler has been installed"
+	echo "<OK> MQTT Event Service has been installed"
 else
-	echo "<INFO> MQTT Event handler is already installed"
+	echo "<INFO> MQTT Event Service is already installed"
 fi
 
-# Install MQTT handshake listener as service
-if [ ! -L /etc/systemd/system/mqtt-handshake.service ]; then
-	chmod 0755 REPLACELBPBINDIR/mqtt/mqtt-handshake.php
-	cp -p -v REPLACELBPBINDIR/mqtt/mqtt-handshake.service /etc/systemd/system/mqtt-handshake.service
-	sudo systemctl daemon-reload
-	sudo systemctl enable mqtt-handshake
-	sudo systemctl start mqtt-handshake
-	echo "<OK> MQTT Handshake listener has been installed"
-else
-	echo "<INFO> MQTT Handshake listener is already installed"
+#!/usr/bin/env bash
+# postroot: install oneshot watchdog + timer, remove old daemon version
+
+# --- Paths (replace via your packager placeholders) ---
+SRV_SRC="REPLACELBPBINDIR/mqtt/mqtt-watchdog.service"
+TMR_SRC="REPLACELBPBINDIR/mqtt/mqtt-watchdog.timer"
+SRV_DST="/etc/systemd/system/mqtt-watchdog.service"
+TMR_DST="/etc/systemd/system/mqtt-watchdog.timer"
+
+echo "<INFO> Installing T2S MQTT Watchdog as oneshot + timer …"
+
+# --- 1) If an old daemon-style unit exists, stop/disable it first ---
+if systemctl list-unit-files | grep -q '^mqtt-watchdog.service'; then
+  # Best-effort stop/disable (ok if not active)
+  systemctl stop mqtt-watchdog.service  >/dev/null 2>&1 || true
+  systemctl disable mqtt-watchdog.service >/dev/null 2>&1 || true
 fi
 
-# prepare Watchdog listener as service
-if [ ! -L REPLACELBPBINDIR/mqtt/mqtt-watchdog.service ]; then
-	cp -p -v REPLACELBPBINDIR/mqtt/mqtt-watchdog.service /etc/systemd/system/mqtt-watchdog.service
-	sudo systemctl daemon-reload
-	sudo systemctl enable mqtt-watchdog
-	sudo systemctl start mqtt-watchdog
-	echo "<INFO> MQTT Watchdog Initialization has been installed"
-else
-	echo "<ERROR> MQTT Watchdog Initialization is already installed"
-	exit 12
+# Remove any old unit file that might conflict (best-effort)
+if [ -e "$SRV_DST" ]; then
+  rm -f "$SRV_DST" || true
 fi
+if [ -e "$TMR_DST" ]; then
+  rm -f "$TMR_DST" || true
+fi
+
+# --- 2) Install oneshot service + timer (owned by root:root, 0644) ---
+install -o root -g root -m 0644 "$SRV_SRC" "$SRV_DST"
+install -o root -g root -m 0644 "$TMR_SRC" "$TMR_DST"
+
+# --- 3) Reload systemd units ---
+systemctl daemon-reload
+
+# --- 4) Run once NOW (expected to exit and show inactive/dead = SUCCESS) ---
+if systemctl start mqtt-watchdog.service; then
+  echo "<OK> MQTT Watchdog executed once successfully (oneshot)."
+else
+  echo "<ERROR> MQTT Watchdog oneshot execution failed."
+fi
+
+# --- 5) Enable timer (runs once after every boot) ---
+if systemctl enable --now mqtt-watchdog.timer; then
+  echo "<OK> MQTT Watchdog timer enabled (fires once per boot)."
+else
+  echo "<WARNING> Could not enable/start mqtt-watchdog.timer."
+fi
+
+echo "<OK> Watchdog service/timer installation completed."
+
 
 # Copy uninstall.pl to Mosquitto /etc/mosquitto
-cp -p -v REPLACELBPBINDIR/uninstall.pl /etc/mosquitto/uninstall.pl
+cp -p -v REPLACELBPBINDIR/uninstall.pl /etc/mosquitto/t2s-uninstall.pl
 echo "<OK> uninstall.pl has been copied to /etc/mosquitto"
 
-
-# Restart Moqsuitto
-# Silent, non-fatal; won’t spam your installer logs
-#sudo timeout 15 REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true
+# Restart Moqsuitto silent, non-fatal; won’t spam your installer logs
+#sudo REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true
 #echo "<OK> Mosquitto has been restarted."
 
 exit 0

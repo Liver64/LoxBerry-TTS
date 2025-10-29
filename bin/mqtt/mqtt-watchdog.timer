@@ -1,0 +1,12 @@
+[Unit]
+Description=Run T2S MQTT Watchdog once after boot
+
+[Timer]
+OnBootSec=30s
+# No OnUnitActiveSec → it will NOT repeat periodically; it just fires once per boot.
+# Persistent=true lets a missed boot run happen on next start, can be omitted if undesired.
+Persistent=true
+Unit=mqtt-watchdog.service
+
+[Install]
+WantedBy=timers.target

@@ -9,7 +9,6 @@ $logfile = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt-watchdog.log";
 /* --- Hier zu überwachende Services pflegen --- */
 $services = [
     "mqtt-service-tts",
-    "mqtt-handshake",
 ];
 
 /* === Optionen === */
@@ -45,7 +44,7 @@ function logmsg(string $level, string $service, string $message): void
 
         case in_array($norm, ['⚠️','WARN','WARNING']):
             LOGWARN("[$service] $message");
-            $lb = 'WARN';
+            $lb = 'WARNING';
             break;
 
         case in_array($norm, ['✅','OK','SUCCESS']):
@@ -55,7 +54,7 @@ function logmsg(string $level, string $service, string $message): void
 
         case in_array($norm, ['❌','ERR','ERROR','FAIL']):
             LOGERR("[$service] $message");
-            $lb = 'ERR';
+            $lb = 'ERROR';
             break;
 
         case in_array($norm, ['🐞','DEB','DEBUG']):
@@ -129,7 +128,7 @@ function check_and_heal_service(string $service): int
         if (!restart_rate_limited($service)) {
             return 1;
         }
-        logmsg("❌", $service, "Service is not active (state='$active'). Restarting…");
+        logmsg("⚠️", $service, "Service is not active (state='$active'). Restarting…");
         shell_exec("systemctl restart " . escapeshellarg($service) . " 2>/dev/null");
         sleep(2);
         $active_after = trim(shell_exec("systemctl is-active " . escapeshellarg($service) . " 2>/dev/null") ?? "");

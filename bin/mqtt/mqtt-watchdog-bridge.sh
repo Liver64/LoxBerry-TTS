@@ -32,9 +32,9 @@ log() {
   local lvl="<INFO>"
   case "$msg" in
     ✅*) lvl="<OK>"   ;;
-    ℹ️*) lvl="<DEB>" ;;
-    ⚠️*) lvl="<WARN>" ;;
-    ❌*) lvl="<ERR>"  ;;
+    ℹ️*) lvl="<INFO>" ;;
+    ⚠️*) lvl="<WARNING>" ;;
+    ❌*) lvl="<ERROR>"  ;;
     🛑*) lvl="<DEB>" ;;
     *)   lvl="<DEB>" ;;
   esac

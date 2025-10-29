@@ -58,8 +58,8 @@ else
 	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/danny/low/en_US-danny-low.onnx.json	
 	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx
 	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json
-	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/blob/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx
-	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/blob/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx.json
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx
+	wget -P $5/webfrontend/html/plugins/$3/voice_engines/piper-voices https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx.json
 	/usr/bin/php REPLACELBPHTMLDIR/bin/add_details_piper_tts.php
 	echo "<INFO> Piper-Voices has been downloaded"
 fi

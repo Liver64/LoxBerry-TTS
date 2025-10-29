@@ -1,0 +1,11 @@
+{
+   "client" : "text2sip",											# identifyer or requester of the publisher (typically your plugin installation folder)
+   "corr" : "1761758778",											# unique identifyer for this specific pub request to ensure only publisher get HIS subscriber
+   "logging" : 1,							(optional)				# 0 = no TTS logs were passed. 1 = you get all logs from TTS for further proccessing
+   "mp3files" : 0,							(optional)				# 0 = no list of available MP3 files could be used 1 = list of available MP3 files
+   "nocache" : 0,							(optional)				# 0 = check if Voice file already created and ship from cache 1 =  force TTS to recreate MP3 file
+   "reply_to" : "tts-subscribe/text2sip/1761758778",				# response to be used from the subscriber
+   "text" : "hallo, Dies ist ein erneuter Testanruf für Nele"		# Text to converted into voice mp3 file
+}
+
+to be published and received as JSON Flat file. Payload will be validated from Subscriber

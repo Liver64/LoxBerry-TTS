@@ -1,20 +1,18 @@
 [Unit]
-Description=T2S MQTT Watchdog (run once at boot)
-After=network-online.target
+Description=T2S MQTT Watchdog (oneshot run)
+After=network-online.target mosquitto.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-# Falls dein Skript ausführbar ist (mit Shebang), nimm die nächste Zeile:
-ExecStart=/opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-watchdog.php
-# Alternativ ohne Shebang:
-# ExecStart=/opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-watchdog.php
 User=loxberry
 Group=loxberry
-# WICHTIG: nicht neu starten – läuft nur einmal
-Restart=no
-# Umgebung, falls nötig:
-# Environment=LBHOMEDIR=/opt/loxberry
+Environment=WATCHDOG_UNIT=mqtt-watchdog.service
+WorkingDirectory=/opt/loxberry/bin/plugins/text2speech/mqtt
+ExecStart=/opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-watchdog.php
+# If your script writes to stdout/stderr and you want it in journal:
+StandardOutput=journal
+StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+# No WantedBy here; enable the timer (below) if you want it to run automatically.
