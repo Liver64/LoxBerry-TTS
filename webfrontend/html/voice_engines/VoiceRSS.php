@@ -52,7 +52,7 @@ function t2s($t2s_param)
     // =========================
     $selectedVoice = null;
     foreach ($voices as $voice) {
-        if ($voice['name'] === $voiceKey) {
+        if (($voice['name'] ?? '') === $voiceKey) {
             $selectedVoice = $voice;
             break;
         }
@@ -63,34 +63,42 @@ function t2s($t2s_param)
         return false;
     }
 
-    $language = $selectedVoice['language'];
+    $language  = $selectedVoice['language'];
     $voiceName = $selectedVoice['name'];
 
     // =========================
-    // 4. Prepare API request
+    // 4. Prepare API request (force MP3!)
     // =========================
-    $audioFormat = "44khz_16bit_mono";
-    $encodedText = urlencode($text);
-
-    $queryString = http_build_query([
+    // WICHTIG: Kein 'f=' Parameter, da dieser bei VoiceRSS häufig WAV/RIFF liefert.
+    // 'c=MP3' erzwingt MP3-Ausgabe.
+    $query = [
         'key' => $apikey,
         'src' => $text,
         'hl'  => $language,
         'v'   => $voiceName,
-        'f'   => $audioFormat
-    ]);
-
-    $apiUrl = "http://api.voicerss.org/?" . $queryString;
+        'c'   => 'MP3'
+    ];
+    $apiUrl = "https://api.voicerss.org/?" . http_build_query($query);
 
     LOGOK("VoiceRSS.php: Sending TTS request to VoiceRSS API using voice '$voiceName' and language '$language'.");
 
     // =========================
     // 5. Fetch audio from VoiceRSS
     // =========================
-    ini_set('user_agent', 'Mozilla/5.0 (VoiceRSS PHP Client)');
-    $mp3Data = @file_get_contents($apiUrl);
+    $ctx = stream_context_create([
+        'http' => [
+            'method'  => 'GET',
+            'header'  => "User-Agent: LoxBerry-T2S/1.0\r\n",
+            'timeout' => 20,
+        ],
+        'ssl' => [
+            'verify_peer'      => true,
+            'verify_peer_name' => true,
+        ]
+    ]);
 
-    if ($mp3Data === false || strlen($mp3Data) < 50) {
+    $audioData = @file_get_contents($apiUrl, false, $ctx);
+    if ($audioData === false || strlen($audioData) < 50) {
         LOGERR("VoiceRSS.php: Failed to fetch audio data from VoiceRSS API.");
         return false;
     }
@@ -99,16 +107,16 @@ function t2s($t2s_param)
     // 6. Save MP3 file
     // =========================
     $outputDir = rtrim($config['SYSTEM']['ttspath'], '/');
-    if (!is_dir($outputDir)) {
-        if (!mkdir($outputDir, 0775, true)) {
-            LOGERR("VoiceRSS.php: Output directory '$outputDir' does not exist and could not be created.");
-            return false;
-        }
+    if (!is_dir($outputDir) && !@mkdir($outputDir, 0775, true)) {
+        LOGERR("VoiceRSS.php: Output directory '$outputDir' does not exist and could not be created.");
+        return false;
     }
 
-    $outputFile = $outputDir . "/" . $filename . ".mp3";
+    // Sicherstellen, dass der Dateiname „sauber“ ist (dein Aufrufer nutzt bereits Hex-IDs)
+    $safeName   = preg_replace('~[^a-f0-9]~i', '', (string)$filename);
+    $outputFile = $outputDir . "/" . $safeName . ".mp3";
 
-    if (file_put_contents($outputFile, $mp3Data) === false) {
+    if (@file_put_contents($outputFile, $audioData) === false) {
         LOGERR("VoiceRSS.php: Failed to save MP3 file to '$outputFile'.");
         return false;
     }
@@ -118,6 +126,6 @@ function t2s($t2s_param)
     // =========================
     // 7. Return the filename
     // =========================
-    return $filename;
+    return $safeName;
 }
 ?>
