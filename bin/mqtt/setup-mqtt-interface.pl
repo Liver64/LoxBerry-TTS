@@ -489,17 +489,16 @@ TLS
 # SIP client identity (from client cert CN)
 user $CLIENT_ID
 topic write tts-publish/#
-topic read  tts-subscribe/#
+topic read tts-subscribe/#
+topic write tts-subscribe/#
+topic read tts-publish/#
 
 # T2S broker/app identity (from server cert CN)
 user $server_cn_acl
+topic write tts-publish/#
+topic read tts-subscribe/#
 topic write tts-subscribe/#
-topic read  tts-publish/#
-
-# T2S handshake
-user $CLIENT_ID
-topic write tts-handshake/request
-topic read  tts-handshake/response/#
+topic read tts-publish/#
 
 # optional diagnostics:
 topic read \$SYS/#

@@ -63,7 +63,7 @@ SKIP_DIR="/dev/shm/t2s-installer"
 SKIP_FILE="$SKIP_DIR/skip-bridge.t2s"
 DEFER_MARKER="$SKIP_DIR/defer-master-marker.t2s"
 
-SETUP_PL="REPLACELBPBINDIR/mqtt/setup-mqtt-interface.pl"
+SETUP_PL="REPLACELBPBINDIR/mqtt/setup-mqtt-interface.pl --bundle"
 
 cleanup() {
   rm -f "$SKIP_FILE" "$DEFER_MARKER" 2>/dev/null || true
