@@ -36,3 +36,7 @@
 			[Enhancement] Multihandling API-key wenn mehrere TTS Engines genutzt werden
 			[Bugfix] Fixed automatische Findung von Soundkarten inkl. technischer Details
 			[Bugfix] Fixed addons
+ 1.6.1		[Bugfix] Voice Engines VoiceRSS gefixt
+			[Bugfix] kleinere Optimierungen hinsichtlich Performance
+			[Enhancement] Multilingualität (NL, IT, CZ, FR, EN, DE)
+			[Enhancement] Entwickler Informationen zur Nutzung des Interface bereitgestellt inkl. Beispieldateien zur Nutzung

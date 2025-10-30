@@ -1,7 +1,7 @@
 <?php
 ##############################################################################################################################
 # tts_functions.php - Funktionen für Text2Speech
-# Version: 2.0.0 Optimized
+# Version: 2.0.1
 ##############################################################################################################################
 
 global $config, $t2s_param, $lbpdatadir;
@@ -16,7 +16,9 @@ function create_tts() {
     // 1) Fertige MP3 aus URL (?file=...)
     if (!empty($_GET['file'])) {
         $filename = basename($_GET['file']);
-        if (substr($filename, -4) !== '.mp3') $filename .= '.mp3';
+        if (substr($filename, -4) !== '.mp3') {
+            $filename .= '.mp3';
+        }
         $fullpath = "$mp3path/$filename";
         if (is_file($fullpath)) {
             LOGINF("tts_functions.php: Serving existing MP3 file: $fullpath");
@@ -48,13 +50,18 @@ function create_tts() {
         $nocache = 0;
         if (isset($_GET['nocache'])) {
             $raw = (string)$_GET['nocache'];
-            if     ($raw === '1') $nocache = 1;
-            elseif ($raw === '0' || $raw === '') $nocache = 0;
-            else $nocache = filter_var($raw, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            if     ($raw === '1') { $nocache = 1; }
+            elseif ($raw === '0' || $raw === '') { $nocache = 0; }
+            else { $nocache = filter_var($raw, FILTER_VALIDATE_BOOLEAN) ? 1 : 0; }
         }
 
-        // --- Cache-Hit und nocache != 1 → direkt liefern
-        if ($nocache !== 1) {
+        // Bei nocache=1 alte Dateien entfernen, damit wirklich neu erzeugt wird
+        if ($nocache === 1) {
+            if (is_file($mp3file))  @unlink($mp3file);
+            if ($fallback !== $mp3file && is_file($fallback)) @unlink($fallback);
+            LOGINF("tts_functions.php: nocache=1 → re-create target: '$mp3file'");
+        } else {
+            // --- Cache-Hit und nocache != 1 → direkt liefern
             if (is_file($mp3file)) {
                 LOGINF("tts_functions.php: Found cached MP3: $mp3file");
                 return $mp3file;
@@ -63,51 +70,64 @@ function create_tts() {
                 LOGINF("tts_functions.php: Found cached MP3 (text-hash): $fallback");
                 return $fallback;
             }
-            // Cache-Miss → erzeugen (weil nocache=0/absent erlaubt Erzeugung bei Miss)
+            // Cache-Miss → erzeugen
             LOGDEB("tts_functions.php: Cache miss (nocache=0) → creating new MP3: '$mp3file'");
-        } else {
-            // nocache=1 → immer neu erzeugen
-            LOGINF("tts_functions.php: nocache=1 → re-create target: '$mp3file'");
         }
 
         // Engine laden
         $engine_file = get_engine_file($t2s_param['t2sengine']);
-		if (!$engine_file) { LOGERR("tts_functions.php: Invalid TTS engine: " . $t2s_param['t2sengine']); return false; }
-
-		return with_tts_lock($messageid, function() use ($mp3file, $fallback, $engine_file, $t2s_param, $text) {
-			// während des Wartens fertig geworden?
-			if (is_file($mp3file)) return $mp3file;
-			if ($fallback !== $mp3file && is_file($fallback)) return $fallback;
-
-			include_once($engine_file); // <-- nur hier
-			LOGINF("tts_functions.php: Generating new MP3 with engine $engine_file for text: '$text'");
-			t2s($t2s_param);
-
-			if (is_file($mp3file)) { LOGOK("tts_functions.php: MP3 file successfully saved to $mp3file"); return $mp3file; }
-			if ($fallback !== $mp3file && is_file($fallback)) { LOGDEB("tts_functions.php: MP3 created under text-hash: '$fallback' (expected '$mp3file'). Using created file."); return $fallback; }
-
-			LOGERR("tts_functions.php: MP3 could not be created: $mp3file");
-			return false;
-		});
-
-		
-        t2s($t2s_param);
-
-        // 1) bevorzugtes Ziel vorhanden?
-        if (is_file($mp3file)) {
-            LOGOK("tts_functions.php: MP3 file successfully saved to $mp3file");
-            return $mp3file;
-        }
-        // 2) ggf. unter md5(text) geschrieben
-        if ($fallback !== $mp3file && is_file($fallback)) {
-            LOGDEB("tts_functions.php: MP3 created under text-hash: '$fallback' (expected '$mp3file'). Using created file.");
-            return $fallback;
+        if (!$engine_file) {
+            LOGERR("tts_functions.php: Invalid TTS engine: " . $t2s_param['t2sengine']);
+            return false;
         }
 
-        LOGERR("tts_functions.php: MP3 could not be created: $mp3file");
-        return false;
+        // Erzeugung unter Lock
+        return with_tts_lock($messageid, function() use ($mp3file, $fallback, $engine_file, $t2s_param, $text, $nocache) {
+
+            // Nur bei nocache!=1 sofort liefern; sonst Neu-Erzeugung erzwingen
+            if ($nocache !== 1) {
+                if (is_file($mp3file)) return $mp3file;
+                if ($fallback !== $mp3file && is_file($fallback)) return $fallback;
+            }
+
+            include_once($engine_file);
+            LOGINF("tts_functions.php: Generating new MP3 with engine $engine_file for text: '$text'");
+            t2s($t2s_param);
+
+            // Ziel prüfen
+            $target = null;
+            if (is_file($mp3file)) {
+                $target = $mp3file;
+            } elseif ($fallback !== $mp3file && is_file($fallback)) {
+                LOGDEB("tts_functions.php: MP3 created under text-hash: '$fallback' (expected '$mp3file'). Using created file.");
+                $target = $fallback;
+            }
+
+            if ($target !== null) {
+                // Kurze Sanity-Checks (Größe/MP3-Header)
+                $fh = @fopen($target, 'rb');
+				if ($fh) {
+					$head3 = fread($fh, 3); // 3 Bytes lesen
+					fclose($fh);
+
+					if ($head3 === false || strlen($head3) < 2) {
+						LOGWARN("tts_functions.php: Could not read header: $target");
+					} else {
+						$sig3 = substr($head3, 0, 3);     // z.B. "ID3"
+						$sig2 = substr($head3, 0, 2);     // z.B. 0xFF 0xFB / 0xF3 / 0xF2
+
+						if ($sig3 !== "ID3" && !in_array($sig2, ["\xFF\xFB", "\xFF\xF3", "\xFF\xF2"], true)) {
+							LOGWARN("tts_functions.php: File does not look like MP3 (header=".bin2hex($head3)."): $target");
+						}
+					}
+				}
+                LOGOK("tts_functions.php: MP3 file successfully saved to $target");
+                return $target;
+            }
+            LOGERR("tts_functions.php: MP3 could not be created: $mp3file");
+            return false;
+        });
     }
-
     // 3) weder file noch text
     LOGERR("tts_functions.php: Neither 'file' nor 'text' provided in request");
     return false;
@@ -127,8 +147,6 @@ function get_engine_file($engineid) {
     }
 }
 
-
-
 function with_tts_lock(string $messageid, callable $fn) {
     $lockfile = sys_get_temp_dir() . "/tts_" . $messageid . ".lock";
     $fh = fopen($lockfile, 'c');
@@ -143,6 +161,4 @@ function with_tts_lock(string $messageid, callable $fn) {
         // kein unlink: lock-file darf bestehen bleiben
     }
 }
-
-
 ?>

@@ -19,8 +19,14 @@ my $CERTDIR       = "/etc/mosquitto/certs";                # Mosquitto Cert-Dir
 my $CA_PERSIST    = "/etc/mosquitto/ca";                   # Persistente CA (Debian-konform)
 my $CA_PRIVDIR    = File::Spec->catdir($CA_PERSIST, "private");
 my $BRIDGE_DIR    = "REPLACELBHOMEDIR/config/plugins/text2speech/bridge"; # Bundle-Ziel
+my $log_dir  	  = 'REPLACELBHOMEDIR/log/plugins/text2speech';
 my $LOGFILE       = "REPLACELBHOMEDIR/log/plugins/text2speech/setup-mqtt-interface.log";
 my $CLIENT_ID 	  = "t2s-bridge";
+my $BUNDLE_NAME   = "t2s_bundle.tar.gz";
+
+# conf.d Dateien
+my $conf_per = "/etc/mosquitto/conf.d/00-global-per-listener.conf";
+my $conf_tls = "/etc/mosquitto/conf.d/10-listener-tls.conf";
 
 # CA Dateien (persistent)
 my $CA_KEY        = File::Spec->catfile($CA_PRIVDIR, "mosq-ca.key");
@@ -160,7 +166,6 @@ sub ensure_loxb_acl {
 
 # Ensure the T2S log path exists and is writable by user/group 'loxberry'
 sub ensure_tts_log_path {
-  my $log_dir  = 'REPLACELBHOMEDIR/log/plugins/text2speech';
   my $log_file = "$log_dir/interface.log";
   my ($uid) = (getpwnam('loxberry'))[2];
   my ($gid) = (getgrnam('loxberry'))[2];
@@ -426,9 +431,6 @@ ensure_loxb_acl($CA_CRT, $CLI_DIR, $CLI_KEY, $CLI_CRT);
 
 # ========= (4) Mosquitto TLS-Config schreiben (optional) + ACL-Datei =========
 if ($write_conf) {
-  my $conf_per = "/etc/mosquitto/conf.d/00-global-per-listener.conf";
-  my $conf_tls = "/etc/mosquitto/conf.d/10-listener-tls.conf";
-
   # 00-global: nur wirklich globale Settings
   open my $f1, ">", $conf_per or die "Cannot write $conf_per: $!";
   print $f1 <<"PER";
@@ -513,7 +515,7 @@ ACL
 
 # ========= (5) Optional: Bundle bauen =========
 if ($bundle) {
-  my $bundle_path = File::Spec->catfile($BRIDGE_DIR, "t2s_bundle.tar.gz");
+  my $bundle_path = File::Spec->catfile($BRIDGE_DIR, $BUNDLE_NAME);
   my $tmpdir = "/tmp/sip_bundle.$$";
   ensure_dir($tmpdir);
   my $cli_rel = "clients/".$CLIENT_ID;

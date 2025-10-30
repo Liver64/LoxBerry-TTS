@@ -83,11 +83,6 @@ my $ttsfolder					= "tts";
 my $mp3folder					= "mp3";
 my $azureregion					= "westeurope"; # Change here if you have a Azure API key for diff. region
 my $rampath						= $lbpdatadir."/t2s_interface";
-# Array der bekannten Plugins die potentiell TTS nutzen
-my @WANTED_PLUGINS = qw(
-    text2sip
-    AudioServer4Home
-);
 my $log							= LoxBerry::Log->new (name => 'Webinterface', filename => $lbplogdir ."/". $pluginlogfile, append => 1, addtime => 1);
 our $LOG_ENDED 					= 0;
 our $IS_AJAX 					= 0;
@@ -203,8 +198,6 @@ if (defined $R::action && $R::action eq 'validate_ics') {
     exit; # ganz wichtig – sonst läuft die normale Seite weiter
 }
 
-
-
 ##########################################################################
 # Init Main Template
 ##########################################################################
@@ -214,48 +207,6 @@ if ($R::getkeys)
 {
 	getkeys();
 }
-
-##########################################################################
-# check/get installed Plugins (needed for Interface)
-##########################################################################
-
-my %WANTED = map { lc($_) => 1 } @WANTED_PLUGINS;
-
-# Collect installed plugins and filter to wanted ones
-my @plugins_enabled;
-my @plugins = LoxBerry::System::get_plugins();
-
-foreach my $plugin (@plugins) {
-    # Robust: match by folder name and by title (both lowercased)
-    my $p_name  = lc($plugin->{PLUGINDB_NAME}  // '');
-    my $p_title = lc($plugin->{PLUGINDB_TITLE} // '');
-
-    next unless $WANTED{$p_name} || $WANTED{$p_title};
-
-    my $title_print = $plugin->{PLUGINDB_TITLE} || $plugin->{PLUGINDB_NAME} || 'unknown';
-    push @plugins_enabled, { name => $title_print };
-    LOGDEB("Detected local plugin: $title_print");
-}
-
-my $plugincheck = @plugins_enabled ? 1 : 0;
-
-# Optional summary logging
-my @names = map { $_->{name} } @plugins_enabled;
-if (@names) {
-    LOGOK("Local-only check: wanted plugins installed: " . join(', ', @names));
-} else {
-    LOGWARN("Local-only check: no matching wanted plugins installed.");
-}
-
-LOGINF("INTERFACE (plugincheck) = $plugincheck");
-
-# Übergabe ans Template: TMPL_LOOP PLUGINS erwartet Arrayref von Hashrefs
-$template->param(
-    INTERFACE => $plugincheck,
-    PLUGINS   => \@plugins_enabled,
-    PLUGINDIR => $lbpplugindir,
-);
-
 
 ##########################################################################
 # Set LoxBerry SDK to debug in plugin is in debug
