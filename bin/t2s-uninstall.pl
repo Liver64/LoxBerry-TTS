@@ -15,11 +15,12 @@
 #   - Restarts mosquitto via LoxBerry's mqtt-handler (best effort; see block below)
 #
 # FLAGS:
-#   --no-ca      : keep CA stores (do NOT purge /etc/mosquitto/ca or /etc/ca)
-#   --no-certs   : do NOT clean /etc/mosquitto/certs*/ contents (keep files)
-#   --debug      : verbose logging
-#   --quiet      : minimal console output
-#   --help       : this help (with examples)
+#   --no-ca         : keep CA stores (do NOT purge /etc/mosquitto/ca or /etc/ca)
+#   --no-certs      : do NOT clean /etc/mosquitto/certs*/ contents (keep files)
+#   --force-master  : ignore missing /etc/mosquitto/role/t2s-master and run anyway (support use only)
+#   --debug         : verbose logging
+#   --quiet         : minimal console output
+#   --help          : this help (with examples)
 #
 # Return codes: 0 OK | 1 minor issues | >1 error
 
@@ -59,19 +60,21 @@ my $MQTT_HANDLER        = 'REPLACELBHOMEDIR/sbin/mqtt-handler.pl';
 
 # Systemd units to stop/disable/remove
 my @UNIT_SERVICES       = ('mqtt-service-tts.service','mqtt-watchdog.service');
-my @UNIT_TIMERS         = ('mqtt-watchdog.timer');  # new: oneshot watchdog uses a timer
+my @UNIT_TIMERS         = ('mqtt-watchdog.timer');  # oneshot watchdog uses a timer
 my @UNIT_FILES          = map { File::Spec->catfile('/etc/systemd/system', $_) } (@UNIT_SERVICES, @UNIT_TIMERS);
 
 # ---------- CLI (default: purge CA + clean cert contents) ----------
 my ($HELP, $QUIET, $DEBUG) = (0, 0, 0);
-my $PURGE_CA   = 1;  # default remove CA stores
-my $CLEAN_CERT = 1;  # default clean contents of certs dir(s)
+my $PURGE_CA     = 1;  # default remove CA stores
+my $CLEAN_CERT   = 1;  # default clean contents of certs dir(s)
+my $FORCE_MASTER = 0;  # new: allow override of role marker check
 GetOptions(
-  'help'     => \$HELP,
-  'quiet'    => \$QUIET,
-  'debug'    => \$DEBUG,
-  'no-ca'    => sub { $PURGE_CA = 0 },    # keep CA stores
-  'no-certs' => sub { $CLEAN_CERT = 0 },  # keep cert files
+  'help'          => \$HELP,
+  'quiet'         => \$QUIET,
+  'debug'         => \$DEBUG,
+  'no-ca'         => sub { $PURGE_CA = 0 },    # keep CA stores
+  'no-certs'      => sub { $CLEAN_CERT = 0 },  # keep cert files
+  'force-master'  => \$FORCE_MASTER,           # ignore missing t2s-master marker
 ) or die "Invalid options. Use --help\n";
 
 # ---------- Help text (callable with --help) ----------
@@ -80,7 +83,7 @@ sub print_help {
 t2s-uninstall.pl — Uninstall for T2S Master
 
 Synopsis:
-  t2s-uninstall.pl [--no-ca] [--no-certs] [--debug] [--quiet] [--help]
+  t2s-uninstall.pl [--no-ca] [--no-certs] [--force-master] [--debug] [--quiet] [--help]
 
 What it does by default:
   • Stops: mosquitto, mqtt-service-tts.service, mqtt-watchdog.service (best effort)
@@ -96,12 +99,19 @@ What it does by default:
     and reloads systemd (daemon-reload + reset-failed)
   • Restarts Mosquitto via the LoxBerry mqtt-handler
 
+Safety:
+  • The script will only run its uninstall actions if the role marker
+      /etc/mosquitto/role/t2s-master
+    exists. If it is missing, the script exits safely without changes.
+  • To override this protection (support use only), pass --force-master.
+
 Options:
-  --no-ca       Keep CA stores (do NOT purge /etc/mosquitto/ca or /etc/ca)
-  --no-certs    Keep cert files (do NOT clean certs/ contents)
-  --debug       Verbose debug logging
-  --quiet       Minimal console output
-  --help        Show this help
+  --no-ca         Keep CA stores (do NOT purge /etc/mosquitto/ca or /etc/ca)
+  --no-certs      Keep cert files (do NOT clean certs/ contents)
+  --force-master  Ignore missing role marker and run anyway (use with care)
+  --debug         Verbose debug logging
+  --quiet         Minimal console output
+  --help          Show this help
 
 Examples:
   # Standard uninstall (purge CA, clean certs contents, keep cert directories)
@@ -110,8 +120,8 @@ Examples:
   # Keep CA stores and keep cert files (only drop-ins, ACL, bundle, role marker, units)
   sudo t2s-uninstall.pl --no-ca --no-certs
 
-  # Verbose run to see all actions
-  sudo t2s-uninstall.pl --debug
+  # Force uninstall even if the host is not marked as T2S Master (support/recovery)
+  sudo t2s-uninstall.pl --force-master --debug
 
   # Quiet run (minimal output)
   sudo t2s-uninstall.pl --quiet
@@ -147,6 +157,17 @@ if (open(LOG, ">>:utf8", $LOG_FILE)) { select((select(LOG), $|=1)[0]); $LOG_OK =
 
 INFO("=== T2S Master Uninstall ===");
 INFO(($PURGE_CA ? "CA purge ON" : "CA purge OFF")." | ".($CLEAN_CERT ? "Certs clean ON" : "Certs clean OFF"));
+
+# ---------- NEW: Role marker protection ----------
+if (! -e $MASTER_MARKER && !$FORCE_MASTER) {
+  INFO("Role marker not found: $MASTER_MARKER");
+  INFO("Host is not marked as T2S Master — uninstall skipped to protect Bridge/Client setup.");
+  OK("=== Uninstall skipped (not T2S Master) ===");
+  exit 0;
+}
+if ($FORCE_MASTER && ! -e $MASTER_MARKER) {
+  WARNING("Force mode active — ignoring missing role marker $MASTER_MARKER");
+}
 
 # ---------- Helpers ----------
 sub _read_head {

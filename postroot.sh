@@ -159,7 +159,7 @@ fi
 echo "<OK> Watchdog service/timer installation completed."
 
 # 6) Copy uninstall helper
-cp -p -v REPLACELBPBINDIR/uninstall.pl /etc/mosquitto/t2s-uninstall.pl
+cp -p -v REPLACELBPBINDIR/t2s-uninstall.pl /etc/mosquitto/t2s-uninstall.pl
 echo "<OK> uninstall.pl has been copied to /etc/mosquitto"
 
 # (Optional) silent Mosquitto restart (you had it commented)
