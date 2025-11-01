@@ -5,10 +5,11 @@
 # - Optionally create deferred master-role marker
 # - Install mqtt-service-tts + mqtt-watchdog (oneshot+timer)
 # - Copy uninstall helper
+# - Ensure proper log directory ownership for loxberry
 
 set -euo pipefail
 
-# ===== Piper bootstrap (as you had) =====
+# ===== Piper bootstrap =====
 INST=false
 piper="/usr/local/bin/piper/piper"
 
@@ -63,7 +64,7 @@ SKIP_DIR="/dev/shm/t2s-installer"
 SKIP_FILE="$SKIP_DIR/skip-bridge.t2s"
 DEFER_MARKER="$SKIP_DIR/defer-master-marker.t2s"
 
-SETUP_PL="REPLACELBPBINDIR/mqtt/setup-mqtt-interface.pl --bundle"
+SETUP_PL="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/setup-mqtt-interface.pl"
 
 cleanup() {
   rm -f "$SKIP_FILE" "$DEFER_MARKER" 2>/dev/null || true
@@ -94,7 +95,7 @@ if [[ -f "$SKIP_FILE" ]]; then
   SKIPPED_BRIDGE=1
 fi
 
-# 3) Run your setup-mqtt-interface.pl only if not skipped
+# 3) Run setup-mqtt-interface.pl only if not skipped
 if [[ $SKIPPED_BRIDGE -eq 0 ]]; then
   if [[ ! -x "$SETUP_PL" ]]; then
     echo "<ERROR> Missing or non-executable: $SETUP_PL"
@@ -116,7 +117,7 @@ fi
 if systemctl cat mqtt-service-tts >/dev/null 2>&1; then
   echo "<INFO> MQTT Event Service already installed"
 else
-  cp -p -v REPLACELBPBINDIR/mqtt/mqtt-service-tts.service /etc/systemd/system/mqtt-service-tts.service
+  cp -p -v REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-service-tts.service /etc/systemd/system/mqtt-service-tts.service
   systemctl daemon-reload
   systemctl enable mqtt-service-tts
   systemctl start mqtt-service-tts
@@ -124,8 +125,8 @@ else
 fi
 
 # 5) Install oneshot watchdog + timer (idempotent)
-SRV_SRC="REPLACELBPBINDIR/mqtt/mqtt-watchdog.service"
-TMR_SRC="REPLACELBPBINDIR/mqtt/mqtt-watchdog.timer"
+SRV_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-watchdog.service"
+TMR_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-watchdog.timer"
 SRV_DST="/etc/systemd/system/mqtt-watchdog.service"
 TMR_DST="/etc/systemd/system/mqtt-watchdog.timer"
 
@@ -159,8 +160,22 @@ fi
 echo "<OK> Watchdog service/timer installation completed."
 
 # 6) Copy uninstall helper
-cp -p -v REPLACELBPBINDIR/t2s-uninstall.pl /etc/mosquitto/t2s-uninstall.pl
-echo "<OK> uninstall.pl has been copied to /etc/mosquitto"
+cp -p -v REPLACELBHOMEDIR/bin/plugins/text2speech/t2s-uninstall.pl /etc/mosquitto/t2s-uninstall.pl
+echo "<OK> t2s-uninstall.pl has been copied to /etc/mosquitto"
+
+# ===== Ensure correct permissions for log directory =====
+LOGDIR="REPLACELBHOMEDIR/log/plugins/text2speech"
+
+if [ -d "$LOGDIR" ]; then
+    echo "<INFO> Adjusting permissions for $LOGDIR ..."
+    chown -R loxberry:loxberry "$LOGDIR"
+    chmod -R 775 "$LOGDIR"
+    echo "<OK> Log directory ownership and permissions corrected."
+else
+    echo "<WARNING> Log directory $LOGDIR does not exist – creating now."
+    install -d -o loxberry -g loxberry -m 0775 "$LOGDIR"
+    echo "<OK> Created missing log directory."
+fi
 
 # (Optional) silent Mosquitto restart (you had it commented)
 # REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true

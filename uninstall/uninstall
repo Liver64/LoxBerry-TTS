@@ -330,7 +330,7 @@ _run('/bin/systemctl','reset-failed')  || WARNING("systemctl reset-failed failed
 INFO("Starting mosquitto service …");
 if (-x $MQTT_HANDLER) {
    system('sudo REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true');
-   OK("Mosquitto service is running …");
+   OK("Mosquitto service has been restarted …");
 }
 
 OK("=== Uninstall finished (T2S Master) ===");

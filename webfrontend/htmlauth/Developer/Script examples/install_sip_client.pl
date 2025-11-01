@@ -25,7 +25,7 @@ use Sys::Hostname qw(hostname);
 use open ':std', ':utf8';
 
 # ---------- Logging Setup (English messages, tag scheme) ----------
-my $logfile = '/opt/loxberry/log/plugins/text2sip/client_install.log';
+my $logfile = 'REPLACELBHOMEDIR/log/plugins/text2sip/client_install.log';
 open(my $logfh, '>>', $logfile) or die "Cannot open log file $logfile: $!";
 
 sub _ts { strftime "%Y-%m-%d %H:%M:%S", localtime }
@@ -39,7 +39,7 @@ sub log_error  { _log('<ERROR>',   "@_"); print STDERR "<ERROR>: @_ \n"; exit 1;
 log_info("==== Starting Text2SIP bridge client install ====");
 
 # ---------- Constants ----------
-my $BUNDLE_DEFAULT = '/opt/loxberry/config/plugins/text2sip/bridge/t2s_bundle.tar.gz';
+my $BUNDLE_DEFAULT = 'REPLACELBHOMEDIR/config/plugins/text2sip/bridge/t2s_bundle.tar.gz';
 
 my $CA_DIR_SYS     = '/etc/mosquitto/ca';
 my $CERTS_DIR_SYS  = '/etc/mosquitto/certs';
@@ -49,7 +49,7 @@ my $ROLE_DIR       = '/etc/mosquitto/role';
 my $MASTER_MARKER  = File::Spec->catfile($ROLE_DIR, 't2s-master');
 my $BRIDGE_MARKER  = File::Spec->catfile($ROLE_DIR, 'sip-bridge');
 
-my $listener_src   = '/opt/loxberry/webfrontend/htmlauth/plugins/text2sip/conf/10-local-listener.conf';
+my $listener_src   = 'REPLACELBHOMEDIR/webfrontend/htmlauth/plugins/text2sip/conf/10-local-listener.conf';
 my $listener_dst   = File::Spec->catfile($CONF_DIR_SYS, '10-local-listener.conf');
 my $disable_dir    = File::Spec->catdir($CONF_DIR_SYS, 'disabled');
 
@@ -308,7 +308,7 @@ if (move($bundle, $new_bundle)) {
 # ---------- Restart Mosquitto (unless suppressed) ----------
 unless ($no_restart) {
   log_info("Restarting Mosquitto via mqtt-handler …");
-  system('sudo /opt/loxberry/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true');
+  system('sudo REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true');
 }
 
 log_ok("Bridge install completed.");

@@ -164,6 +164,26 @@ sub ensure_loxb_acl {
   sh("setfacl -d -m u:loxberry:rx ".esc($cli_dir));
 }
 
+sub ensure_conf_acl {
+  my ($conf_per,$conf_tls,$acl_path) = @_;
+
+  # setfacl vorhanden?
+  return if system("command -v setfacl >/dev/null 2>&1");
+
+  # Verzeichnisse: begehbar/lesbar für loxberry + Default-Vererbung
+  sh("setfacl -m u:loxberry:rx /etc/mosquitto");
+  sh("setfacl -m u:loxberry:rx /etc/mosquitto/conf.d");
+  sh("setfacl -d -m u:loxberry:rx /etc/mosquitto/conf.d");
+
+  # Einzeldateien: lesbar für loxberry (nur wenn vorhanden)
+  for my $f ($conf_per, $conf_tls, $acl_path) {
+    next unless defined $f && -f $f;
+    sh("setfacl -m u:loxberry:r ".esc($f));
+  }
+
+  logp("OK","ACLs for conf.d and ACL file set for user 'loxberry' (read-only).");
+}
+
 # Ensure the T2S log path exists and is writable by user/group 'loxberry'
 sub ensure_tts_log_path {
   my $log_file = "$log_dir/interface.log";
@@ -490,15 +510,19 @@ TLS
 user $CLIENT_ID
 topic write tts-publish/#
 topic read tts-subscribe/#
-# topic write tts-subscribe/#
-# topic read tts-publish/#
+topic write tts-subscribe/#
+topic read tts-publish/#
+topic write tts-handshake/request/#
+topic read  tts-handshake/response/#
 
 # --- T2S Master (certificate CN = $server_cn_acl) ---
 user $server_cn_acl
-# topic write tts-publish/#
-# topic read tts-subscribe/#
+topic write tts-publish/#
+topic read tts-subscribe/#
 topic write tts-subscribe/#
 topic read tts-publish/#
+topic write tts-handshake/request/#
+topic read  tts-handshake/response/#
 
 # --- optional diagnostics ---
 topic read \$SYS/#
@@ -508,8 +532,11 @@ ACL
   sh("chown root:mosquitto ".esc($acl_file_path));
   sh("chmod 0640 ".esc($acl_file_path));
   logp("OK","ACL written: $acl_file_path");
+  # WinSCP-Leserechte für loxberry auf conf.d + ACL-Datei
+  ensure_conf_acl($conf_per, $conf_tls, $acl_file_path);
 } else {
   logp("WARN","--no-write-conf: skipping conf generation");
+  ensure_conf_acl($conf_per, $conf_tls, $acl_file_path);
 }
 
 # ========= (5) Optional: Bundle bauen =========
@@ -525,6 +552,7 @@ if ($bundle) {
   sh("cp ".esc($SRV_KEY)." ".esc("$tmpdir/"));
   sh("cp ".esc($CLI_CRT)." ".esc("$tmpdir/$cli_rel/"));
   sh("cp ".esc($CLI_KEY)." ".esc("$tmpdir/$cli_rel/"));
+  sh("cp ".esc($acl_file_path)." ".esc("$tmpdir/"));
   # --- master info for clients (minimal, no format changes) ---
   eval {
     my $meta = "$tmpdir/master.info";
