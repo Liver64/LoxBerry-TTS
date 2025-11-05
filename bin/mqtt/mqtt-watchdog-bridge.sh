@@ -2,7 +2,7 @@
 set -euo pipefail
 
 LOG_DIR="REPLACELBHOMEDIR/log/plugins/text2speech"
-LOG_FILE="$LOG_DIR/mqtt-watchdog.log"
+LOG_FILE="/dev/shm/text2speech/mqtt-watchdog.log"
 CA="/etc/mosquitto/certs/mosq-ca.crt"
 CERT="/etc/mosquitto/certs/clients/sip_bridge/client.crt"
 KEY="/etc/mosquitto/certs/clients/sip_bridge/client.key"

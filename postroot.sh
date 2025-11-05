@@ -178,7 +178,7 @@ else
 fi
 
 # (Optional) silent Mosquitto restart (you had it commented)
-# REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true
-# echo "<OK> Mosquitto has been restarted."
+REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true
+echo "<OK> Mosquitto has been restarted."
 
 exit 0

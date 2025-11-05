@@ -3,8 +3,25 @@
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_log.php";
 
-/* Intern auch für die Spiegel-Textdatei nutzen */
-$logfile = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt-watchdog.log";
+/* --- falls Verzeichnis nicht vorhanden zuerst erstellen --- */
+if (!file_exists('/dev/shm/text2speech')) {
+    mkdir('/dev/shm/text2speech', 0775, true);
+}
+$logfile = "/dev/shm/text2speech/mqtt-watchdog.log";
+
+/* --- Symlink vom RAM-Log ins Standard-Logverzeichnis anlegen --- */
+$stdlog = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt-watchdog.log";
+if (!is_link($stdlog)) {
+    $stdDir = dirname($stdlog);
+    if (!is_dir($stdDir)) {
+        @mkdir($stdDir, 0755, true);
+    }
+    // Falls normale Datei vorhanden → löschen
+    if (file_exists($stdlog) && !is_link($stdlog)) {
+        @unlink($stdlog);
+    }
+    @symlink($logfile, $stdlog);
+}
 
 /* --- Hier zu überwachende Services pflegen --- */
 $services = [

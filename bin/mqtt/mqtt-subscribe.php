@@ -211,6 +211,9 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
             'original'=>$data
         ]);
     }
+	if (!setInterfaceMarker()) {
+		LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after OK response");
+	}
 
     logmsg("OK", "Valid JSON received. Processing TTS request...");
     LOGOK("mqtt-subscribe.php: Valid JSON received. Processing TTS request...");
@@ -253,6 +256,10 @@ $handshakeCb = function (string $topic, string $msg) use ($mqtt) {
     $mqtt->publish($replyTopic, json_encode($resp, JSON_UNESCAPED_UNICODE), 0);
     logmsg("OK", "Handshake response sent to [$replyTopic] (corr=$corr)");
 	if (HANDSHAKE_DEBUG) { LOGOK("mqtt-subscribe.php: Handshake response sent to $replyTopic (corr=$corr)"); }
+	if (!setInterfaceMarker()) {
+		LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after handshake");
+	}
+
 };
 
 /* Einmalig abonnieren – TTS + Handshake */
@@ -304,6 +311,17 @@ function validate_type($value, string $type): bool {
         default:        return false;
     }
 }
+
+/* Marker setzen, wenn Interface aktiv */
+function setInterfaceMarker(): bool {
+    $dir  = '/dev/shm/text2speech';
+    $file = $dir . '/t2s_interface_active.marker';
+
+    @mkdir($dir, 0755, true);
+    $ok = @file_put_contents($file, date('c') . " - First handshake or message\n");
+    return ($ok !== false);
+}
+
 
 /* Erzeugt die TTS-Datei und sendet eine JSON-Antwort auf $responseTopic */
 function createMessage(array $data) {

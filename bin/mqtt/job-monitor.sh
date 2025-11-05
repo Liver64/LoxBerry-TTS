@@ -9,7 +9,7 @@ set -o pipefail
 cd / || exit 1
 
 NAME="job-monitor"
-LOGFILE="REPLACELBHOMEDIR/log/plugins/text2speech/mqtt-watchdog.log"
+LOGFILE="/dev/shm/text2speech/mqtt-watchdog.log"
 
 MAX_RUNNING_JOBS=3
 MAX_JOB_RUNTIME=120

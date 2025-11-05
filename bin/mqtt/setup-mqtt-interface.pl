@@ -512,8 +512,8 @@ topic write tts-publish/#
 topic read tts-subscribe/#
 topic write tts-subscribe/#
 topic read tts-publish/#
-topic write tts-handshake/request/#
-topic read  tts-handshake/response/#
+topic write tts-handshake/#
+topic read tts-handshake/#
 
 # --- T2S Master (certificate CN = $server_cn_acl) ---
 user $server_cn_acl
@@ -521,8 +521,8 @@ topic write tts-publish/#
 topic read tts-subscribe/#
 topic write tts-subscribe/#
 topic read tts-publish/#
-topic write tts-handshake/request/#
-topic read  tts-handshake/response/#
+topic write tts-handshake/#
+topic read tts-handshake/#
 
 # --- optional diagnostics ---
 topic read \$SYS/#

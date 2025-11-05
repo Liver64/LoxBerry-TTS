@@ -540,6 +540,17 @@ sub form {
 	my $filesize = (-s $jsonfile) || 0;
 	$template->param("MYFILE" => $filesize);
 	
+	# --- Check if Interface (Master) mode is active ---
+	my $iface_marker = "/run/shm/text2speech/t2s_interface_active.marker";
+
+	if (-f $iface_marker) {
+		$template->param("INTERFACE" => 1);
+		LOGDEB("index.cgi: Interface marker found ($iface_marker) -> INTERFACE=1");
+	} else {
+		$template->param("INTERFACE" => 0);
+		LOGDEB("index.cgi: Interface marker not found -> INTERFACE=0");
+	}
+	
 	LOGDEB "Printing template";
 	printtemplate();
 	

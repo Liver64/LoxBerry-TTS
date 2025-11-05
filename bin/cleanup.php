@@ -11,9 +11,9 @@ $log = LBLog::newLog( [ "name" => "Cleanup", "stderr" => 1, "addtime" => 1 ] );
 LOGSTART("Cleanup MP3 files and logs");
 
 // ======= PARAMETER (ohne Config) =======
-$LOGDIR          	= $lbplogdir;
+$LOGDIR          	= "/run/shm/text2speech";
 const LOG_KEEP_DAYS = 1;                 // Log Dateien älter als 2 Tage löschen (0 = aus)
-const LOG_MAX_BYTES = 250 * 1024;        // Max. Gesamtgröße 250 KB (0 = aus)
+const LOG_MAX_BYTES = 150 * 1024;        // Max. Gesamtgröße 250 KB (0 = aus)
 // =======================================
 
 $myConfigFolder = "$lbpconfigdir";              // get config folder
