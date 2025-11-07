@@ -458,14 +458,28 @@
 		-->
 		<table border=0 width="100%">
 		<tr>
-		<td width="95%"> 
-		<input type="range" name="volume" id="volume" value="<TMPL_VAR TTS.volume>" min="0" max="500" step="10"
-			data-validation-error-msg="<TMPL_VAR ERRORS.ERR_VOLUME>"
-			data-validation-rule="special:number-min-max-value:0:500">
-		</td>
-		<td width="5%">
-		%
-		</td>
+			<td width="95%"> 
+			<input type="range" name="volume" id="volume" value="<TMPL_VAR TTS.volume>" min="0" max="500" step="10"
+				data-validation-error-msg="<TMPL_VAR ERRORS.ERR_VOLUME>"
+				data-validation-rule="special:number-min-max-value:0:500">
+			</td>
+			<td width="5%">
+			%
+			</td>
+			<td width="10%">
+				<input 
+					type="number"
+					id="jinglevolume"
+					name="jinglevolume"
+					step="0.1"
+					min="0"
+					max="1"
+					value="<TMPL_VAR TTS.jinglevolume>"
+					style="width:60px; text-align:center;"
+					oninput="if(this.value > 1) this.value = 1; if(this.value < 0) this.value = 0;"
+					title="Jingle volume factor (0–1)"
+				>
+			</td>
 		</tr>
 		</table>
 		</td>
@@ -474,7 +488,7 @@
 			<td style="height: 30px; width: 20%	;">
 		</td>
 	</tr>
-			
+		
 	<tr>
 		<td colspan=3 valign="middle" style="height: 33px">
 			<hr style="border:solid #bebebe 3px;height:2px; width: 100%;">
@@ -886,6 +900,25 @@ function SoundDevices()  {
 		$('.collapse_usb').hide();
 	}
 }
+
+$(function() {
+  const $jv = $("#jinglevolume");
+
+  // Bei jeder Eingabe (auch pasten oder tippen)
+  $jv.on("input", function() {
+    let val = this.value.trim().replace(",", ".");   // Komma → Punkt
+    let num = parseFloat(val);
+
+    if (isNaN(num)) num = 0;        // ungültige Eingabe → 0
+    if (num < 0) num = 0;           // untere Grenze
+    if (num > 1) num = 1;           // obere Grenze
+
+    this.value = num.toFixed(1);    // immer zwei Nachkommastellen
+  });
+
+  // Optional: Tooltip / Hilfe
+  $jv.attr("title", "Faktor zur TTS-Lautstärke (0.0–1.0, 1.0 = gleich laut, 0.5 = halb so laut)");
+});
 
 
 /*************************************************************************************************************

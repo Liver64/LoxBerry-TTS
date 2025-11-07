@@ -113,6 +113,10 @@ if (!defined $tcfg->{SYSTEM}->{usbdevice}) {
 if (!defined $tcfg->{SYSTEM}->{usbcardno}) {
 	$tcfg->{SYSTEM}->{usbcardno} = 1;
 }
+#  Jingle Volume reduction
+if (!defined $tcfg->{TTS}->{jinglevolume}) {
+	$tcfg->{TTS}->{jinglevolume} = "0.3";
+}
 # copy global apikey to engine-apikey
 if (!defined $tcfg->{TTS}->{apikeys}) {
 	$tcfg->{TTS}->{apikeys}->{$tcfg->{TTS}->{t2s_engine}} = $tcfg->{TTS}->{apikey};
@@ -582,6 +586,7 @@ sub save
 	$tcfg->{TTS}->{voice} 										= "$R::voice";
 	$tcfg->{TTS}->{regionms} 									= $azureregion;
 	$tcfg->{TTS}->{volume} 										= "$R::volume";
+	#$tcfg->{TTS}->{jinglevolume} 								= "$R::volume";
 	$tcfg->{MP3}->{file_gong} 									= "$R::file_gong";
 	$tcfg->{MP3}->{MP3store} 									= "$R::mp3store";
 	$tcfg->{MP3}->{cachesize} 									= "$R::cachesize";

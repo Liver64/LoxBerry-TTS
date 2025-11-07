@@ -1,11 +1,14 @@
 <?php
 /*****************************************************************************************
  * output/alsa.php – ALSA playback for LoxBerry Text2Speech
- * Minimal-changes version with:
+ * Version: 2.1.0 (with jinglevolume support)
+ *
+ * Features:
  *  - explicit mpg123 device (-o alsa -a <device>)
- *  - hw: → plughw: mapping for automatic format conversion
+ *  - hw: → plughw: mapping for format conversion
  *  - fast WAV→MP3 conversion (only if needed; mono/22.05kHz, VBR q=6)
  *  - jingle selection: ?jingle=... → else config MP3.file_gong (extension normalized)
+ *  - volume control for both TTS and jingle, with jinglevolume factor from config
  *****************************************************************************************/
 
 /* ---------- Helper: read WAV header (channels / sample rate) ---------- */
@@ -46,17 +49,20 @@ function alsa_ob($finalfile) {
 
     /**
      * Play an MP3 file via mpg123 (non-blocking, queued by tsp)
+     * @param string $file
+     * @param string $label
+     * @param float|null $vol
      */
-    $play = function($file, $label = 'TTS') use ($volume, $audioDev) {
+    $play = function($file, $label = 'TTS', $vol = null) use ($volume, $audioDev) {
+        $vol = $vol ?? $volume;
         if (!is_file($file)) {
             LOGERR("output/alsa.php: File not found: $file");
             return;
         }
-        $scaledVolume = max(0, (int)(32768 * $volume)); // 0..32768
-
+        $scaledVolume = max(0, (int)(32768 * $vol)); // 0..32768
         $cmd = sprintf(
             "tsp -n mpg123 -q -o alsa -a %s -f %d -- %s >/dev/null 2>&1 &",
-            escapeshellarg($audioDev),     // e.g., plughw:CARD=USB,DEV=0
+            escapeshellarg($audioDev),
             $scaledVolume,
             escapeshellarg($file)
         );
@@ -68,7 +74,6 @@ function alsa_ob($finalfile) {
     /**
      * Fast WAV -> MP3 conversion (only if needed)
      * - Mono (-ac 1), 22.05 kHz (-ar 22050), VBR q=6 (libmp3lame)
-     * - Reads WAV header to avoid unnecessary resampling
      */
     $convertToMp3 = function(string $ttsFile) use ($ttspath) {
         if (strtolower(pathinfo($ttsFile, PATHINFO_EXTENSION)) === 'mp3') {
@@ -81,11 +86,9 @@ function alsa_ob($finalfile) {
         }
 
         $mp3File = $ttspath . '/' . pathinfo($ttsFile, PATHINFO_FILENAME) . '.mp3';
-
         $wi   = wav_info($ttsFile);
         $args = ['-vn','-sn','-dn']; // faster: drop non-audio streams
 
-        // Target profile for speech: mono + 22.05 kHz
         $targetCh = 1;
         $targetSr = 22050;
 
@@ -93,12 +96,10 @@ function alsa_ob($finalfile) {
             if ($wi['channels']    !== $targetCh) { $args[] = '-ac 1'; }
             if ($wi['sample_rate'] !== $targetSr) { $args[] = '-ar 22050'; }
         } else {
-            // Unknown header → resample conservatively
             $args[] = '-ac 1';
             $args[] = '-ar 22050';
         }
 
-        // LAME VBR: good quality & fast for speech; for even faster: -q:a 7 or 8
         $cmd = sprintf(
             "ffmpeg -y -nostdin -hide_banner -loglevel error -i %s %s -codec:a libmp3lame -q:a 6 %s",
             escapeshellarg($ttsFile),
@@ -118,11 +119,7 @@ function alsa_ob($finalfile) {
         return $mp3File;
     };
 
-  	/* -------- Jingle-Handling: nur wenn ?jingle vorhanden --------
-	   - ?jingle=FILENAME  → verwende diese Datei (oder absolute URL/Pfad)
-	   - ?jingle           → verwende Standard-Jingle aus Config (MP3.file_gong)
-	   - kein ?jingle      → kein Jingle
-	---------------------------------------------------------------- */
+  	/* -------- Jingle-Handling -------- */
 	$jingle = null;
 	$playJingle = array_key_exists('jingle', $_GET);  // nur Präsenz zählt
 
@@ -168,10 +165,34 @@ function alsa_ob($finalfile) {
 		LOGWARN("output/alsa.php: No valid input to play (missing final file).");
 		return;
 	}
-	if ($jingle && realpath($jingle) === realpath($toPlay)) { // doppelt verhindern
+
+	if ($jingle && realpath($jingle) === realpath($toPlay)) {
 		LOGDEB("output/alsa.php: Jingle equals main file – skipping jingle.");
 		$jingle = null;
 	}
-	if ($jingle) { $play($jingle, 'Jingle'); }
-	$play($toPlay, 'TTS');
+
+    // --- Lautstärke vorbereiten ---
+    $baseVolume     = (float)$volume;  // globaler Volume-Parameter oder Config
+    $jingleFactor   = (float)($config['TTS']['jinglevolume'] ?? 1.0);
+    $jingleVolume   = $baseVolume * $jingleFactor;
+
+    // Begrenzen auf 0.0–1.0
+    $baseVolume   = max(0, min(1, $baseVolume));
+    $jingleVolume = max(0, min(1, $jingleVolume));
+
+    $volPercent       = round($baseVolume * 100);
+    $jingleVolPercent = round($jingleVolume * 100);
+
+    LOGINF("output/alsa.php: Effective TTS volume = {$volPercent}%");
+    LOGINF("output/alsa.php: Jingle volume factor = {$jingleFactor} → effective {$jingleVolPercent}%");
+
+    if ($jingle) {
+        LOGDEB("output/alsa.php: Starting Jingle at {$jingleVolPercent}% volume");
+        $play($jingle, 'Jingle', $jingleVolume);
+        usleep(500000); // kurze Pause
+    }
+
+    LOGDEB("output/alsa.php: Starting TTS at {$volPercent}% volume");
+    $play($toPlay, 'TTS', $baseVolume);
 }
+?>
