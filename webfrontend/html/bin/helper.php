@@ -136,7 +136,7 @@ function GetTTSParameter($config, $data)    {
 **/
 
 function load_t2s_text(?string $langOverride = null) {
-    global $config, $lbptemplatedir;
+    global $config;
 
     // 1) Sprache bestimmen (Request > Config > en)
     $lang = trim((string)($langOverride !== null ? $langOverride : ($config['TTS']['messageLang'] ?? 'en')));
@@ -145,7 +145,7 @@ function load_t2s_text(?string $langOverride = null) {
     $lang_us = str_replace('-', '_', $lang);   // "de_de"
 
     // 2) Verzeichnisse
-    $templatepath = rtrim($lbptemplatedir ?? '', '/'); // z.B. REPLACELBHOMEDIR/templates/plugins/text2speech
+    $templatepath = rtrim('REPLACELBHOMEDIR/templates/plugins/text2speech' ?? '', '/'); // z.B. REPLACELBHOMEDIR/templates/plugins/text2speech
     $langdir = $templatepath . '/lang';
 
     // 3) Kandidaten in Priorität (de → de_DE/us → fallback en)

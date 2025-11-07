@@ -3,37 +3,52 @@
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_log.php";
 
-/* --- falls Verzeichnis nicht vorhanden zuerst erstellen --- */
-if (!file_exists('/dev/shm/text2speech')) {
-    mkdir('/dev/shm/text2speech', 0775, true);
-}
-$logfile = "/dev/shm/text2speech/mqtt-watchdog.log";
+/* === Base paths === */
+$ramdir  = "/dev/shm/text2speech";
+$ramfile = "$ramdir/mqtt-watchdog.log";
+$stdfile = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt-watchdog.log";
+$marker  = "/run/shm/text2speech.watchdog.started";
 
-/* --- Symlink vom RAM-Log ins Standard-Logverzeichnis anlegen --- */
-$stdlog = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt-watchdog.log";
-if (!is_link($stdlog)) {
-    $stdDir = dirname($stdlog);
-    if (!is_dir($stdDir)) {
-        @mkdir($stdDir, 0755, true);
-    }
-    // Falls normale Datei vorhanden → löschen
-    if (file_exists($stdlog) && !is_link($stdlog)) {
-        @unlink($stdlog);
-    }
-    @symlink($logfile, $stdlog);
+/* === Ensure RAM dir and symlink === */
+if (!is_dir($ramdir)) {
+    mkdir($ramdir, 0775, true);
+}
+if (!is_dir(dirname($stdfile))) {
+    mkdir(dirname($stdfile), 0755, true);
+}
+if (file_exists($stdfile) && !is_link($stdfile)) {
+    unlink($stdfile);
+}
+if (!is_link($stdfile)) {
+    symlink($ramfile, $stdfile);
+}
+
+/* === Initialize LoxBerry log === */
+$params = [
+    "name"    => "Watchdog",
+    "filename"=> $stdfile,  // Symlink -> physisch im RAM
+    "append"  => 1,
+    "addtime" => 1
+];
+$log = LBLog::newLog($params);
+
+/* === Only once per boot create LOGSTART === */
+if (!file_exists($marker)) {
+    file_put_contents($marker, time());
+    LOGSTART("Watchdog started");
+} else {
+    LOGINF("Watchdog timer cycle (no new task header)");
 }
 
 /* --- Hier zu überwachende Services pflegen --- */
 $services = [
     "mqtt-service-tts",
+	"mqtt-handshake-listener",
 ];
 
 /* === Optionen === */
 const RESTART_WINDOW_SEC = 60; // Mind. Abstand zwischen Restarts je Service
 /* ================= */
-
-/* Startmeldung (LB-Standard) */
-#LOGSTART("Watchdog started…");
 
 /* Logfile vorbereiten (Spiegeldatei) */
 @touch($logfile);
@@ -139,7 +154,7 @@ function check_and_heal_service(string $service): int
     $mainpid  = get_prop($service, "MainPID");
 
     // Kurzdiagnose
-    logmsg("⏳", $service, "state=$active sub=$substate pid=$mainpid exit=$exitcode");
+    logmsg("🐞", $service, "state=$active sub=$substate pid=$mainpid exit=$exitcode");
 
     if ($active !== "active") {
         if (!restart_rate_limited($service)) {

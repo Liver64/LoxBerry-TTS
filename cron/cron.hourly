@@ -9,10 +9,8 @@
 
 # Will be executed as user "loxberry".
 
-# Cleanup für Text2Speech (3× täglich)
-
-# PHP-Script 3× täglich um 00:00, 08:00 und 16:00 Uhr
-if [[ "$(date +%H)" =~ ^(00|08|16)$ ]]; then
-    /usr/bin/php REPLACELBPBINDIR/webfrontend/html/plugins/text2speech/bin/cleanup.php >/dev/null 2>&1
+current_hour=$(date +%H)
+if [[ "$current_hour" =~ ^(00|08|16)$ ]]; then
+    /usr/bin/php /opt/loxberry/bin/plugins/text2speech/cleanup.php >/dev/null 2>&1
 fi
 

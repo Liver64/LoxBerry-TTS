@@ -1,0 +1,14 @@
+[Unit]
+Description=MQTT Handshake Listener (T2S)
+After=network.target mosquitto.service
+
+[Service]
+Type=simple
+User=loxberry
+Group=loxberry
+ExecStart=/usr/bin/php /opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-handshake-listener.php
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

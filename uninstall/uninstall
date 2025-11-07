@@ -59,7 +59,7 @@ my $BUNDLE              = File::Spec->catfile($BRIDGE_DIR, 't2s-bundle.tar.gz');
 my $MQTT_HANDLER        = 'REPLACELBHOMEDIR/sbin/mqtt-handler.pl';
 
 # Systemd units to stop/disable/remove
-my @UNIT_SERVICES       = ('mqtt-service-tts.service','mqtt-watchdog.service');
+my @UNIT_SERVICES       = ('mqtt-service-tts.service','mqtt-watchdog.service','mqtt-handshake-tts.service');
 my @UNIT_TIMERS         = ('mqtt-watchdog.timer');  # oneshot watchdog uses a timer
 my @UNIT_FILES          = map { File::Spec->catfile('/etc/systemd/system', $_) } (@UNIT_SERVICES, @UNIT_TIMERS);
 
@@ -326,11 +326,22 @@ INFO("Reloading systemd daemon …");
 _run('/bin/systemctl','daemon-reload') || WARNING("systemctl daemon-reload failed (continuing)");
 _run('/bin/systemctl','reset-failed')  || WARNING("systemctl reset-failed failed (continuing)");
 
-# ---------- Start Mosquitto ----------
-INFO("Starting mosquitto service …");
-if (-x $MQTT_HANDLER) {
-   system('sudo REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true');
-   OK("Mosquitto service has been restarted …");
+# ========= Restart Mosquitto safely (with PID check) =========
+INFO("Restarting Mosquitto via mqtt-handler.pl ...");
+my $rc = system("REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1");
+
+if ($rc == 0) {
+    # Wait a moment and verify Mosquitto process
+    sleep 2;
+    my $pid = `pgrep -x mosquitto 2>/dev/null`;
+    chomp($pid);
+    if ($pid) {
+        OK("Mosquitto restarted successfully (PID $pid).");
+    } else {
+        WARNING("Mosquitto restart command succeeded, but no running PID found.");
+    }
+} else {
+    WARNING("Mosquitto restart failed with exit code $rc.");
 }
 
 OK("=== Uninstall finished (T2S Master) ===");

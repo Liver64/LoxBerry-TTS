@@ -13,7 +13,7 @@ $town = htmlentities($town);
 
 if (empty($town) or empty($region)) {
 	LOGERR('Text2Speech: addon/weather_warning.php: Es ist keine Stadt bzw. Gemeinde oder Bundesland in der Konfiguration gepflegt. Bitte erst eingeben!');
-	exit;
+	$return;
 }
 
 $stadtgemeinde = file_get_contents("http://www.dwd.de/DE/wetter/warnungen_gemeinden/warntabellen/warntab_".$region."_node.html");
@@ -35,7 +35,7 @@ $stadtgemeinde = str_replace('&deg;C', 'Grad', $stadtgemeinde);
 
 if (empty($stadtgemeinde)) {
 	LOGERR('Text2Speech: addon/weather_warning.php: Es konnten keine Daten vom Deutschen Wetterdienst bezogen werden');
-	exit;
+	$return;
 } else {
 	LOGDEB('Text2Speech: addon/weather_warning.php: Daten vom Deutschen Wetterdienst wurden erfolgreich bezogen.');
 }	
@@ -45,7 +45,7 @@ if (empty($stadtgemeinde)) {
 if (substr($stadtgemeinde,0 , 12) == 'er und Klima') {
 	$mess = utf8_encode("Es liegen derzeit keine Wetter Hinweise oder Warnungen für ihre Stadt bzw. Gemeinde vor.");
 	LOGOK('Text2Speech: addon/weather_warning.php: '.$mess);
-	exit;
+	return $mess;
 }
 
 
@@ -106,7 +106,7 @@ $town = htmlentities($town);
 
 if (empty($town) or empty($region)) {
 	LOGDEB('Text2Speech: addon/weather_warning.php: Prüfung ob eine aktuelle Warnung vorliegt wurde ausgeführt');
-	exit;
+	$return;
 }
 
 $stadtgemeinde = file_get_contents("http://www.dwd.de/DE/wetter/warnungen_gemeinden/warntabellen/warntab_".$region."_node.html");

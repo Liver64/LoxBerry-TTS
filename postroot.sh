@@ -124,40 +124,61 @@ else
   echo "<OK> MQTT Event Service has been installed"
 fi
 
-# 5) Install oneshot watchdog + timer (idempotent)
+# ============================================================
+# 5) Install MQTT Watchdog + Handshake Listener (idempotent)
+# ============================================================
 SRV_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-watchdog.service"
 TMR_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-watchdog.timer"
 SRV_DST="/etc/systemd/system/mqtt-watchdog.service"
 TMR_DST="/etc/systemd/system/mqtt-watchdog.timer"
 
-echo "<INFO> Installing T2S MQTT Watchdog as oneshot + timer …"
+HS_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-handshake-listener.php"
+HS_SRV_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-handshake-listener.service"
+HS_SRV_DST="/etc/systemd/system/mqtt-handshake-listener.service"
 
-# If an old unit exists, stop/disable best-effort
-systemctl stop mqtt-watchdog.service  >/dev/null 2>&1 || true
+echo "<INFO> Installing T2S MQTT Watchdog and Handshake Listener …"
+
+# --- Watchdog Service ---
+systemctl stop mqtt-watchdog.service >/dev/null 2>&1 || true
 systemctl disable mqtt-watchdog.service >/dev/null 2>&1 || true
-
-# Replace unit files
 install -o root -g root -m 0644 "$SRV_SRC" "$SRV_DST"
 install -o root -g root -m 0644 "$TMR_SRC" "$TMR_DST"
 
-# Reload systemd units
+# Reload + Run oneshot
 systemctl daemon-reload
-
-# Run once now (expected to exit inactive=dead on success)
 if systemctl start mqtt-watchdog.service; then
   echo "<OK> MQTT Watchdog executed once successfully (oneshot)."
 else
   echo "<ERROR> MQTT Watchdog oneshot execution failed."
 fi
-
-# Enable timer (fires once per boot)
 if systemctl enable --now mqtt-watchdog.timer; then
   echo "<OK> MQTT Watchdog timer enabled (fires once per boot)."
 else
   echo "<WARNING> Could not enable/start mqtt-watchdog.timer."
 fi
 
-echo "<OK> Watchdog service/timer installation completed."
+# --- Handshake Listener Service ---
+echo "<INFO> Installing MQTT Handshake Listener …"
+
+# Falls alter Dienst läuft → stoppen
+systemctl stop mqtt-handshake-listener.service >/dev/null 2>&1 || true
+systemctl disable mqtt-handshake-listener.service >/dev/null 2>&1 || true
+
+# PHP-Daemon prüfen
+if [ ! -x "$HS_SRC" ]; then
+  echo "<ERROR> Missing or non-executable $HS_SRC"
+else
+  install -o root -g root -m 0644 "$HS_SRV_SRC" "$HS_SRV_DST"
+  systemctl daemon-reload
+
+  if systemctl enable --now mqtt-handshake-listener.service; then
+    echo "<OK> MQTT Handshake Listener service installed and started."
+  else
+    echo "<ERROR> Failed to enable/start mqtt-handshake-listener.service."
+  fi
+fi
+
+echo "<OK> Watchdog + Handshake Listener installation completed."
 
 # 6) Copy uninstall helper
 cp -p -v REPLACELBHOMEDIR/bin/plugins/text2speech/t2s-uninstall.pl /etc/mosquitto/t2s-uninstall.pl
@@ -177,8 +198,24 @@ else
     echo "<OK> Created missing log directory."
 fi
 
-# (Optional) silent Mosquitto restart (you had it commented)
-REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1 || true
-echo "<OK> Mosquitto has been restarted."
+# ===== Verify MQTT Gateway process status =====
+echo "<INFO> Checking MQTT Gateway runtime state …"
+MQTT_PROC="REPLACELBHOMEDIR/sbin/mqttgateway.pl"
+
+# Prüfen, ob der Prozess läuft
+if pgrep -f "$MQTT_PROC" >/dev/null 2>&1; then
+    PID=$(pgrep -f "$MQTT_PROC" | head -n1)
+    echo "<OK> MQTT Gateway is active (PID $PID)"
+else
+    echo "<WARNING> MQTT Gateway not running – attempting to start manually ..."
+    REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=startgateway >/dev/null 2>&1
+    sleep 2
+    if pgrep -f "$MQTT_PROC" >/dev/null 2>&1; then
+        PID=$(pgrep -f "$MQTT_PROC" | head -n1)
+        echo "<OK> MQTT Gateway started successfully (PID $PID)"
+    else
+        echo "<ERROR> Could not start MQTT Gateway – please check REPLACELBHOMEDIR/log/system_tmpfs/mqttgateway.log"
+    fi
+fi
 
 exit 0

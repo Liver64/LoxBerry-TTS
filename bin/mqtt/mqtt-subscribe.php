@@ -89,22 +89,26 @@ function logmsg($level, $message) {
 logmsg("START", "Start listening for MQTT publish...");
 LOGSTART("Start listening for MQTT publish...");
 
+// Config laden
+$config = LoadConfig();
+if ($config === null) {
+    LOGERR('mqtt-subscribe.php: t2s_config.json could not be loaded!');
+    return sendMqtt($mqtt, $responseTopic ?? 'tts-subscribe', "Config load failed");
+}
+
 /* =======================
  * MQTT-Verbindung
  * ======================= */
-$creds     = mqtt_connectiondetails();
-#$broker    = $creds['brokerhost'] ?? $creds['brokeraddress'] ?? '127.0.0.1';
-# ---- New -----
-$port      = (int)($creds['brokerport'] ?? 1883);
+$creds      = mqtt_connectiondetails();
+$port       = (int)($creds['brokerport'] ?? 1883);
 // Wenn kein Plain-Listener existiert, TLS auf localhost erzwingen
 $brokerHost = $creds['brokerhost'] ?? $creds['brokeraddress'] ?? '127.0.0.1';
 $useTls     = ($port != 1883); // simple Heuristik für „TLS-only-Broker“
 $broker     = $useTls ? "tls://$brokerHost" : $brokerHost;
-# ---- End New ----
-$user      = $creds['brokeruser'] ?? $creds['mqttuser'] ?? '';
-$pass      = $creds['brokerpass'] ?? $creds['mqttpass'] ?? '';
-$client_id = uniqid((gethostname() ?: 'lb') . "_client_");
-$mqtt      = new phpMQTT($broker, $port, $client_id);
+$user       = $creds['brokeruser'] ?? $creds['mqttuser'] ?? '';
+$pass       = $creds['brokerpass'] ?? $creds['mqttpass'] ?? '';
+$client_id  = uniqid((gethostname() ?: 'lb') . "_client_");
+$mqtt       = new phpMQTT($broker, $port, $client_id);
 
 /* === Retry-Schleife (alle 5s) statt Exit === */
 $__retries = 0;
@@ -125,7 +129,7 @@ LOGINF("mqtt-subscribe.php: MQTT connected – listening to Topics: [$subscribeT
  * ======================= */
 $expectedSchema = [
     "type" => "object",
-    "required" => ["text"],
+    "required" => ["text"], // Baseline
     "properties" => [
         "text"     => ["type" => "string"],
         "nocache"  => ["type" => "number"],
@@ -137,6 +141,9 @@ $expectedSchema = [
         "instance" => ["type" => "string"],
         "corr"     => ["type" => "string"],
         "reply_to" => ["type" => "string"],
+
+        // Funktionsfeld
+        "function" => ["type" => "string"]
     ],
     "additionalProperties" => false
 ];
@@ -145,7 +152,7 @@ $expectedSchema = [
  * TTS-Callback (tts-publish)
  * ======================= */
 $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $expectedSchema) {
-    global $logArray;
+    global $logArray, $config;
 
     // --- Dedupe-Window: 25s ---
     $now  = time();
@@ -191,34 +198,115 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
         ]);
     }
 
-    // Schema-Validierung
-    $invalid = [];
-    $missing = [];
-    foreach ($expectedSchema['required'] as $key) {
-        if (!array_key_exists($key, $data)) $missing[] = $key;
-    }
-    foreach ($data as $key => $value) {
-        $def = $expectedSchema['properties'][$key] ?? null;
-        if (!$def) continue;
-        if (!validate_type($value, $def['type'])) $invalid[$key] = "expected " . $def['type'];
-    }
-    if (!empty($missing) || !empty($invalid)) {
-        logmsg("ERROR", ['Invalid or incomplete JSON', 'missing'=>$missing, 'invalid'=>$invalid]);
-        LOGERR("mqtt-subscribe.php: Invalid or incomplete JSON. Missing: " . implode(',', $missing));
-        return sendMqtt($mqtt, $responseTopic, "Invalid or incomplete JSON", [
-            'missing'=>$missing,
-            'invalid'=>$invalid,
-            'original'=>$data
+    // === Neue Regel: text ODER function ist Pflicht ===
+    $hasTextRaw     = array_key_exists('text', $data) ? trim((string)$data['text']) : '';
+    $hasFuncRaw     = array_key_exists('function', $data) ? trim((string)$data['function']) : '';
+
+    $hasText     = $hasTextRaw !== '';
+    $hasFunction = $hasFuncRaw !== '';
+
+    if (!$hasText && !$hasFunction) {
+        logmsg("ERROR", ['Invalid or incomplete JSON', 'missing' => ['text or function']]);
+        LOGERR("mqtt-subscribe.php: Missing mandatory field: text or function");
+        return sendMqtt($mqtt, $responseTopic, "Missing mandatory field: text or function", [
+            'missing'  => ['text or function'],
+            'original' => $data
         ]);
     }
-	if (!setInterfaceMarker()) {
-		LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after OK response");
+
+    // Wenn function leer ist, aber existiert → ignorieren (wie nicht vorhanden)
+    if (!$hasFunction) {
+        unset($data['function']);
+    }
+
+    // === Bestehende Feld-Typprüfung ===
+    $invalid = [];
+	foreach ($data as $key => $value) {
+		$def = $expectedSchema['properties'][$key] ?? null;
+		if (!$def) continue;
+		if (!validate_type($value, $def['type'])) {
+			$invalid[$key] = "expected " . $def['type'];
+		}
+	}
+	if (!empty($invalid)) {
+		logmsg("ERROR", ['Invalid types', 'invalid'=>$invalid]);
+		LOGERR("mqtt-subscribe.php: Invalid types: " . json_encode($invalid));
+		return sendMqtt($mqtt, $responseTopic, "Invalid types", [
+			'invalid'=>$invalid,
+			'original'=>$data
+		]);
 	}
 
+    if (!setInterfaceMarker()) {
+        LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after OK response");
+    }
+
+    // === Neue Funktionserweiterung ===
+    if (array_key_exists('function', $data) && !empty($data['function'])) {
+        $validFunctions = ['weather','clock','warning','pollen','abfall','distance'];
+        $func = strtolower(trim($data['function']));
+
+        if (!in_array($func, $validFunctions, true)) {
+            logmsg("ERROR", ['Invalid function value', $func]);
+            LOGERR("mqtt-subscribe.php: Invalid function value: $func");
+            return sendMqtt($mqtt, $responseTopic, "Invalid function value", [
+                'invalid_function' => $func,
+                'allowed'          => $validFunctions
+            ]);
+        }
+
+        $result = false;
+        require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php';
+        switch ($func) {
+            case 'weather':
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-to-speech.php';
+                $result = w2s();
+                break;
+            case 'clock':
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/clock-to-speech.php';
+                $result = c2s();
+                break;
+            case 'warning':
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-warning-to-speech.php';
+                $result = ww2s();
+                break;
+            case 'pollen':
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/pollen-to-speach.php';
+                $result = p2s();
+                break;
+            case 'abfall':
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/waste-calendar-to-speech.php';
+                $result = muellkalender();
+                break;
+            case 'distance':
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/time-to-destination-speech.php';
+                $result = tt2t();
+                break;
+            default:
+                return sendMqtt($mqtt, $responseTopic, "Unknown function: $func");
+        }
+
+        if (is_string($result) && trim($result) !== '') {
+            logmsg("OK", "Function '$func' executed successfully, text generated.");
+            LOGOK("mqtt-subscribe.php: Function '$func' executed successfully and returned text.");
+
+            // Ergebnistext an T2S-Engine weiterreichen:
+            $data['text'] = $result;
+            createMessage($data);
+            return;
+        } else {
+            logmsg("ERROR", "Function '$func' returned empty or invalid text.");
+            LOGERR("mqtt-subscribe.php: Function '$func' returned empty or invalid text.");
+            return sendMqtt($mqtt, $responseTopic, "Function '$func' returned empty or invalid text");
+        }
+    }
+
+    // === Wenn kein Function-Feld vorhanden: klassisches Verhalten ===
     logmsg("OK", "Valid JSON received. Processing TTS request...");
     LOGOK("mqtt-subscribe.php: Valid JSON received. Processing TTS request...");
     createMessage($data);
 };
+
 
 /* ============================================================
  * Handshake-Callback (tts-handshake/request/#)
@@ -226,18 +314,18 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
 $handshakeCb = function (string $topic, string $msg) use ($mqtt) {
     // Kein zweiter Logger – bestehende Helfer nutzen:
     logmsg("INFO", "Handshake request on [$topic]: $msg");
-	if (HANDSHAKE_DEBUG) { LOGDEB("mqtt-subscribe.php: Handshake request received on $topic"); }
+    if (HANDSHAKE_DEBUG) { LOGDEB("mqtt-subscribe.php: Handshake request received on $topic"); }
 
     $data = json_decode($msg, true);
     if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
         logmsg("ERROR", ['Invalid handshake JSON', json_last_error_msg()]);
-		if (HANDSHAKE_DEBUG) { LOGWARN("mqtt-subscribe.php: Invalid handshake JSON: " . json_last_error_msg()); }
+        if (HANDSHAKE_DEBUG) { LOGWARN("mqtt-subscribe.php: Invalid handshake JSON: " . json_last_error_msg()); }
         return;
     }
 
     if (empty($data['client'])) {
         logmsg("WARNING", "Handshake payload missing 'client'");
-		if (HANDSHAKE_DEBUG) { LOGWARN("mqtt-subscribe.php: Handshake payload missing 'client'"); }
+        if (HANDSHAKE_DEBUG) { LOGWARN("mqtt-subscribe.php: Handshake payload missing 'client'"); }
         return;
     }
 
@@ -255,17 +343,16 @@ $handshakeCb = function (string $topic, string $msg) use ($mqtt) {
 
     $mqtt->publish($replyTopic, json_encode($resp, JSON_UNESCAPED_UNICODE), 0);
     logmsg("OK", "Handshake response sent to [$replyTopic] (corr=$corr)");
-	if (HANDSHAKE_DEBUG) { LOGOK("mqtt-subscribe.php: Handshake response sent to $replyTopic (corr=$corr)"); }
-	if (!setInterfaceMarker()) {
-		LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after handshake");
-	}
-
+    if (HANDSHAKE_DEBUG) { LOGOK("mqtt-subscribe.php: Handshake response sent to $replyTopic (corr=$corr)"); }
+    if (!setInterfaceMarker()) {
+        LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after handshake");
+    }
 };
 
 /* Einmalig abonnieren – TTS + Handshake */
 $mqtt->subscribe([
-    $subscribeTopic         => ['qos'=>0,'function'=>$callback],
-    'tts-handshake/request/#' => ['qos'=>0,'function'=>$handshakeCb],
+    'tts-handshake/request/#' 	=> ['qos'=>0,'function'=>$handshakeCb],
+    $subscribeTopic         	=> ['qos'=>0,'function'=>$callback],
 ]);
 
 /* Event-Loop + Reconnect-Handling */
@@ -283,9 +370,9 @@ while ($mqtt->proc()) {
             }
             // nach Reconnect Topic neu abonnieren
             $mqtt->subscribe([
-				$subscribeTopic           => ['qos'=>0,'function'=>$callback],
-				'tts-handshake/request/#' => ['qos'=>0,'function'=>$handshakeCb],
-			]);
+                $subscribeTopic           => ['qos'=>0,'function'=>$callback],
+                'tts-handshake/request/#' => ['qos'=>0,'function'=>$handshakeCb],
+            ]);
 
         }
         $lastCheck = time();
@@ -327,13 +414,6 @@ function setInterfaceMarker(): bool {
 function createMessage(array $data) {
 
     global $config, $t2s_param, $mqtt, $responseTopic, $logArray;
-
-    // Config laden
-    $config = LoadConfig();
-    if ($config === null) {
-        LOGERR('mqtt-subscribe.php: t2s_config.json could not be loaded!');
-        return sendMqtt($mqtt, $responseTopic ?? 'tts-subscribe', "Config load failed");
-    }
 
     // Antwort-Topic ausschließlich aus Payload ableiten (kein Subscribe hier!)
     if (!empty($data['reply_to']) && is_string($data['reply_to'])) {
@@ -494,7 +574,7 @@ function sendMqtt($mqtt, string $topic, string $message, array $details = []) {
     });
 
     logmsg("ERROR", [$message, $details]);
-    LOGOK("mqtt-subscribe.php: MQTT Error response sent on Topic: [$topic] - Message: $message");
+    LOGERR("mqtt-subscribe.php: MQTT Error response sent on Topic: [$topic] - Message: $message");
 
     $mqtt->publish($topic, json_encode($response, JSON_UNESCAPED_UNICODE), 0);
     return false;

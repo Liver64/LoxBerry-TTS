@@ -8,6 +8,7 @@ Type=oneshot
 User=loxberry
 Group=loxberry
 Environment=WATCHDOG_UNIT=mqtt-watchdog.service
+ExecStartPre=/bin/rm -f /run/shm/text2speech.watchdog.started
 WorkingDirectory=/opt/loxberry/bin/plugins/text2speech/mqtt
 ExecStart=/opt/loxberry/bin/plugins/text2speech/mqtt/mqtt-watchdog.php
 # If your script writes to stdout/stderr and you want it in journal:
