@@ -67,10 +67,38 @@ function t2s($t2s_param)
     $voiceName = $selectedVoice['name'];
 
     // =========================
+    // 3.5 Pre-API-check (connectivity & key validation)
+    // =========================
+    $pingUrl = "https://api.voicerss.org/?key=" . urlencode($apikey) . "&hl=en-us&src=ping";
+    $ctxPing = stream_context_create([
+        'http' => [
+            'method'  => 'GET',
+            'header'  => "User-Agent: LoxBerry-T2S/1.0\r\n",
+            'timeout' => 8,
+        ],
+        'ssl' => [
+            'verify_peer'      => true,
+            'verify_peer_name' => true,
+        ]
+    ]);
+
+    $pingResult = @file_get_contents($pingUrl, false, $ctxPing);
+    if ($pingResult === false) {
+        LOGERR("VoiceRSS.php: Pre-check failed — cannot reach VoiceRSS API endpoint.");
+        return false;
+    }
+
+    // VoiceRSS returns text errors like "ERROR: The API key is invalid or has expired."
+    if (stripos($pingResult, 'ERROR') !== false) {
+        LOGERR("VoiceRSS.php: Pre-check response indicates an error from API: " . trim($pingResult));
+        return false;
+    }
+
+    LOGDEB("VoiceRSS.php: Pre-check successful — VoiceRSS API reachable and key valid.");
+
+    // =========================
     // 4. Prepare API request (force MP3!)
     // =========================
-    // WICHTIG: Kein 'f=' Parameter, da dieser bei VoiceRSS häufig WAV/RIFF liefert.
-    // 'c=MP3' erzwingt MP3-Ausgabe.
     $query = [
         'key' => $apikey,
         'src' => $text,
@@ -98,8 +126,11 @@ function t2s($t2s_param)
     ]);
 
     $audioData = @file_get_contents($apiUrl, false, $ctx);
-    if ($audioData === false || strlen($audioData) < 50) {
+    if ($audioData === false || strlen($audioData) < 50 || stripos($audioData, 'ERROR') !== false) {
         LOGERR("VoiceRSS.php: Failed to fetch audio data from VoiceRSS API.");
+        if ($audioData && stripos($audioData, 'ERROR') !== false) {
+            LOGERR("VoiceRSS.php: API returned error: " . trim($audioData));
+        }
         return false;
     }
 
@@ -112,7 +143,6 @@ function t2s($t2s_param)
         return false;
     }
 
-    // Sicherstellen, dass der Dateiname „sauber“ ist (dein Aufrufer nutzt bereits Hex-IDs)
     $safeName   = preg_replace('~[^a-f0-9]~i', '', (string)$filename);
     $outputFile = $outputDir . "/" . $safeName . ".mp3";
 
