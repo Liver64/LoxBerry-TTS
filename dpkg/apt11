@@ -12,5 +12,5 @@ task-spooler
 mpg123
 ffmpeg
 gpg
-php7.4-smbclient
+php-smbclient
 acl
