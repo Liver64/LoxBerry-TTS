@@ -28,6 +28,7 @@ sub t2svoice {
 
     my $payload_json = encode_json({
         text     => $P2W_Text,
+		function => "",
         nocache  => 0,
         logging  => 1,
         mp3files => 0,
