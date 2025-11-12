@@ -12,8 +12,23 @@ function usb() {
     $ttspath = rtrim($config['SYSTEM']['ttspath'], '/');
 
     // ALSA Devices
-    $alsaDevice     = 'dmix:1,0';          // ffmpeg: -f alsa "$alsaDevice"
-    $mpg123Device   = 'plug:dmix:1,0';     // mpg123: -o alsa -a "$mpg123Device"
+    #$alsaDevice     = 'dmix:1,0';          // ffmpeg: -f alsa "$alsaDevice"
+    #$mpg123Device   = 'plug:dmix:1,0';     // mpg123: -o alsa -a "$mpg123Device"
+	$cardno   = $config['SYSTEM']['usbcardno'] ?? '1';
+	$devno    = $config['SYSTEM']['usbdevice'] ?? '0';
+	
+	// Test if dmix is available for this card
+    $dmixTest = trim(shell_exec("aplay -L | grep -E '^dmix:$cardno,$devno' || true"));
+
+    if ($dmixTest !== '') {
+        $alsaDevice   = "dmix:$cardno,$devno";
+        $mpg123Device = "plug:dmix:$cardno,$devno";
+        LOGINF("output/usb.php: Using ALSA device 'dmix:$cardno,$devno'");
+    } else {
+        $alsaDevice   = "plughw:$cardno,$devno";
+        $mpg123Device = "plughw:$cardno,$devno";
+        LOGWARN("output/usb.php: Fallback to 'plughw:$cardno,$devno' (no dmix entry found)");
+    }
 
     // Task Spooler Umgebung
     putenv("TS_SOCKET=/dev/shm/ttsplugin.sock");
