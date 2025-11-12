@@ -373,7 +373,11 @@ function getusbcard() {
     if ($mycard === "usb_audio") {
         $myteccard = $cfg[$mycard]['output'] . $usbCardNo . ',' . $usbDevice;
     } else {
-        $myteccard = $cfg[$mycard]['output'] . ',DEV=' . $usbDevice;
+        if (substr($cfg[$mycard]['output'], -1) === ':') {
+			$myteccard = $cfg[$mycard]['output'] . $usbCardNo . ',' . $usbDevice;
+		} else {
+			$myteccard = $cfg[$mycard]['output'] . ',DEV=' . $usbDevice;
+		}
     }
 
     LOGINF("tts.php: getusbcard(): Detected card string: $myteccard");

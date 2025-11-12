@@ -204,8 +204,8 @@
 		"dtoverlay": "",
 		"name": "Terratec Aureon 7.1 USB"
 	},
-	"Generic USB": {
-		"output": "plughw",
+	"Generic_USB": {
+		"output": "plughw:",
 		"dtoverlay": "",
 		"name": "Generic USB"
 	},

@@ -2,7 +2,6 @@
 # One line per package, use exact packagename as you would do for apt-get.
 #
 
-libsox-fmt-all
 alsa-utils
 libcurl4
 php-soap
@@ -11,6 +10,5 @@ mplayer
 task-spooler
 mpg123
 ffmpeg
-gpg
 php-smbclient
 acl
