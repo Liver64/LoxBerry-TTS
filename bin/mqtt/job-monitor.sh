@@ -1,7 +1,7 @@
 #!/bin/bash
 # ================================================================
 # mqtt-job-monitor – Monitoring for ALSA + mpg123 + tsp
-# Format: YYYY-MM-DD HH:MM:SS LEVEL: [job-monitor] Message
+# Format: HH:MM:SS.mmm <LEVEL> [job-monitor] Message
 # LEVEL: OK | INFO | WARN | ERR | DEB
 # ================================================================
 
@@ -20,7 +20,10 @@ export TS_SOCKET
 logmsg() { # usage: logmsg LOGLEVEL "text ..."
     local lvl="$1"; shift
     local msg="$*"
-    printf '%(%Y-%m-%d %H:%M:%S)T <%s> [%s] %s\n' -1 "$lvl" "$NAME" "$msg" >> "$LOGFILE"
+    # Format: HH:MM:SS.mmm <LEVEL> [NAME] Message
+    local timestamp
+    timestamp=$(date +"%H:%M:%S.%3N")
+    printf '%s <%s> [%s] %s\n' "$timestamp" "$lvl" "$NAME" "$msg" >> "$LOGFILE"
 }
 
 # --- Sanity Checks ---
@@ -33,6 +36,13 @@ if ! tsp >/dev/null 2>&1; then
   logmsg "ERR"  "Task Spooler not running or socket missing ($TS_SOCKET). Aborting"
   logmsg "WARN" "TTS Monitor: Task Spooler not running. Monitoring aborted"
   exit 1
+fi
+
+# --- Ensure tsp socket/daemon exists (short-living mode) ---
+if [ ! -S "$TS_SOCKET" ]; then
+  logmsg "INFO" "tsp socket missing ($TS_SOCKET) – starting temporary tsp daemon"
+  tsp >/dev/null 2>&1 &
+  sleep 1
 fi
 
 # --- Funktionen ---

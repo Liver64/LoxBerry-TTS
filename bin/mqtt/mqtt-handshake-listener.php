@@ -4,7 +4,7 @@
  * mqtt-handshake-listener.php – Permanent MQTT listener for handshake requests
  * Text2Speech (T2S) Master / LoxBerry environment
  * Author: Oliver L.
- * Version: 1.5 (RAM logger, fully sanitized output)
+ * Version: 1.6 (adds /dev/shm/text2speech/health.json tracking)
  */
 
 require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
@@ -58,7 +58,7 @@ $pass       = $creds['brokerpass'] ?? $creds['mqttpass'] ?? '';
 $client_id  = uniqid((gethostname() ?: 'lb') . "_hshake_");
 $mqtt       = new phpMQTT($broker, $port, $client_id);
 
-/* Deactivate any built-in debug */
+/* Disable built-in debug */
 if (property_exists($mqtt, 'debug')) {
     $mqtt->debug = false;
 }
@@ -80,20 +80,20 @@ logmsg("OK", "Connected to MQTT broker on $brokerHost:$port (topic=" . HANDSHAKE
  * Callback for handshake
  * ====================== */
 $callback = function (string $topic, string $msg) use ($mqtt) {
-    $data = json_decode($msg, true);
 
-    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+    $payload = json_decode($msg, true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload)) {
         logmsg("ERROR", "Invalid handshake JSON on $topic: " . json_last_error_msg());
         return;
     }
 
-    if (empty($data['client'])) {
+    if (empty($payload['client'])) {
         logmsg("WARN", "Handshake payload missing 'client'");
         return;
     }
 
-    $client = preg_replace('/[^A-Za-z0-9._-]/', '', (string)$data['client']);
-    $corr   = isset($data['corr']) ? (string)$data['corr'] : (string)time();
+    $client = preg_replace('/[^A-Za-z0-9._-]/', '', (string)$payload['client']);
+    $corr   = isset($payload['corr']) ? (string)$payload['corr'] : (string)time();
 
     $replyTopic = "tts-handshake/response/$client";
     $response = [
@@ -103,7 +103,7 @@ $callback = function (string $topic, string $msg) use ($mqtt) {
         'corr'      => $corr,
     ];
 
-    // --- fully silence any phpMQTT stdout/stderr ---
+    // --- silence phpMQTT stdout/stderr ---
     $oldStdout = fopen('php://stdout', 'r');
     $oldStderr = fopen('php://stderr', 'r');
     $null = fopen('/dev/null', 'w');
@@ -115,11 +115,48 @@ $callback = function (string $topic, string $msg) use ($mqtt) {
     $mqtt->publish($replyTopic, json_encode($response, JSON_UNESCAPED_UNICODE), 1);
     ob_end_clean();
     fclose($null);
-    // restore output handles (safe for next PHP ops)
     if ($oldStdout) fclose($oldStdout);
     if ($oldStderr) fclose($oldStderr);
 
     logmsg("OK", "Handshake response sent to [$replyTopic] (corr=$corr)");
+
+    /* --- Write Bridge Health JSON --- */
+    $healthDir  = "/dev/shm/text2speech";
+    $healthFile = "$healthDir/health.json";
+
+    if (!is_dir($healthDir)) {
+        if (!@mkdir($healthDir, 0775, true)) {
+            logmsg("ERROR", "Cannot create $healthDir for health.json");
+            return;
+        }
+    }
+
+    $entry = [
+        'client'    => $client,
+        'corr'      => $corr,
+        'timestamp' => time(),
+        'iso_time'  => date('c'),
+        'server'    => (gethostname() ?: 'unknown'),
+    ];
+
+    $healthData = [];
+    if (is_readable($healthFile)) {
+        $json = file_get_contents($healthFile);
+        $tmp  = json_decode($json, true);
+        if (is_array($tmp)) {
+            $healthData = $tmp;
+        }
+    }
+
+    $healthData[$client] = $entry;
+
+    $jsonOut = json_encode($healthData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if (@file_put_contents($healthFile, $jsonOut) === false) {
+        logmsg("ERROR", "Failed to write $healthFile");
+    } else {
+        @chmod($healthFile, 0664);
+        logmsg("INFO", "Health updated for [$client] → $healthFile");
+    }
 };
 
 /* ======================

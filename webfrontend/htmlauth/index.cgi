@@ -35,6 +35,7 @@ use HTTP::Request;
 use Encode ();
 use CGI;
 use URI::Escape qw(uri_unescape);
+use POSIX qw(strftime);
 
 # Optional (z. B. entfernen, wenn ungenutzt):
 # use File::Copy;
@@ -256,6 +257,83 @@ if (!-r $lbpconfigdir . "/" . $configfile)
 	mkdir $lbpconfigdir unless -d $lbpconfigdir or &error; 
 	LOGOK "Config directory: " . $lbpconfigdir . " has been created";
 }
+
+# ============================================================
+# Bridge health indicator (Text2Speech)
+# ============================================================
+
+my $health_file = "/dev/shm/text2speech/health.json";
+
+my $interface_status = 0;   # 0=keine Bridge, 1=aktiv, 2=idle
+my ($bridge_text, $bridge_last) = ("", "");
+
+if (-f $health_file) {
+    eval {
+        local $/;
+        open my $fh, '<', $health_file or die $!;
+        my $json = <$fh>;
+        close $fh;
+
+        my $data = decode_json($json);
+        if (ref $data eq 'HASH' && keys %$data) {
+            # Jüngsten Handshake bestimmen
+            my ($latest_key) = sort {
+                $data->{$b}->{timestamp} <=> $data->{$a}->{timestamp}
+            } keys %$data;
+
+            my $entry = $data->{$latest_key};
+            my $ts  = $entry->{timestamp} // 0;
+            my $iso = $entry->{iso_time}  // strftime("%Y-%m-%d %H:%M:%S", localtime($ts));
+
+            if ($ts > 0) {
+                my $age = time() - $ts;
+
+                # Zeitformat: [YYYY-MM-DD] HH:MMh
+                if ($iso =~ /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/) {
+                    $bridge_last = "[$1] $2:$3h";
+                } else {
+                    $bridge_last = strftime("[%Y-%m-%d] %H:%M:%S", localtime($ts));
+                }
+
+                # Statuslogik
+                if    ($age <= 300)    {   # ≤ 5 min
+                    $interface_status = 1;
+                    $bridge_text = $SL{'TEMPLATE.MESSAGE_BRIDGE3'};  # 🟢 aktiv
+                }
+                elsif ($age <= 43200)  {   # ≤ 12 h
+                    $interface_status = 2;
+                    $bridge_text = $SL{'TEMPLATE.MESSAGE_BRIDGE2'};  # 🟡 idle
+                }
+                else {                      # > 12 h
+                    $interface_status = 0;
+                    $bridge_text = $SL{'TEMPLATE.MESSAGE_BRIDGE1'};  # 🔴 getrennt
+                }
+            }
+        }
+    };
+    if ($@) {
+        LOGERR("index.cgi: Error parsing health.json: $@");
+        $interface_status = 0;
+    }
+}
+
+# ------------------------------------------------------------
+# Übergabe an Template (nur wenn health.json sinnvoll war)
+# ------------------------------------------------------------
+if ($bridge_text ne "") {
+    $template->param(
+        INTERFACE   => $interface_status,   # 0/1/2
+        BRIDGE_TEXT => $bridge_text,
+        BRIDGE_LAST => $bridge_last,
+    );
+    LOGDEB("index.cgi: Bridge interface detected (INTERFACE=$interface_status, $bridge_last)");
+} else {
+    $template->param(
+        INTERFACE   => 0,
+    );
+    LOGDEB("index.cgi: No active bridge detected -> INTERFACE=0");
+}
+
 
 ##########################################################################
 # Main program
@@ -543,17 +621,6 @@ sub form {
 	# Optional: Dateigröße deiner JSON-Datei anzeigen (falls vorhanden)
 	my $filesize = (-s $jsonfile) || 0;
 	$template->param("MYFILE" => $filesize);
-	
-	# --- Check if Interface (Master) mode is active ---
-	my $iface_marker = "/run/shm/text2speech/t2s_interface_active.marker";
-
-	if (-f $iface_marker) {
-		$template->param("INTERFACE" => 1);
-		LOGDEB("index.cgi: Interface marker found ($iface_marker) -> INTERFACE=1");
-	} else {
-		$template->param("INTERFACE" => 0);
-		LOGDEB("index.cgi: Interface marker not found -> INTERFACE=0");
-	}
 	
 	LOGDEB "Printing template";
 	printtemplate();
