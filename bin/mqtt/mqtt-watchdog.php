@@ -89,10 +89,6 @@ function logmsg(string $level, string $service, string $message): void
     $micro = microtime(true);
     $ms = sprintf("%03d", ($micro - floor($micro)) * 1000);
     $ts = date("H:i:s") . "." . $ms;
-
-    // Spiegel-Logfile
-    $entry = "$ts <$lb> [$service] $message\n";
-    file_put_contents($logfile, $entry, FILE_APPEND | LOCK_EX);
 }
 
 function restart_rate_limited(string $service): bool
