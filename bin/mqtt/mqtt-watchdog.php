@@ -5,7 +5,7 @@ require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_log.php";
 
 /* === Base paths === */
 $ramdir  = "/dev/shm/text2speech";
-$ramfile = "$ramdir/mqtt-watchdog.log";
+$logfile = "$ramdir/mqtt-watchdog.log";
 $stdfile = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt-watchdog.log";
 $marker  = "/run/shm/text2speech.watchdog.started";
 
@@ -20,7 +20,7 @@ if (file_exists($stdfile) && !is_link($stdfile)) {
     unlink($stdfile);
 }
 if (!is_link($stdfile)) {
-    symlink($ramfile, $stdfile);
+    symlink($logfile, $stdfile);
 }
 
 /* === Initialize LoxBerry log === */
@@ -70,46 +70,27 @@ function logmsg(string $level, string $service, string $message): void
     $norm = strtoupper(trim($level));
     switch (true) {
         case in_array($norm, ['ℹ️','INFO']):
-            LOGINF("[$service] $message");
-            $lb = 'INFO';
-            break;
-
+            LOGINF("[$service] $message");  $lb = 'INFO'; break;
         case in_array($norm, ['⚠️','WARN','WARNING']):
-            LOGWARN("[$service] $message");
-            $lb = 'WARNING';
-            break;
-
+            LOGWARN("[$service] $message"); $lb = 'WARNING'; break;
         case in_array($norm, ['✅','OK','SUCCESS']):
-            LOGOK("[$service] $message");
-            $lb = 'OK';
-            break;
-
+            LOGOK("[$service] $message");   $lb = 'OK'; break;
         case in_array($norm, ['❌','ERR','ERROR','FAIL']):
-            LOGERR("[$service] $message");
-            $lb = 'ERROR';
-            break;
-
+            LOGERR("[$service] $message");  $lb = 'ERROR'; break;
         case in_array($norm, ['🐞','DEB','DEBUG']):
-            LOGDEB("[$service] $message");
-            $lb = 'DEB';
-            break;
-
-        // Sonderfall „⏳“ → eher Info
+            LOGDEB("[$service] $message");  $lb = 'DEB'; break;
         case in_array($norm, ['⏳']):
-            LOGINF("[$service] $message");
-            $lb = 'DEB';
-            break;
-
+            LOGINF("[$service] $message");  $lb = 'DEB'; break;
         default:
-            // Fallback auf INFO
-            LOGINF("[$service] $message");
-            $lb = 'DEB';
-            break;
+            LOGINF("[$service] $message");  $lb = 'DEB'; break;
     }
 
-    // Spiegel in Klartextdatei:
-    $ts = date("Y-m-d H:i:s");
-    // Einheitliches, gut greppbares Format
+    // --- korrekter Zeitstempel HH:MM:SS.mmm ---
+    $micro = microtime(true);
+    $ms = sprintf("%03d", ($micro - floor($micro)) * 1000);
+    $ts = date("H:i:s") . "." . $ms;
+
+    // Spiegel-Logfile
     $entry = "$ts <$lb> [$service] $message\n";
     file_put_contents($logfile, $entry, FILE_APPEND | LOCK_EX);
 }

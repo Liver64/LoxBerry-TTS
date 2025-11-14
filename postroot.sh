@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# ==============================================================================
 # postroot.sh — finalize T2S installation (root)
-# ------------------------------------------------------------------------------
 # - Install Piper (if needed)
-# - Install Text2Speech dependencies (audio, PHP, system)
-# - Respect skip marker: skip *only* the Mosquitto bridge setup
+# - Respect skip marker: skip *only* the Mosquitto bridge setup, continue with the rest
 # - Optionally create deferred master-role marker
-# - Install mqtt-service-tts + mqtt-watchdog + handshake listener
-# - Copy uninstall helper and ensure correct log permissions
-# ==============================================================================
+# - Install mqtt-service-tts + mqtt-watchdog (oneshot+timer)
+# - Copy uninstall helper
+# - Ensure proper log directory ownership for loxberry
 
 set -euo pipefail
 
@@ -18,28 +15,28 @@ piper="/usr/local/bin/piper/piper"
 
 if [ ! -e "$piper" ]; then
 	if [ -e "$LBSCONFIG/is_raspberry.cfg" ]; then
-		echo "<INFO> The hardware architecture is Raspberry Pi"
-		wget -q -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz
+		echo "<INFO> The hardware architecture is RaspBerry"
+		wget -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz
 		cd /usr/local/bin
-		tar -xzf piper_linux_aarch64.tar.gz
+		tar -xvzf piper_linux_aarch64.tar.gz
 		INST=true
 		rm -f piper_linux_aarch64.tar.gz
 	fi
 
 	if [ -e "$LBSCONFIG/is_x86.cfg" ]; then
 		echo "<INFO> The hardware architecture is x86"
-		wget -q -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz
+		wget -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz
 		cd /usr/local/bin
-		tar -xzf piper_linux_x86_64.tar.gz
+		tar -xvzf piper_linux_x86_64.tar.gz
 		rm -f piper_linux_x86_64.tar.gz
 	fi
 
 	if [ -e "$LBSCONFIG/is_x64.cfg" ]; then
 		echo "<INFO> The hardware architecture is x64"
 		if [ "$INST" != true ]; then
-			wget -q -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz
+			wget -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz
 			cd /usr/local/bin
-			tar -xzf piper_linux_aarch64.tar.gz
+			tar -xvzf piper_linux_aarch64.tar.gz
 			rm -f piper_linux_aarch64.tar.gz
 		else
 			echo "<INFO> Piper TTS has already been installed upfront"
@@ -58,35 +55,11 @@ if [ ! -L "$sym" ]; then
 	echo "<OK> Symlink 'piper' has been created in /usr/bin"
 fi
 
-# ==============================================================================
-# === Install Text2Speech dependencies =========================================
-# ==============================================================================
-echo "<INFO> Installing Text2Speech dependencies ..."
-
-APT_PACKAGES="alsa-utils libcurl4 php-soap bluez mplayer \
-task-spooler mpg123 ffmpeg php-smbclient acl"
-
-apt-get update -qq || echo "<WARNING> APT update failed (non-fatal)"
-
-if ! apt-get install -y --no-install-recommends $APT_PACKAGES; then
-	echo "<WARNING> Some packages failed – retrying key ones ..."
-	apt-get install -y --no-install-recommends \
-		alsa-utils libcurl4 php-soap task-spooler mpg123 ffmpeg acl || \
-		echo "<ERROR> Core T2S dependencies could not be installed."
-fi
-
-if command -v phpenmod >/dev/null 2>&1; then
-	phpenmod soap smbclient 2>/dev/null || true
-fi
-
-echo "<OK> Text2Speech dependencies installed successfully."
-
-# ==============================================================================
-# === T2S / Mosquitto configuration ============================================
-# ==============================================================================
+# ===== T2S/Mosquitto bits =====
 ROLE_DIR="/etc/mosquitto/role"
 MASTER_MARKER="$ROLE_DIR/t2s-master"
 
+# Volatile markers (from preinstall)
 SKIP_DIR="/dev/shm/t2s-installer"
 SKIP_FILE="$SKIP_DIR/skip-bridge.t2s"
 DEFER_MARKER="$SKIP_DIR/defer-master-marker.t2s"
@@ -110,7 +83,7 @@ if [[ -f "$DEFER_MARKER" ]]; then
   fi
 fi
 
-# 2) Decide whether to skip bridge setup
+# 2) Decide whether to skip only the bridge setup
 SKIPPED_BRIDGE=0
 if [[ -f "$SKIP_FILE" ]]; then
   REASON="$(grep -E '^reason=' "$SKIP_FILE" 2>/dev/null | cut -d= -f2- || echo '')"
@@ -140,7 +113,7 @@ else
   echo "<INFO> Bridge setup step skipped; continuing with service installs…"
 fi
 
-# 4) Install MQTT Event Handler Service
+# 4) Install MQTT event handler as service (idempotent)
 if systemctl cat mqtt-service-tts >/dev/null 2>&1; then
   echo "<INFO> MQTT Event Service already installed"
 else
@@ -152,7 +125,7 @@ else
 fi
 
 # ============================================================
-# 5) Install MQTT Watchdog + Handshake Listener
+# 5) Install MQTT Watchdog + Handshake Listener (idempotent)
 # ============================================================
 SRV_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-watchdog.service"
 TMR_SRC="REPLACELBHOMEDIR/bin/plugins/text2speech/mqtt/mqtt-watchdog.timer"
@@ -165,11 +138,13 @@ HS_SRV_DST="/etc/systemd/system/mqtt-handshake-listener.service"
 
 echo "<INFO> Installing T2S MQTT Watchdog and Handshake Listener …"
 
+# --- Watchdog Service ---
 systemctl stop mqtt-watchdog.service >/dev/null 2>&1 || true
 systemctl disable mqtt-watchdog.service >/dev/null 2>&1 || true
 install -o root -g root -m 0644 "$SRV_SRC" "$SRV_DST"
 install -o root -g root -m 0644 "$TMR_SRC" "$TMR_DST"
 
+# Reload + Run oneshot
 systemctl daemon-reload
 if systemctl start mqtt-watchdog.service; then
   echo "<OK> MQTT Watchdog executed once successfully (oneshot)."
@@ -182,15 +157,20 @@ else
   echo "<WARNING> Could not enable/start mqtt-watchdog.timer."
 fi
 
+# --- Handshake Listener Service ---
 echo "<INFO> Installing MQTT Handshake Listener …"
+
+# Falls alter Dienst läuft → stoppen
 systemctl stop mqtt-handshake-listener.service >/dev/null 2>&1 || true
 systemctl disable mqtt-handshake-listener.service >/dev/null 2>&1 || true
 
+# PHP-Daemon prüfen
 if [ ! -x "$HS_SRC" ]; then
   echo "<ERROR> Missing or non-executable $HS_SRC"
 else
   install -o root -g root -m 0644 "$HS_SRV_SRC" "$HS_SRV_DST"
   systemctl daemon-reload
+
   if systemctl enable --now mqtt-handshake-listener.service; then
     echo "<OK> MQTT Handshake Listener service installed and started."
   else
@@ -222,6 +202,7 @@ fi
 echo "<INFO> Checking MQTT Gateway runtime state …"
 MQTT_PROC="REPLACELBHOMEDIR/sbin/mqttgateway.pl"
 
+# Prüfen, ob der Prozess läuft
 if pgrep -f "$MQTT_PROC" >/dev/null 2>&1; then
     PID=$(pgrep -f "$MQTT_PROC" | head -n1)
     echo "<OK> MQTT Gateway is active (PID $PID)"
