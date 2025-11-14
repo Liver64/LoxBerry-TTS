@@ -10,4 +10,4 @@
 # Will be executed as user "loxberry".
 MAILTO=""
 
-/usr/bin/bash REPLACELBPBINDIR/support/check_cert_expiry.pl --master
+/usr/bin/bash REPLACELBPBINDIR/mqtt/cleanup_auto_acl.pl

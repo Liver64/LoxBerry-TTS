@@ -3,27 +3,35 @@
 /**
  * mqtt-handshake-listener.php – Permanent MQTT listener for handshake requests
  * Text2Speech (T2S) Master / LoxBerry environment
- * Author: Oliver L.
- * Version: 1.6 (adds /dev/shm/text2speech/health.json tracking)
+ *
+ * Version: 2.1
+ * - FULL AUTO-ACL MARKER SUPPORT
+ * - Inserts between ### BEGIN AUTO-ACL ### and ### END AUTO-ACL ###
+ * - Duplicate detection
+ * - Clean logging (RAM + symlink)
  */
 
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_io.php";
-require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_system.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_io.php";
+require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
 
 use Bluerhinos\phpMQTT;
 
 ini_set('display_errors', '0');
 error_reporting(E_ALL & ~E_NOTICE);
 
+/* =====================================================
+ * Constants
+ * ===================================================== */
 const HANDSHAKE_TOPIC = 'tts-handshake/request/#';
+const ACLFILE         = '/etc/mosquitto/tts-aclfile';
 const HANDSHAKE_DEBUG = false;
 
 /* =====================================================
- * Simple RAM Logger (/dev/shm) + Symlink to LoxBerry log
+ * Logging (RAM + Symlink)
  * ===================================================== */
 $ramlog = "/dev/shm/text2speech/handshake-listener.log";
-$stdlog = "REPLACELBHOMEDIR/log/plugins/text2speech/handshake-listener.log";
+$stdlog = "/opt/loxberry/log/plugins/text2speech/handshake-listener.log";
 
 if (!is_dir(dirname($ramlog))) {
     mkdir(dirname($ramlog), 0775, true);
@@ -32,161 +40,205 @@ if (!is_dir(dirname($ramlog))) {
 @chmod($ramlog, 0664);
 
 if (!is_link($stdlog)) {
-    @mkdir(dirname($stdlog), 0775, true);
     @unlink($stdlog);
     @symlink($ramlog, $stdlog);
 }
 
-/* --- Logging helper --- */
 function logmsg(string $level, string $msg): void {
     global $ramlog;
     $ts = date('Y-m-d H:i:s');
     file_put_contents($ramlog, "[$ts] <$level> $msg\n", FILE_APPEND);
 }
 
-/* ======================
- * MQTT connection setup
- * ====================== */
+/* =====================================================
+ * MQTT Connection
+ * ===================================================== */
 $creds = mqtt_connectiondetails();
-$brokerHost = $creds['brokerhost'] ?? $creds['brokeraddress'] ?? '127.0.0.1';
-$port       = (int)($creds['brokerport'] ?? 1883);
-$useTls     = ($port != 1883);
-$broker     = $useTls ? "tls://$brokerHost" : $brokerHost;
-$user       = $creds['brokeruser'] ?? $creds['mqttuser'] ?? '';
-$pass       = $creds['brokerpass'] ?? $creds['mqttpass'] ?? '';
+$host = $creds['brokerhost'] ?? '127.0.0.1';
+$port = (int)($creds['brokerport'] ?? 1883);
+$user = $creds['brokeruser'] ?? '';
+$pass = $creds['brokerpass'] ?? '';
+$useTls = ($port != 1883);
 
-$client_id  = uniqid((gethostname() ?: 'lb') . "_hshake_");
-$mqtt       = new phpMQTT($broker, $port, $client_id);
+$broker = $useTls ? "tls://$host" : $host;
 
-/* Disable built-in debug */
+$client_id = uniqid(gethostname() . "_hshake_");
+$mqtt = new phpMQTT($broker, $port, $client_id);
+
 if (property_exists($mqtt, 'debug')) {
     $mqtt->debug = false;
 }
 
+/* Connect loop */
 logmsg("INFO", "Starting MQTT Handshake Listener …");
-logmsg("INFO", "Connecting to $brokerHost:$port");
+logmsg("INFO", "Connecting to $host:$port");
 
-$retries = 0;
 while (!$mqtt->connect(true, NULL, $user, $pass)) {
-    if ($retries % 5 === 0) {
-        logmsg("WARN", "MQTT connect failed – retrying in 5s (attempt $retries)");
-    }
-    $retries++;
+    logmsg("WARN", "MQTT connect failed — retrying in 5s …");
     sleep(5);
 }
-logmsg("OK", "Connected to MQTT broker on $brokerHost:$port (topic=" . HANDSHAKE_TOPIC . ")");
+logmsg("OK", "Connected to MQTT broker (topic=" . HANDSHAKE_TOPIC . ")");
 
-/* ======================
- * Callback for handshake
- * ====================== */
+/* =====================================================
+ * AUTO-ACL Helper Functions
+ * ===================================================== */
+function get_acl_text(): string {
+    return file_exists(ACLFILE) ? file_get_contents(ACLFILE) : '';
+}
+
+function acl_contains_user(string $acl, string $userBlockId): bool {
+    return strpos($acl, "user $userBlockId") !== false;
+}
+
+function build_acl_block(string $client, string $hostname): string {
+    return
+"# Auto-added SIP Bridge ($hostname)
+user {$client}-{$hostname}
+topic write tts-publish/# 
+topic read  tts-subscribe/# 
+topic write tts-subscribe/# 
+topic read  tts-publish/#
+
+";
+}
+
+function insert_into_marker(string $acl, string $block): string {
+
+    $begin = "### BEGIN AUTO-ACL ###";
+    $end   = "### END AUTO-ACL ###";
+
+    $startPos = strpos($acl, $begin);
+    $endPos   = strpos($acl, $end);
+
+    if ($startPos === false || $endPos === false) {
+        logmsg("ERROR", "AUTO-ACL markers not found in ACL file!");
+        return $acl;
+    }
+
+    // Bereich: vor dem Markerblock
+    $before = substr($acl, 0, $startPos + strlen($begin));
+
+    // Bereich: der Inhalt NACH dem Begin-Marker, VOR dem End-Marker
+    $middle = substr(
+        $acl,
+        $startPos + strlen($begin),
+        $endPos - ($startPos + strlen($begin))
+    );
+
+    // Bereich: inklusive dem End-Marker und alles dahinter
+    $after = substr($acl, $endPos);
+
+    // Neues ACL zusammenbauen
+    return
+        rtrim($before) . "\n" .
+        rtrim($middle) . "\n" .
+        $block . "\n" .
+        $after;
+}
+
+
+function write_aclfile(string $content): void {
+    $bytes = @file_put_contents(ACLFILE, $content);
+    if ($bytes === false) {
+        logmsg("ERROR", "Failed to write ACL file " . ACLFILE . " – check file permissions (user loxberry).");
+        return;
+    }
+    @chmod(ACLFILE, 0644);
+}
+
+
+/* =====================================================
+ * Callback for incoming handshake
+ * ===================================================== */
 $callback = function (string $topic, string $msg) use ($mqtt) {
 
     $payload = json_decode($msg, true);
-    if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload)) {
-        logmsg("ERROR", "Invalid handshake JSON on $topic: " . json_last_error_msg());
+    if (!is_array($payload)) {
+        logmsg("ERROR", "Invalid JSON on $topic");
         return;
     }
 
-    if (empty($payload['client'])) {
-        logmsg("WARN", "Handshake payload missing 'client'");
-        return;
-    }
+    $client   = preg_replace('/[^A-Za-z0-9._-]/', '', (string)($payload['client'] ?? ''));
+    $hostname = preg_replace('/[^A-Za-z0-9._-]/', '', (string)($payload['hostname'] ?? 'unknown'));
+    $corr     = $payload['corr'] ?? time();
 
-    $client = preg_replace('/[^A-Za-z0-9._-]/', '', (string)$payload['client']);
-    $corr   = isset($payload['corr']) ? (string)$payload['corr'] : (string)time();
+    logmsg("INFO", "Received handshake: client=$client host=$hostname corr=$corr");
 
+    /* Send response */
     $replyTopic = "tts-handshake/response/$client";
     $response = [
         'status'    => 'ok',
-        'server'    => (gethostname() ?: 'unknown'),
+        'server'    => gethostname(),
         'timestamp' => date('c'),
         'corr'      => $corr,
     ];
 
-    // --- silence phpMQTT stdout/stderr ---
-    $oldStdout = fopen('php://stdout', 'r');
-    $oldStderr = fopen('php://stderr', 'r');
-    $null = fopen('/dev/null', 'w');
-    if (is_resource(STDOUT)) { fclose(STDOUT); }
-    if (is_resource(STDERR)) { fclose(STDERR); }
-    define('STDOUT', $null);
-    define('STDERR', $null);
     ob_start();
-    $mqtt->publish($replyTopic, json_encode($response, JSON_UNESCAPED_UNICODE), 1);
+    $mqtt->publish($replyTopic, json_encode($response), 1);
     ob_end_clean();
-    fclose($null);
-    if ($oldStdout) fclose($oldStdout);
-    if ($oldStderr) fclose($oldStderr);
 
-    logmsg("OK", "Handshake response sent to [$replyTopic] (corr=$corr)");
+    logmsg("OK", "Response sent corr=$corr");
 
-    /* --- Write Bridge Health JSON --- */
-    $healthDir  = "/dev/shm/text2speech";
-    $healthFile = "$healthDir/health.json";
+    /* ---------------------------------------------------------
+     * AUTO-ACL Handling
+     * --------------------------------------------------------- */
+    $acl = get_acl_text();
+    $blockUser = "{$client}-{$hostname}";
 
-    if (!is_dir($healthDir)) {
-        if (!@mkdir($healthDir, 0775, true)) {
-            logmsg("ERROR", "Cannot create $healthDir for health.json");
-            return;
-        }
+    if (acl_contains_user($acl, $blockUser)) {
+        logmsg("INFO", "Auto-ACL for [$blockUser] already exists");
+    } else {
+        logmsg("INFO", "Auto-ACL inserting [$blockUser] ($hostname)");
+
+        $block = build_acl_block($client, $hostname);
+        $newAcl = insert_into_marker($acl, $block);
+
+        write_aclfile($newAcl);
+        logmsg("OK", "Auto-ACL entry added for [$blockUser]");
+
+        /* reload mosquitto */
+        system("sudo systemctl reload mosquitto");
+        logmsg("OK", "Mosquitto reloaded");
     }
 
-    $entry = [
+    /* Update health.json */
+    $healthFile = "/dev/shm/text2speech/health.json";
+    $health = [];
+
+    if (is_readable($healthFile)) {
+        $tmp = json_decode(file_get_contents($healthFile), true);
+        if (is_array($tmp)) $health = $tmp;
+    }
+
+    $health["{$client}-{$hostname}"] = [
         'client'    => $client,
+        'hostname'  => $hostname,
         'corr'      => $corr,
         'timestamp' => time(),
         'iso_time'  => date('c'),
-        'server'    => (gethostname() ?: 'unknown'),
+        'server'    => gethostname(),
     ];
 
-    $healthData = [];
-    if (is_readable($healthFile)) {
-        $json = file_get_contents($healthFile);
-        $tmp  = json_decode($json, true);
-        if (is_array($tmp)) {
-            $healthData = $tmp;
-        }
-    }
-
-    $healthData[$client] = $entry;
-
-    $jsonOut = json_encode($healthData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    if (@file_put_contents($healthFile, $jsonOut) === false) {
-        logmsg("ERROR", "Failed to write $healthFile");
-    } else {
-        @chmod($healthFile, 0664);
-        logmsg("INFO", "Health updated for [$client] → $healthFile");
-    }
+    file_put_contents($healthFile, json_encode($health, JSON_PRETTY_PRINT));
+    chmod($healthFile, 0664);
+    logmsg("INFO", "Health updated for [$client]");
 };
 
-/* ======================
- * Subscription
- * ====================== */
+/* =====================================================
+ * Subscribe and loop forever
+ * ===================================================== */
 $mqtt->subscribe([ HANDSHAKE_TOPIC => ['qos' => 0, 'function' => $callback] ]);
 logmsg("INFO", "Subscribed to " . HANDSHAKE_TOPIC);
 
-/* ======================
- * Permanent loop
- * ====================== */
-$lastCheck = time();
 while (true) {
     if (!$mqtt->proc()) {
-        logmsg("WARN", "MQTT connection lost, reconnecting …");
+        logmsg("WARN", "MQTT lost — reconnecting …");
         while (!$mqtt->connect(true, NULL, $user, $pass)) {
             sleep(5);
         }
         $mqtt->subscribe([ HANDSHAKE_TOPIC => ['qos' => 0, 'function' => $callback] ]);
-        logmsg("OK", "Reconnected and resubscribed to " . HANDSHAKE_TOPIC);
-    }
-
-    if (time() - $lastCheck >= 60) {
-        $mqtt->ping();
-        $lastCheck = time();
+        logmsg("OK", "Reconnected");
     }
 
     usleep(20000);
 }
-
-$mqtt->close();
-logmsg("INFO", "MQTT Handshake Listener stopped.");
-exit(0);
