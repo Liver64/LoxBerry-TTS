@@ -2,27 +2,20 @@
 # t2s-uninstall.pl — Uninstall for T2S Master
 #
 # DEFAULT (no options):
-#   - Stops: mosquitto, mqtt-service-tts.service, mqtt-watchdog.service (best effort)
-#            Disables+stops: mqtt-watchdog.timer (best effort)
-#   - Removes: our conf.d drop-ins (with marker), ACL (with marker), bridge bundle/dir, role marker
-#   - Purges : CA stores (/etc/mosquitto/ca and legacy /etc/ca)
-#   - Cleans : /etc/mosquitto/certs CONTENTS (and legacy /etc/certs CONTENTS) but KEEPS the directory itself
-#   - Deletes systemd unit files:
-#       /etc/systemd/system/mqtt-service-tts.service
-#       /etc/systemd/system/mqtt-watchdog.service
-#       /etc/systemd/system/mqtt-watchdog.timer
-#     and reloads systemd daemon (also reset-failed)
-#   - Restarts mosquitto via LoxBerry's mqtt-handler (best effort; see block below)
+#   - Keeps CA stores (safe default)
+#   - Cleans certs contents (but keeps directory)
+#   - Removes: drop-ins, ACL, bundle, role marker
+#   - Stops: mosquitto + T2S units (best effort)
+#   - Removes systemd units
+#   - Restarts mosquitto via mqtt-handler
 #
 # FLAGS:
-#   --no-ca         : keep CA stores (do NOT purge /etc/mosquitto/ca or /etc/ca)
-#   --no-certs      : do NOT clean /etc/mosquitto/certs*/ contents (keep files)
-#   --force-master  : ignore missing /etc/mosquitto/role/t2s-master and run anyway (support use only)
-#   --debug         : verbose logging
-#   --quiet         : minimal console output
-#   --help          : this help (with examples)
-#
-# Return codes: 0 OK | 1 minor issues | >1 error
+#   --purge-ca     : REMOVE CA stores (with confirmation prompt)
+#   --no-certs     : keep existing cert files
+#   --force-master : ignore missing t2s-master marker (support use only)
+#   --debug        : verbose logging
+#   --quiet        : minimal console output
+#   --help         : this help
 
 use strict;
 use warnings;
@@ -39,97 +32,60 @@ my $CONF_PER            = '/etc/mosquitto/conf.d/00-global-per-listener.conf';
 my $CONF_TLS            = '/etc/mosquitto/conf.d/10-listener-tls.conf';
 my $ACL_FILE            = '/etc/mosquitto/tts-aclfile';
 
-# Certs: directory MUST remain; contents will be deleted by default
 my $CERTDIR             = '/etc/mosquitto/certs';
 my $ALT_CERTDIR         = '/etc/certs';
 
-# CA stores: directories will be removed by default
 my $CA_PERSIST          = '/etc/mosquitto/ca';
 my $ALT_CA_PERSIST      = '/etc/ca';
 
-# Role marker
 my $ROLE_DIR            = '/etc/mosquitto/role';
 my $MASTER_MARKER       = File::Spec->catfile($ROLE_DIR, 't2s-master');
 
-# Bridge bundle (created by generator --bundle)
 my $BRIDGE_DIR          = 'REPLACELBHOMEDIR/config/plugins/text2speech/bridge';
 my $BUNDLE              = File::Spec->catfile($BRIDGE_DIR, 't2s-bundle.tar.gz');
 
-# LoxBerry gateway helper
 my $MQTT_HANDLER        = 'REPLACELBHOMEDIR/sbin/mqtt-handler.pl';
 
-# Systemd units to stop/disable/remove
 my @UNIT_SERVICES       = ('mqtt-service-tts.service','mqtt-watchdog.service','mqtt-handshake-tts.service');
-my @UNIT_TIMERS         = ('mqtt-watchdog.timer');  # oneshot watchdog uses a timer
+my @UNIT_TIMERS         = ('mqtt-watchdog.timer');
 my @UNIT_FILES          = map { File::Spec->catfile('/etc/systemd/system', $_) } (@UNIT_SERVICES, @UNIT_TIMERS);
 
-# ---------- CLI (default: purge CA + clean cert contents) ----------
-my ($HELP, $QUIET, $DEBUG) = (0, 0, 0);
-my $PURGE_CA     = 1;  # default remove CA stores
-my $CLEAN_CERT   = 1;  # default clean contents of certs dir(s)
-my $FORCE_MASTER = 0;  # new: allow override of role marker check
+# ---------- CLI (default: DO NOT purge CA) ----------
+my ($HELP, $QUIET, $DEBUG) = (0,0,0);
+
+# SAFE DEFAULTS
+my $PURGE_CA     = 0;  # Default: Keep CA stores!
+my $CLEAN_CERT   = 1;  # Default: Clean cert directories
+my $FORCE_MASTER = 0;
+
 GetOptions(
   'help'          => \$HELP,
   'quiet'         => \$QUIET,
   'debug'         => \$DEBUG,
-  'no-ca'         => sub { $PURGE_CA = 0 },    # keep CA stores
-  'no-certs'      => sub { $CLEAN_CERT = 0 },  # keep cert files
-  'force-master'  => \$FORCE_MASTER,           # ignore missing t2s-master marker
+  'purge-ca'      => sub { $PURGE_CA = 1 },   # NEW: explicit purge-ca flag
+  'no-certs'      => sub { $CLEAN_CERT = 0 }, # keep cert contents
+  'force-master'  => \$FORCE_MASTER,
 ) or die "Invalid options. Use --help\n";
 
-# ---------- Help text (callable with --help) ----------
+# ---------- Help text ----------
 sub print_help {
   print <<"USAGE";
 t2s-uninstall.pl — Uninstall for T2S Master
 
-Synopsis:
-  t2s-uninstall.pl [--no-ca] [--no-certs] [--force-master] [--debug] [--quiet] [--help]
+Safe defaults:
+  • CA stores are KEPT.
+  • Cert directories are cleaned, but directories kept.
 
-What it does by default:
-  • Stops: mosquitto, mqtt-service-tts.service, mqtt-watchdog.service (best effort)
-           Disables & stops: mqtt-watchdog.timer (best effort)
-  • Removes: our Mosquitto drop-ins (marker-checked), ACL (marker-checked),
-             bridge bundle + dir, and the role marker
-  • Purges : CA stores (/etc/mosquitto/ca and legacy /etc/ca)
-  • Cleans : CONTENTS of /etc/mosquitto/certs and legacy /etc/certs, but KEEPS the directories
-  • Deletes systemd unit files:
-        /etc/systemd/system/mqtt-service-tts.service
-        /etc/systemd/system/mqtt-watchdog.service
-        /etc/systemd/system/mqtt-watchdog.timer
-    and reloads systemd (daemon-reload + reset-failed)
-  • Restarts Mosquitto via the LoxBerry mqtt-handler
-
-Safety:
-  • The script will only run its uninstall actions if the role marker
-      /etc/mosquitto/role/t2s-master
-    exists. If it is missing, the script exits safely without changes.
-  • To override this protection (support use only), pass --force-master.
+To destroy the entire PKI (USE WITH CARE):
+  --purge-ca     Removes /etc/mosquitto/ca and /etc/ca (confirmation required)
 
 Options:
-  --no-ca         Keep CA stores (do NOT purge /etc/mosquitto/ca or /etc/ca)
-  --no-certs      Keep cert files (do NOT clean certs/ contents)
-  --force-master  Ignore missing role marker and run anyway (use with care)
-  --debug         Verbose debug logging
-  --quiet         Minimal console output
-  --help          Show this help
-
-Examples:
-  # Standard uninstall (purge CA, clean certs contents, keep cert directories)
-  sudo t2s-uninstall.pl
-
-  # Keep CA stores and keep cert files (only drop-ins, ACL, bundle, role marker, units)
-  sudo t2s-uninstall.pl --no-ca --no-certs
-
-  # Force uninstall even if the host is not marked as T2S Master (support/recovery)
-  sudo t2s-uninstall.pl --force-master --debug
-
-  # Quiet run (minimal output)
-  sudo t2s-uninstall.pl --quiet
-
-Notes:
-  • Run as root.
-  • Drop-ins and ACL are removed only if they contain the Text2Speech generator marker.
-  • Cert directories are kept to avoid breaking other components; their contents are cleaned by default.
+  --purge-ca     Delete CA stores (requires confirmation)
+  --no-certs     Do not clean cert directories
+  --force-master Ignore role marker and uninstall anyway
+  --debug        Verbose logging
+  --quiet        Minimal output
+  --help         This help
 USAGE
 }
 
@@ -156,17 +112,16 @@ eval { make_path($LOG_DIR) unless -d $LOG_DIR; 1; };
 if (open(LOG, ">>:utf8", $LOG_FILE)) { select((select(LOG), $|=1)[0]); $LOG_OK = 1; }
 
 INFO("=== T2S Master Uninstall ===");
-INFO(($PURGE_CA ? "CA purge ON" : "CA purge OFF")." | ".($CLEAN_CERT ? "Certs clean ON" : "Certs clean OFF"));
+INFO("CA purge: ".($PURGE_CA ? "ON (confirmation required)" : "OFF")." | Cert clean: ".($CLEAN_CERT ? "ON" : "OFF"));
 
-# ---------- NEW: Role marker protection ----------
+# ---------- Role marker protection ----------
 if (! -e $MASTER_MARKER && !$FORCE_MASTER) {
   INFO("Role marker not found: $MASTER_MARKER");
-  INFO("Host is not marked as T2S Master — uninstall skipped to protect Bridge/Client setup.");
-  OK("=== Uninstall skipped (not T2S Master) ===");
+  OK("Uninstall skipped (not T2S Master)");
   exit 0;
 }
 if ($FORCE_MASTER && ! -e $MASTER_MARKER) {
-  WARNING("Force mode active — ignoring missing role marker $MASTER_MARKER");
+  WARNING("Force-master active — ignoring missing role marker");
 }
 
 # ---------- Helpers ----------
@@ -203,7 +158,7 @@ sub _force_purge_dir {
   my ($dir) = @_;
   return 1 unless $dir && -e $dir;
   _clear_immutable($dir);
-  _run('/bin/chmod','-R','u+w',$dir) if -e $dir;
+  _run('/bin/chmod','-R','u+w',$dir);
   if (_run('/bin/rm','-rf',$dir)) { OK("Removed dir: $dir"); return 1; }
   eval { remove_tree($dir, { keep_root => 0 }); 1 } ? (OK("Removed via remove_tree: $dir"), 1)
                                                     : (ERROR("Failed to remove $dir: $@"), 0);
@@ -215,36 +170,23 @@ sub _empty_dir_keep_root {
   _clear_immutable($dir);
   _run('/bin/chmod','u+rwx',$dir);
 
-  # Make contents writable then delete (incl. dotfiles, subdirs)
   if (-x '/usr/bin/find') {
-    if (-x '/usr/bin/chattr' || -x '/bin/chattr') {
-      _run('/usr/bin/find',$dir,'-mindepth','1','-exec','/bin/chattr','-i','{}','+');
-    }
-    _run('/usr/bin/find',$dir,'-mindepth','1','-exec','/bin/chmod','-R','u+w','{}','+');
+    _run('/usr/bin/find',$dir,'-mindepth','1','-exec','/bin/chattr','-i','{}','+');
+    _run('/usr/bin/find',$dir,'-mindepth','1','-exec','/bin/chmod','u+w','{}','+');
     _run('/usr/bin/find',$dir,'-mindepth','1','-exec','/bin/rm','-rf','{}','+');
-  } else {
-    opendir my $dh, $dir or return 0;
-    while (defined(my $e = readdir $dh)) {
-      next if $e eq '.' or $e eq '..';
-      my $p = "$dir/$e";
-      if (-d $p) { _force_purge_dir($p) } else { _safe_unlink($p) }
-    }
-    closedir $dh;
   }
 
-  # re-assert ownership/perm on the root dir
   _run('/bin/chown','root:mosquitto',$dir);
   _run('/bin/chmod','0750',$dir);
 
-  # verify dir still exists and is empty
-  opendir my $vdh, $dir or do { ERROR("Cannot open $dir after clean"); return 0; };
-  while (defined(my $e = readdir $vdh)) {
+  opendir my $dh, $dir or return 0;
+  while (defined(my $e = readdir $dh)) {
     next if $e eq '.' or $e eq '..';
     WARNING("Residual entry in $dir: $e");
-    closedir $vdh;
+    closedir $dh;
     return 0;
   }
-  closedir $vdh;
+  closedir $dh;
   OK("Cleaned contents, kept directory: $dir");
   1;
 }
@@ -252,96 +194,101 @@ sub _empty_dir_keep_root {
 sub _svc_stop_disable {
   my ($name) = @_;
   INFO("Stopping systemd unit: $name");
-  _run('/bin/systemctl','stop',$name) || WARNING("systemctl stop $name failed (continuing)");
+  _run('/bin/systemctl','stop',$name);
   INFO("Disabling systemd unit: $name");
-  _run('/bin/systemctl','disable',$name) || WARNING("systemctl disable $name failed (continuing)");
+  _run('/bin/systemctl','disable',$name);
 }
 
-sub _timer_disable_now {
-  my ($name) = @_;
-  INFO("Disabling and stopping systemd timer: $name");
-  _run('/bin/systemctl','disable','--now',$name) || WARNING("systemctl disable --now $name failed (continuing)");
-}
+# ---------- Stop services ----------
+INFO("Stopping mosquitto …");
+_run('/bin/systemctl','stop','mosquitto');
 
-# ---------- Stop services / timers ----------
-INFO("Stopping mosquitto service (best effort) …");
-_run('/bin/systemctl','stop','mosquitto') || WARNING("systemctl stop mosquitto failed (continuing)");
-
-for my $unit (@UNIT_SERVICES) {
-  _svc_stop_disable($unit);
-}
+for my $unit (@UNIT_SERVICES) { _svc_stop_disable($unit); }
 for my $tmr (@UNIT_TIMERS) {
-  _timer_disable_now($tmr);
+  INFO("Disabling timer: $tmr");
+  _run('/bin/systemctl','disable','--now',$tmr);
 }
 
-# ---------- Remove conf.d & ACL (marker-checked) ----------
-INFO("Removing conf.d drop-ins (marker-checked) …");
+# ---------- Remove drop-ins & ACL ----------
+INFO("Removing conf.d drop-ins …");
 for my $p ($CONF_PER, $CONF_TLS) {
   next unless -e $p;
-  if (_has_marker($p)) { _safe_unlink($p); } else { WARNING("Skipping $p — no generator marker"); }
+  _has_marker($p) ? _safe_unlink($p) : WARNING("Skipping $p — no marker");
 }
-INFO("Removing ACL file (marker-checked) …");
+
+INFO("Removing ACL …");
 if (-e $ACL_FILE) {
-  _has_marker($ACL_FILE) ? _safe_unlink($ACL_FILE) : WARNING("Skipping $ACL_FILE — no generator marker");
+  _has_marker($ACL_FILE) ? _safe_unlink($ACL_FILE) : WARNING("Skipping $ACL_FILE — no marker");
 }
 
 # ---------- Bridge bundle ----------
-INFO("Removing bridge bundle …");
+INFO("Removing bridge bundle and dir …");
 _safe_unlink($BUNDLE);
-if (-d $BRIDGE_DIR) {
-  _force_purge_dir($BRIDGE_DIR) or WARNING("Bridge dir still present: $BRIDGE_DIR");
-}
+_force_purge_dir($BRIDGE_DIR);
 
-# ---------- Remove role marker ----------
-INFO("Removing role marker (if present) …");
-if (-e $MASTER_MARKER) { _safe_unlink($MASTER_MARKER) } else { DEB("No marker at $MASTER_MARKER") }
+# ---------- Role marker ----------
+INFO("Removing role marker …");
+_safe_unlink($MASTER_MARKER) if -e $MASTER_MARKER;
 
-# ---------- Purge CA stores (default ON) ----------
+# ---------- PURGE CA (only if confirmed) ----------
 if ($PURGE_CA) {
-  INFO("Purging CA stores …");
-  _force_purge_dir($CA_PERSIST);
-  _force_purge_dir($ALT_CA_PERSIST);
-  for my $d ($CA_PERSIST,$ALT_CA_PERSIST) {
-    if (-e $d) { ERROR("CA directory still exists after purge: $d"); } else { OK("Verified CA removed: $d"); }
+
+  print "\n";
+  print "***************************************************************\n";
+  print " WARNING: You have requested --purge-ca\n";
+  print " This will DELETE the entire Certificate Authority!\n";
+  print " All existing clients will immediately lose trust.\n";
+  print " Every SIP/Bridge client must be reinstalled with a new bundle.\n";
+  print "***************************************************************\n";
+  print " Type YES to proceed: ";
+
+  chomp(my $ans = <STDIN>);
+  if ($ans ne 'YES') {
+    WARNING("CA purge cancelled by user.");
+  } 
+  else {
+    INFO("Purging CA stores …");
+    _force_purge_dir($CA_PERSIST);
+    _force_purge_dir($ALT_CA_PERSIST);
   }
-} else {
-  DEB("Skipping purge of CA stores (--no-ca supplied).");
+}
+else {
+  INFO("CA purge disabled — keeping CA stores.");
 }
 
-# ---------- Clean certs contents but keep directories (default ON) ----------
+# ---------- Clean cert contents ----------
 if ($CLEAN_CERT) {
-  INFO("Cleaning certs directories CONTENTS, keeping the directories …");
+  INFO("Cleaning cert directories contents …");
   _empty_dir_keep_root($CERTDIR);
   _empty_dir_keep_root($ALT_CERTDIR);
 } else {
-  DEB("Skipping clean of certs contents (--no-certs supplied).");
+  INFO("Skipping cert content cleanup (--no-certs).");
 }
 
-# ---------- Remove systemd unit files & reload daemon ----------
-INFO("Removing systemd unit files (if present) …");
+# ---------- Remove systemd unit files ----------
+INFO("Removing unit files …");
 for my $f (@UNIT_FILES) {
-  if (-e $f) { _safe_unlink($f); } else { DEB("Unit file not present: $f"); }
+  _safe_unlink($f) if -e $f;
 }
-INFO("Reloading systemd daemon …");
-_run('/bin/systemctl','daemon-reload') || WARNING("systemctl daemon-reload failed (continuing)");
-_run('/bin/systemctl','reset-failed')  || WARNING("systemctl reset-failed failed (continuing)");
+_run('/bin/systemctl','daemon-reload');
+_run('/bin/systemctl','reset-failed');
 
-# ========= Restart Mosquitto safely (with PID check) =========
-INFO("Restarting Mosquitto via mqtt-handler.pl ...");
+# ---------- Restart Mosquitto ----------
+INFO("Restarting Mosquitto via mqtt-handler.pl …");
+
 my $rc = system("REPLACELBHOMEDIR/sbin/mqtt-handler.pl action=restartgateway >/dev/null 2>&1");
 
 if ($rc == 0) {
-    # Wait a moment and verify Mosquitto process
     sleep 2;
     my $pid = `pgrep -x mosquitto 2>/dev/null`;
     chomp($pid);
     if ($pid) {
-        OK("Mosquitto restarted successfully (PID $pid).");
+        OK("Mosquitto restarted (PID $pid)");
     } else {
-        WARNING("Mosquitto restart command succeeded, but no running PID found.");
+        WARNING("Restart success but no PID found");
     }
 } else {
-    WARNING("Mosquitto restart failed with exit code $rc.");
+    WARNING("Mosquitto restart failed: code $rc");
 }
 
 OK("=== Uninstall finished (T2S Master) ===");
