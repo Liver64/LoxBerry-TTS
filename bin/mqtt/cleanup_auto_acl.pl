@@ -1,7 +1,13 @@
 #!/usr/bin/env perl
 # =============================================================================
-# cleanup_auto_acl.pl — Safe AUTO-ACL cleanup for T2S Master
-# Version: 2.1  (Expiry days support + stable marker parsing)
+# health_cleanup.pl — Safe cleanup for T2S Health.json
+# Version: 2.2 (Stable)
+#
+# - Removes old/expired entries
+# - Removes entries with missing ACL users
+# - Removes malformed entries
+# - Pretty-writes JSON
+# - Preserves valid entries
 # =============================================================================
 
 use strict;
@@ -11,152 +17,144 @@ binmode STDOUT, ":encoding(UTF-8)";
 
 use JSON::PP;
 use POSIX qw(strftime);
+use File::Copy qw(copy);
+use File::Basename;
 
 # -------------------------------------------------------------------------
 # CONFIG
 # -------------------------------------------------------------------------
-my $ACLFILE     = "/etc/mosquitto/tts-aclfile";
-my $HEALTHFILE  = "/dev/shm/text2speech/health.json";
+my $HEALTHFILE = "/dev/shm/text2speech/health.json";
+my $ACLFILE    = "/etc/mosquitto/tts-aclfile";
 
-# Number of days until a client is considered expired
-my $EXPIRY_DAYS = 10;    # <<<<<< HIER EINSTELLEN
+# Days until health entry is considered expired
+my $EXPIRY_DAYS = 10;   # << EDIT HERE IF NEEDED >>
 
-# Marker definitions
-my $BEGIN_MARK  = "### BEGIN AUTO-ACL ###";
-my $END_MARK    = "### END AUTO-ACL ###";
+my $expiry_seconds = $EXPIRY_DAYS * 24 * 3600;
+my $now = time();
 
 # -------------------------------------------------------------------------
 # Logging helper
 # -------------------------------------------------------------------------
-sub ts  { strftime("%Y-%m-%d %H:%M:%S", localtime) }
+sub ts   { strftime("%Y-%m-%d %H:%M:%S", localtime) }
 sub logp { my ($lvl,$msg)=@_; print sprintf("[%s] <%s> %s\n", ts(), $lvl, $msg); }
 
-# -------------------------------------------------------------------------
-# 1. Load health.json
-# -------------------------------------------------------------------------
-my %alive;
-my %age;
-
-if (-f $HEALTHFILE) {
-    eval {
-        my $txt = do { open my $fh, "<:encoding(UTF-8)", $HEALTHFILE or die; local $/; <$fh> };
-        my $h   = decode_json($txt);
-        if (ref $h eq 'HASH') {
-            foreach my $client (keys %$h) {
-                my $ts = $h->{$client}{timestamp} // 0;
-                $alive{$client} = 1;
-                $age{$client}   = $ts;
-            }
-        }
-    };
-}
-
-logp("INFO", "Loaded health entries: " . scalar(keys %alive));
+logp("INFO", "Starting Health Cleanup");
 logp("INFO", "Expiry threshold: $EXPIRY_DAYS days");
 
-my $now = time();
-my $expiry_seconds = $EXPIRY_DAYS * 86400;
-
 # -------------------------------------------------------------------------
-# 2. Load ACL file
+# 1. Load ACL and extract valid AUTO-ACL user keys
 # -------------------------------------------------------------------------
 if (!-f $ACLFILE) {
     logp("ERR","ACL file missing: $ACLFILE");
     exit 1;
 }
 
-my $acl = do {
-    open my $fh, "<:encoding(UTF-8)", $ACLFILE or die;
+my %acl_users;
+
+{
+    open my $fh, "<:encoding(UTF-8)", $ACLFILE or die "Cannot read $ACLFILE: $!";
+    while (<$fh>) {
+        if (/^\s*user\s+([A-Za-z0-9._-]+)/) {
+            $acl_users{$1} = 1;
+        }
+    }
+    close $fh;
+}
+
+logp("INFO", "Loaded ACL users: " . scalar(keys %acl_users));
+
+# -------------------------------------------------------------------------
+# 2. Load health.json
+# -------------------------------------------------------------------------
+if (!-f $HEALTHFILE) {
+    logp("WARN","Health file not found — nothing to clean");
+    exit 0;
+}
+
+my $json_text = do {
+    open my $fh, "<:encoding(UTF-8)", $HEALTHFILE or die;
     local $/;
     <$fh>;
 };
 
-# -------------------------------------------------------------------------
-# 3. Extract AUTO-ACL block
-# -------------------------------------------------------------------------
-my $begin_pos = index($acl, $BEGIN_MARK);
-my $end_pos   = index($acl, $END_MARK);
+my $health;
+eval { $health = decode_json($json_text); };
 
-if ($begin_pos < 0 || $end_pos < 0 || $end_pos <= $begin_pos) {
-    logp("ERR","AUTO-ACL markers not found or corrupt.");
+if ($@ || ref $health ne 'HASH') {
+    logp("ERR","Malformed health.json — abort");
     exit 1;
 }
 
-my $before = substr($acl, 0, $begin_pos + length($BEGIN_MARK));
-my $middle = substr($acl, $begin_pos + length($BEGIN_MARK),
-                    $end_pos - ($begin_pos + length($BEGIN_MARK)));
-my $after  = substr($acl, $end_pos);
-
-$middle =~ s/\r//g;
+logp("INFO", "Loaded health entries: ".scalar(keys %$health));
 
 # -------------------------------------------------------------------------
-# 4. Parse AUTO-ACL user blocks
+# 3. Validate & filter health entries
 # -------------------------------------------------------------------------
-my @lines = split(/\n/, $middle);
-my @new_middle;
-my $skip_mode = 0;
-my $current_user;
+my %new_health;
 
-foreach my $line (@lines) {
+foreach my $key (keys %$health) {
 
-    # Detect user block
-    if ($line =~ /^\s*user\s+([A-Za-z0-9._-]+)/) {
-        $current_user = $1;
+    my $entry = $health->{$key};
 
-        my $remove = 0;
-
-        # A) Not in health.json → remove
-        if (!$alive{$current_user}) {
-            logp("WARN", "Removing AUTO-ACL user '$current_user' (not in health.json)");
-            $remove = 1;
-        }
-
-        # B) Expired → remove
-        elsif ($age{$current_user} && ($now - $age{$current_user}) > $expiry_seconds) {
-            my $days_old = int(($now - $age{$current_user}) / 86400);
-            logp("WARN", "Removing AUTO-ACL user '$current_user' (age $days_old days > $EXPIRY_DAYS)");
-            $remove = 1;
-        }
-
-        if ($remove) {
-            $skip_mode = 1;
-            next;
-        }
-
-        # User is OK → keep user line
-        push @new_middle, $line;
-        $skip_mode = 0;
+    # -------- A) malformed entries --------
+    unless (ref $entry eq 'HASH') {
+        logp("WARN","Removing '$key' — entry is not a HASH");
+        next;
+    }
+    unless ($entry->{timestamp} && $entry->{client} && $entry->{hostname}) {
+        logp("WARN","Removing '$key' — missing fields");
         next;
     }
 
-    # If skipping, ignore block until next user
-    if ($skip_mode) {
+    # -------- B) expired entries --------
+    my $age = $now - $entry->{timestamp};
+    if ($age > $expiry_seconds) {
+        my $days_old = int($age/86400);
+        logp("WARN","Removing '$key' — $days_old days old (expired)");
         next;
     }
 
-    # Keep line
-    push @new_middle, $line;
+    # -------- C) ACL mismatch --------
+    unless ($acl_users{$key}) {
+        logp("WARN","Removing '$key' — no matching ACL user exists");
+        next;
+    }
+
+    # -------- D) Valid entry --------
+    $new_health{$key} = $entry;
 }
 
-my $clean_middle = join("\n", @new_middle);
-$clean_middle =~ s/\n+/\n/sg;
+logp("INFO", "Remaining valid entries: ".scalar(keys %new_health));
 
 # -------------------------------------------------------------------------
-# 5. Write back ACL
+# 4. Sort entries (newest first)
 # -------------------------------------------------------------------------
-my $new_acl = $before . "\n" . $clean_middle . "\n" . $after;
+my @sorted_keys = sort {
+    $new_health{$b}{timestamp} <=> $new_health{$a}{timestamp}
+} keys %new_health;
 
-open my $fhw, ">:encoding(UTF-8)", $ACLFILE or die "Cannot write $ACLFILE: $!";
-print $fhw $new_acl;
+my %sorted_health;
+foreach my $k (@sorted_keys) {
+    $sorted_health{$k} = $new_health{$k};
+}
+
+# -------------------------------------------------------------------------
+# 5. Backup original file
+# -------------------------------------------------------------------------
+my $backup = $HEALTHFILE.".bak";
+copy($HEALTHFILE, $backup);
+logp("OK","Backup saved: $backup");
+
+# -------------------------------------------------------------------------
+# 6. Write cleaned health.json
+# -------------------------------------------------------------------------
+my $json_out = JSON::PP->new->utf8->pretty->canonical->encode(\%sorted_health);
+
+open my $fhw, ">:encoding(UTF-8)", $HEALTHFILE or die "Cannot write $HEALTHFILE: $!";
+print $fhw $json_out;
 close $fhw;
 
-logp("OK", "Cleanup finished");
-
-# -------------------------------------------------------------------------
-# 6. Reload Mosquitto
-# -------------------------------------------------------------------------
-system("systemctl reload mosquitto >/dev/null 2>&1") == 0
-    ? logp("OK","Mosquitto reloaded")
-    : logp("WARN","Mosquitto reload failed");
+logp("OK","Health cleanup completed");
+logp("OK","Health.json rewritten successfully");
 
 exit 0;
