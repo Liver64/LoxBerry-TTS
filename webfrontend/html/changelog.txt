@@ -39,8 +39,12 @@
  1.6.1		[Bugfix] Voice Engines VoiceRSS gefixt
 			[Bugfix] kleinere Optimierungen hinsichtlich Performance
 			[Enhancement] Multilingualität (NL, IT, CZ, FR, EN, DE)
-			[Enhancement] Kann auch auf VM installiert werden
+			[Enhancement] Kann auch auf VM installiert werden und ist VLAN kompatibel
 			[Enhancement] Anpassung (Reduzierung) der Jingle Lautstärke über UI
 			[Enhancement] Entwickler Informationen zur Nutzung des Interface bereitgestellt inkl. Beispieldateien zur Nutzung
 			[Enhancement] Die function Calls sind auch über das Interface ausführbar
 			[Enhancement] technisches Logging in RAM ausgelagert
+			[Bugfix] Google Cloud korrigiert
+			[Bugfix] Uninstall optimiert (keep CA)
+			[Enhancement] Auto Erkennung Bridge User (per Handshake)
+			

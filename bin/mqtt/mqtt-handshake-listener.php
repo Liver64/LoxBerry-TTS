@@ -4,16 +4,19 @@
  * mqtt-handshake-listener.php – Permanent MQTT listener for handshake requests
  * Text2Speech (T2S) Master / LoxBerry environment
  *
- * Version: 2.1
+ * Version: 2.4
  * - FULL AUTO-ACL MARKER SUPPORT
  * - Inserts between ### BEGIN AUTO-ACL ### and ### END AUTO-ACL ###
  * - Duplicate detection
  * - Clean logging (RAM + symlink)
+ * - QoS 1 subscribe for robust delivery
+ * - Auto-Reconnect after mosquitto reloads
+ * - ACL-SYNC FULL (keine Desyncs mehr zwischen health.json und ACL)
  */
 
-require_once "/opt/loxberry/libs/phplib/loxberry_system.php";
-require_once "/opt/loxberry/libs/phplib/loxberry_io.php";
-require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
+require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
+require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_io.php";
+require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
 
 use Bluerhinos\phpMQTT;
 
@@ -31,7 +34,7 @@ const HANDSHAKE_DEBUG = false;
  * Logging (RAM + Symlink)
  * ===================================================== */
 $ramlog = "/dev/shm/text2speech/handshake-listener.log";
-$stdlog = "/opt/loxberry/log/plugins/text2speech/handshake-listener.log";
+$stdlog = "REPLACELBHOMEDIR/log/plugins/text2speech/handshake-listener.log";
 
 if (!is_dir(dirname($ramlog))) {
     mkdir(dirname($ramlog), 0775, true);
@@ -69,7 +72,6 @@ if (property_exists($mqtt, 'debug')) {
     $mqtt->debug = false;
 }
 
-/* Connect loop */
 logmsg("INFO", "Starting MQTT Handshake Listener …");
 logmsg("INFO", "Connecting to $host:$port");
 
@@ -87,13 +89,13 @@ function get_acl_text(): string {
 }
 
 function acl_contains_user(string $acl, string $userBlockId): bool {
-    return strpos($acl, "user $userBlockId") !== false;
+    return preg_match('/^user\s+' . preg_quote($userBlockId, '/') . '\s*$/m', $acl) === 1;
 }
 
 function build_acl_block(string $client, string $hostname): string {
     return
 "# Auto-added SIP Bridge ($hostname)
-user {$client}-{$hostname}
+user {$client}
 topic write tts-publish/# 
 topic read  tts-subscribe/# 
 topic write tts-subscribe/# 
@@ -103,7 +105,6 @@ topic read  tts-publish/#
 }
 
 function insert_into_marker(string $acl, string $block): string {
-
     $begin = "### BEGIN AUTO-ACL ###";
     $end   = "### END AUTO-ACL ###";
 
@@ -111,24 +112,14 @@ function insert_into_marker(string $acl, string $block): string {
     $endPos   = strpos($acl, $end);
 
     if ($startPos === false || $endPos === false) {
-        logmsg("ERROR", "AUTO-ACL markers not found in ACL file!");
+        logmsg("ERROR", "AUTO-ACL markers not found!");
         return $acl;
     }
 
-    // Bereich: vor dem Markerblock
     $before = substr($acl, 0, $startPos + strlen($begin));
+    $middle = substr($acl, $startPos + strlen($begin), $endPos - ($startPos + strlen($begin)));
+    $after  = substr($acl, $endPos);
 
-    // Bereich: der Inhalt NACH dem Begin-Marker, VOR dem End-Marker
-    $middle = substr(
-        $acl,
-        $startPos + strlen($begin),
-        $endPos - ($startPos + strlen($begin))
-    );
-
-    // Bereich: inklusive dem End-Marker und alles dahinter
-    $after = substr($acl, $endPos);
-
-    // Neues ACL zusammenbauen
     return
         rtrim($before) . "\n" .
         rtrim($middle) . "\n" .
@@ -136,16 +127,35 @@ function insert_into_marker(string $acl, string $block): string {
         $after;
 }
 
-
 function write_aclfile(string $content): void {
-    $bytes = @file_put_contents(ACLFILE, $content);
-    if ($bytes === false) {
-        logmsg("ERROR", "Failed to write ACL file " . ACLFILE . " – check file permissions (user loxberry).");
-        return;
+    $ok = @file_put_contents(ACLFILE, $content);
+    if ($ok === false) {
+        logmsg("ERROR", "Could not write ACL file (permissions?)");
     }
     @chmod(ACLFILE, 0644);
 }
 
+/* =====================================================
+ * ACL-Sync: ensures that for each health entry, ACL exists
+ * ===================================================== */
+function acl_sync_if_missing(string $client, string $hostname): void {
+
+    $acl = get_acl_text();
+    $blockUser = "{$client}";
+
+    if (acl_contains_user($acl, $blockUser)) {
+        return; // nothing to fix
+    }
+
+    logmsg("WARN", "ACL-SYNC: Missing ACL block for [$blockUser] — creating now.");
+
+    $block = build_acl_block($client, $hostname);
+    $newAcl = insert_into_marker($acl, $block);
+    write_aclfile($newAcl);
+
+    system("sudo systemctl reload mosquitto");
+    logmsg("OK", "ACL-SYNC: Block added + Mosquitto reloaded");
+}
 
 /* =====================================================
  * Callback for incoming handshake
@@ -166,28 +176,22 @@ $callback = function (string $topic, string $msg) use ($mqtt) {
 
     /* Send response */
     $replyTopic = "tts-handshake/response/$client";
-    $response = [
+    $resp = [
         'status'    => 'ok',
         'server'    => gethostname(),
         'timestamp' => date('c'),
         'corr'      => $corr,
     ];
-
-    ob_start();
-    $mqtt->publish($replyTopic, json_encode($response), 1);
-    ob_end_clean();
-
+    $mqtt->publish($replyTopic, json_encode($resp), 1);
     logmsg("OK", "Response sent corr=$corr");
 
-    /* ---------------------------------------------------------
-     * AUTO-ACL Handling
-     * --------------------------------------------------------- */
+    /* ====== AUTO-ACL INSERT (if new) ====== */
     $acl = get_acl_text();
-    $blockUser = "{$client}-{$hostname}";
+    $blockUser = "{$client}";
 
-    if (acl_contains_user($acl, $blockUser)) {
-        logmsg("INFO", "Auto-ACL for [$blockUser] already exists");
-    } else {
+    $inserted = false;
+
+    if (!acl_contains_user($acl, $blockUser)) {
         logmsg("INFO", "Auto-ACL inserting [$blockUser] ($hostname)");
 
         $block = build_acl_block($client, $hostname);
@@ -196,12 +200,12 @@ $callback = function (string $topic, string $msg) use ($mqtt) {
         write_aclfile($newAcl);
         logmsg("OK", "Auto-ACL entry added for [$blockUser]");
 
-        /* reload mosquitto */
         system("sudo systemctl reload mosquitto");
-        logmsg("OK", "Mosquitto reloaded");
+        logmsg("OK", "Mosquitto reloaded (new ACL)");
+        $inserted = true;
     }
 
-    /* Update health.json */
+    /* ====== HEALTH UPDATE ====== */
     $healthFile = "/dev/shm/text2speech/health.json";
     $health = [];
 
@@ -210,7 +214,7 @@ $callback = function (string $topic, string $msg) use ($mqtt) {
         if (is_array($tmp)) $health = $tmp;
     }
 
-    $health["{$client}-{$hostname}"] = [
+    $health[$blockUser] = [
         'client'    => $client,
         'hostname'  => $hostname,
         'corr'      => $corr,
@@ -221,23 +225,29 @@ $callback = function (string $topic, string $msg) use ($mqtt) {
 
     file_put_contents($healthFile, json_encode($health, JSON_PRETTY_PRINT));
     chmod($healthFile, 0664);
-    logmsg("INFO", "Health updated for [$client]");
+    logmsg("INFO", "Health updated for [$blockUser]");
+
+    /* ====== ACL-SYNC (FIX MISSING ACL FOR EXISTING HEALTH) ====== */
+    if (!$inserted) {
+        acl_sync_if_missing($client, $hostname);
+    }
 };
 
 /* =====================================================
- * Subscribe and loop forever
+ * Subscribe & Loop
  * ===================================================== */
-$mqtt->subscribe([ HANDSHAKE_TOPIC => ['qos' => 0, 'function' => $callback] ]);
-logmsg("INFO", "Subscribed to " . HANDSHAKE_TOPIC);
+$mqtt->subscribe([ HANDSHAKE_TOPIC => ['qos' => 1, 'function' => $callback] ]);
+logmsg("INFO", "Subscribed to " . HANDSHAKE_TOPIC . " with QoS=1");
 
 while (true) {
     if (!$mqtt->proc()) {
         logmsg("WARN", "MQTT lost — reconnecting …");
         while (!$mqtt->connect(true, NULL, $user, $pass)) {
+            logmsg("WARN", "Reconnect failed — retry in 5s");
             sleep(5);
         }
-        $mqtt->subscribe([ HANDSHAKE_TOPIC => ['qos' => 0, 'function' => $callback] ]);
-        logmsg("OK", "Reconnected");
+        $mqtt->subscribe([ HANDSHAKE_TOPIC => ['qos' => 1, 'function' => $callback] ]);
+        logmsg("OK", "Reconnected & resubscribed");
     }
 
     usleep(20000);

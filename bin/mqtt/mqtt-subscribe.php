@@ -17,8 +17,8 @@ error_reporting(E_ALL);
 /* =======================
  * Grundkonfiguration
  * ======================= */
-$logfile            = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt.log";
-$responseTopic      = 'tts-subscribe';   // Rückkanal: Handler-Antworten (Default)
+$logfile       = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt.log";
+$responseTopic = 'tts-subscribe';   // Rückkanal: Handler-Antworten (Default)
 
 /* LoxBerry Logging (Datei für allgemeine Interface-Logs) */
 $params = [
@@ -30,8 +30,8 @@ $params = [
 $log = LBLog::newLog($params);
 
 /* Globales Logging für MQTT-Status (eigenes, optionales Logfile) */
-$enableLogMsg 			= false; // true aktiviert zusätzlich $logfile-Ausgaben
-const HANDSHAKE_DEBUG   = false; // ture aktiviert zusätzlich Loxberry Logging
+$enableLogMsg        = false; // true aktiviert zusätzlich $logfile-Ausgaben
+const HANDSHAKE_DEBUG = false; // true aktiviert zusätzlich Loxberry Logging
 
 umask(0002); // Dateien entstehen als 664, Ordner als 775
 
@@ -139,8 +139,8 @@ $expectedSchema = [
         // optional, nur validieren:
         "client"   => ["type" => "string"],
         "instance" => ["type" => "string"],
-        "corr"     => ["type" => "string"],
-        "reply_to" => ["type" => "string"],
+        "corr"     => ["type" => "string"],   // weiterhin erlaubt, aber nicht mehr genutzt
+        "reply_to" => ["type" => "string"],   // Payload kann es weiterhin setzen
 
         // Funktionsfeld
         "function" => ["type" => "string"]
@@ -199,8 +199,8 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
     }
 
     // === Neue Regel: text ODER function ist Pflicht ===
-    $hasTextRaw     = array_key_exists('text', $data) ? trim((string)$data['text']) : '';
-    $hasFuncRaw     = array_key_exists('function', $data) ? trim((string)$data['function']) : '';
+    $hasTextRaw = array_key_exists('text', $data)      ? trim((string)$data['text'])      : '';
+    $hasFuncRaw = array_key_exists('function', $data)  ? trim((string)$data['function'])  : '';
 
     $hasText     = $hasTextRaw !== '';
     $hasFunction = $hasFuncRaw !== '';
@@ -221,21 +221,21 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
 
     // === Bestehende Feld-Typprüfung ===
     $invalid = [];
-	foreach ($data as $key => $value) {
-		$def = $expectedSchema['properties'][$key] ?? null;
-		if (!$def) continue;
-		if (!validate_type($value, $def['type'])) {
-			$invalid[$key] = "expected " . $def['type'];
-		}
-	}
-	if (!empty($invalid)) {
-		logmsg("ERROR", ['Invalid types', 'invalid'=>$invalid]);
-		LOGERR("mqtt-subscribe.php: Invalid types: " . json_encode($invalid));
-		return sendMqtt($mqtt, $responseTopic, "Invalid types", [
-			'invalid'=>$invalid,
-			'original'=>$data
-		]);
-	}
+    foreach ($data as $key => $value) {
+        $def = $expectedSchema['properties'][$key] ?? null;
+        if (!$def) continue;
+        if (!validate_type($value, $def['type'])) {
+            $invalid[$key] = "expected " . $def['type'];
+        }
+    }
+    if (!empty($invalid)) {
+        logmsg("ERROR", ['Invalid types', 'invalid'=>$invalid]);
+        LOGERR("mqtt-subscribe.php: Invalid types: " . json_encode($invalid));
+        return sendMqtt($mqtt, $responseTopic, "Invalid types", [
+            'invalid'=>$invalid,
+            'original'=>$data
+        ]);
+    }
 
     if (!setInterfaceMarker()) {
         LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after OK response");
@@ -338,7 +338,7 @@ $handshakeCb = function (string $topic, string $msg) use ($mqtt) {
         'status'    => 'ok',
         'server'    => (gethostname() ?: 'unknown'),
         'timestamp' => date('c'),
-        'corr'      => $corr,
+        'corr'      => $corr,  // reine Payload-Info, Topic bleibt fix
     ];
 
     $mqtt->publish($replyTopic, json_encode($resp, JSON_UNESCAPED_UNICODE), 0);
@@ -351,8 +351,8 @@ $handshakeCb = function (string $topic, string $msg) use ($mqtt) {
 
 /* Einmalig abonnieren – TTS + Handshake */
 $mqtt->subscribe([
-    'tts-handshake/request/#' 	=> ['qos'=>0,'function'=>$handshakeCb],
-    $subscribeTopic         	=> ['qos'=>0,'function'=>$callback],
+    'tts-handshake/request/#' => ['qos'=>0,'function'=>$handshakeCb],
+    $subscribeTopic           => ['qos'=>0,'function'=>$callback],
 ]);
 
 /* Event-Loop + Reconnect-Handling */
@@ -415,16 +415,17 @@ function createMessage(array $data) {
 
     global $config, $t2s_param, $mqtt, $responseTopic, $logArray;
 
-    // Antwort-Topic ausschließlich aus Payload ableiten (kein Subscribe hier!)
+    // Antwort-Topic:
+    // 1. Wenn reply_to gesetzt ist → exakt verwenden
+    // 2. Sonst: festes Schema tts-subscribe/<client>
     if (!empty($data['reply_to']) && is_string($data['reply_to'])) {
         $responseTopic = $data['reply_to'];
     } else {
-        $client   = isset($data['client'])   && is_string($data['client'])   ? $data['client']   : 'text2sip';
-        $instance = isset($data['instance']) && is_string($data['instance']) ? $data['instance'] : 'default';
-        $corr     = isset($data['corr']) ? (string)$data['corr'] : '';
-        $responseTopic = $corr !== ''
-            ? "tts-subscribe/$client/$instance/$corr"
-            : "tts-subscribe";
+        $client = isset($data['client']) && is_string($data['client'])
+            ? $data['client']
+            : 'text2sip';
+        $client = preg_replace('/[^A-Za-z0-9._-]/', '', $client);
+        $responseTopic = "tts-subscribe/$client";
     }
 
     // Pfade/Parameter
@@ -520,20 +521,15 @@ function createMessage(array $data) {
             'cifsmp3interface'  => $config['SYSTEM']['cifsmp3interface'] ?? null,
             'timestamp'         => date("H:i:s"),
 
-            // Korrelation spiegeln (keine Subscribe-Logik nötig)
-            'corr'              => isset($data['corr']) ? (string)$data['corr'] : null,
-
             // Alternatives Interfaces-Objekt:
             'interfaces'        => [
                 'httpinterface'    => $httpiface,
                 'httpmp3interface' => $httpmp3iface,
             ],
 
-            // Original-Felder zurückspiegeln (optional hilfreich fürs Matching)
+            // Original-Felder zurückspiegeln (ohne corr / reply_to)
             'original'          => [
-                'corr'     => isset($data['corr']) ? (string)$data['corr'] : null,
-                'reply_to' => isset($data['reply_to']) ? (string)$data['reply_to'] : null,
-                'client'   => isset($data['client']) ? (string)$data['client'] : null,
+                'client'   => isset($data['client'])   ? (string)$data['client']   : null,
                 'instance' => isset($data['instance']) ? (string)$data['instance'] : null,
             ],
         ];
