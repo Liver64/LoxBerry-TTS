@@ -44,7 +44,7 @@
 			[Enhancement] Entwickler Informationen zur Nutzung des Interface bereitgestellt inkl. Beispieldateien zur Nutzung
 			[Enhancement] Die function Calls sind auch über das Interface ausführbar
 			[Enhancement] technisches Logging in RAM ausgelagert
-			[Bugfix] Google Cloud korrigiert
+ 1.6.2		[Bugfix] Google Cloud korrigiert
 			[Bugfix] Uninstall optimiert (keep CA)
-			[Enhancement] Auto Erkennung Bridge User (per Handshake)
+			[Enhancement] Auto Erkennung Bridge User (per Handshake und Auto-ACL)
 			
