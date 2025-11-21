@@ -7,45 +7,106 @@
 # - Copy uninstall helper
 # - Ensure proper log directory ownership for loxberry
 
-set -euo pipefail
+set -eu pipefail
 
-# ===== Piper bootstrap =====
 INST=false
-piper="/usr/local/bin/piper/piper"
 
-if [ ! -e "$piper" ]; then
-	if [ -e "$LBSCONFIG/is_raspberry.cfg" ]; then
-		echo "<INFO> The hardware architecture is RaspBerry"
-		wget -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz
-		cd /usr/local/bin
-		tar -xvzf piper_linux_aarch64.tar.gz
-		INST=true
-		rm -f piper_linux_aarch64.tar.gz
-	fi
+install_piper() {
+    # LBSCONFIG absichern (System-Config-Verzeichnis)
+    local LBSCONFIG_LOCAL="${LBSCONFIG:-/opt/loxberry/config/system}"
+    local piper_root="/usr/local/bin/piper"
+    local piper_bin="$piper_root/piper"
+    local expected_arch=""
+    local url=""
+    local archive=""
 
-	if [ -e "$LBSCONFIG/is_x86.cfg" ]; then
-		echo "<INFO> The hardware architecture is x86"
-		wget -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz
-		cd /usr/local/bin
-		tar -xvzf piper_linux_x86_64.tar.gz
-		rm -f piper_linux_x86_64.tar.gz
-	fi
+    # ---- Architektur ermitteln ----
+    if [ -e "$LBSCONFIG_LOCAL/is_raspberry.cfg" ]; then
+        expected_arch="aarch64"
+        echo "<INFO> Piper install: Detected Raspberry platform (aarch64)."
+    elif [ -e "$LBSCONFIG_LOCAL/is_x64.cfg" ]; then
+        expected_arch="x86_64"
+        echo "<INFO> Piper install: Detected x64 platform (x86_64)."
+    else
+        # Fallback über uname -m
+        local uname_arch
+        uname_arch="$(uname -m)"
+        case "$uname_arch" in
+            x86_64)
+                expected_arch="x86_64"
+                echo "<INFO> Piper install: Fallback detected x86_64 via uname."
+                ;;
+            aarch64|arm64)
+                expected_arch="aarch64"
+                echo "<INFO> Piper install: Fallback detected aarch64 via uname."
+                ;;
+            *)
+                echo "<WARNING> Piper install: Unsupported architecture '$uname_arch' – skipping automatic Piper install."
+                return 0
+                ;;
+        esac
+    fi
 
-	if [ -e "$LBSCONFIG/is_x64.cfg" ]; then
-		echo "<INFO> The hardware architecture is x64"
-		if [ "$INST" != true ]; then
-			wget -P /usr/local/bin https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz
-			cd /usr/local/bin
-			tar -xvzf piper_linux_aarch64.tar.gz
-			rm -f piper_linux_aarch64.tar.gz
-		else
-			echo "<INFO> Piper TTS has already been installed upfront"
-		fi
-	fi
-else
-	echo "<INFO> Piper TTS is already installed, nothing to do..."
-	echo "<INFO> Symlink 'piper' is already available in /usr/bin"
-fi
+    # ---- Bereits existierendes Piper prüfen ----
+    if [ -x "$piper_bin" ]; then
+        local file_out current_arch
+        file_out="$(file -b "$piper_bin" || true)"
+
+        if echo "$file_out" | grep -qi "x86-64"; then
+            current_arch="x86_64"
+        elif echo "$file_out" | grep -qi "aarch64"; then
+            current_arch="aarch64"
+        else
+            current_arch="unknown"
+        fi
+
+        if [ "$current_arch" = "$expected_arch" ]; then
+            echo "<OK> Piper binary already present with matching architecture ($expected_arch) – nothing to do."
+            return 0
+        else
+            echo "<WARNING> Piper binary architecture mismatch (have: $current_arch, need: $expected_arch) – reinstalling Piper."
+            rm -rf "$piper_root"
+        fi
+    fi
+
+    # ---- Download-URL anhand der erwarteten Architektur setzen ----
+    case "$expected_arch" in
+        aarch64)
+            url="https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz"
+            archive="piper_linux_aarch64.tar.gz"
+            ;;
+        x86_64)
+            # Korrigierter x64-Buildname
+            url="https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz"
+            archive="piper_linux_x86_64.tar.gz"
+            ;;
+        *)
+            echo "<WARNING> Piper install: No download mapping for arch '$expected_arch'."
+            return 0
+            ;;
+    esac
+
+    echo "<INFO> Piper install: Downloading Piper for architecture $expected_arch ..."
+    mkdir -p /usr/local/bin
+    cd /usr/local/bin
+
+    if wget -q "$url" -O "$archive"; then
+        tar -xzf "$archive"
+        rm -f "$archive"
+
+        if [ -x "$piper_bin" ]; then
+            echo "<OK> Piper successfully installed at $piper_bin"
+            INST=true
+        else
+            echo "<ERROR> Piper archive extracted, but '$piper_bin' not found or not executable."
+        fi
+    else
+        echo "<ERROR> Piper download failed from $url"
+    fi
+}
+
+# ===== Aufruf gleich zu Beginn von postroot.sh =====
+install_piper
 
 sym="/usr/bin/piper"
 if [ ! -L "$sym" ]; then
