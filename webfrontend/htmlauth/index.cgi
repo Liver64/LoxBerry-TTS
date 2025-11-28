@@ -118,6 +118,10 @@ if (!defined $tcfg->{SYSTEM}->{usbcardno}) {
 if (!defined $tcfg->{TTS}->{jinglevolume}) {
 	$tcfg->{TTS}->{jinglevolume} = "0.3";
 }
+# define httphostinterface if not present
+if (!defined $tcfg->{SYSTEM}->{httphostinterface}) {
+	$tcfg->{SYSTEM}->{httphostinterface} = "http://$lbhostname/plugins/$lbpplugindir/interfacedownload";
+}
 # copy global apikey to engine-apikey
 if (!defined $tcfg->{TTS}->{apikeys}) {
 	$tcfg->{TTS}->{apikeys}->{$tcfg->{TTS}->{t2s_engine}} = $tcfg->{TTS}->{apikey};
@@ -642,7 +646,11 @@ sub save
 {
 	LOGTITLE "Save parameters";
 	LOGDEB "Filling config with parameters";
-
+	
+	# Alte TTS-Werte sichern, bevor wir sie überschreiben
+    my %old_tts = %{ $tcfg->{TTS}    // {} };
+    my %old_sys = %{ $tcfg->{SYSTEM} // {} };   # optional, falls du später SYSTEM vergleichen willst
+	
 	# Write configuration file(s)
 	$tcfg->{TTS}->{t2s_engine} 									= "$R::t2s_engine";
 	$tcfg->{TTS}->{messageLang} 								= "$R::t2slang";
@@ -670,6 +678,7 @@ sub save
 	#$tcfg->{SYSTEM}->{interfacepath} 							= $rampath;
 	#$tcfg->{SYSTEM}->{httpinterface} 							= "http://$lbhostname/plugins/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{httpinterface} 							= "http://$lbip/plugins/$lbpplugindir/interfacedownload";
+	$tcfg->{SYSTEM}->{httphostinterface} 						= "http://$lbhostname/plugins/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{cifsinterface} 							= "//$lbhostname/plugindata/$lbpplugindir/interfacedownload";
 	$tcfg->{SYSTEM}->{httpmp3interface} 						= "http://$lbhostname/plugindata/$lbpplugindir/mp3";
 	$tcfg->{SYSTEM}->{cifsmp3interface} 						= "//$lbhostname/plugindata/$lbpplugindir/mp3";
@@ -683,7 +692,6 @@ sub save
 		$tcfg->{SYSTEM}->{usbdevice}								= "";
 		$tcfg->{SYSTEM}->{usbcardno} 								= "";
 	}
-	
 	
 	LOGINF "Writing configuration file";
 	$jsonobj->write();
@@ -706,16 +714,58 @@ sub save
 	system ("rm $lbphtmldir/interfacedownload");
 	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbpdatadir/interfacedownload");
 	system ("ln -s $R::STORAGEPATH/$ttsfolder $lbphtmldir/interfacedownload");
-	LOGOK "All folders and symlinks created successfully.";
+	    LOGOK "All folders and symlinks created successfully.";
 
-	if ($copy) {
-		LOGINF "Copy existing mp3 files from $lbpdatadir/$mp3folder to $R::STORAGEPATH/$mp3folder";
-		system ("cp -r $lbpdatadir/$mp3folder/* $R::STORAGEPATH/$mp3folder");
-	}
-	&print_save;
-	exit;
-	
+    if ($copy) {
+        LOGINF "Copy existing mp3 files from $lbpdatadir/$mp3folder to $R::STORAGEPATH/$mp3folder";
+        system ("cp -r $lbpdatadir/$mp3folder/* $R::STORAGEPATH/$mp3folder");
+    }
+
+    # ----------------------------------------------------------
+    # Prüfen, ob relevante TTS-Parameter geändert wurden
+    # ----------------------------------------------------------
+    my $restart_needed = 0;
+
+    my @tts_keys_to_check = qw(
+        t2s_engine
+        messageLang
+        apikey
+        secretkey
+        voice
+        regionms
+        volume
+    );
+
+    foreach my $key (@tts_keys_to_check) {
+        my $old = defined $old_tts{$key}              ? $old_tts{$key}              : '';
+        my $new = defined $tcfg->{TTS}->{$key}        ? $tcfg->{TTS}->{$key}        : '';
+
+        if ($old ne $new) {
+            LOGDEB "mqtt-service-tts restart required: TTS.$key changed from '$old' to '$new'";
+            $restart_needed = 1;
+            last;
+        }
+    }
+
+    if ($restart_needed) {
+        LOGINF "Detected TTS parameter changes – restarting mqtt-service-tts";
+
+        my $cmd = "/usr/bin/sudo /bin/systemctl restart mqtt-service-tts 2>&1";
+        LOGDEB "Executing: $cmd";
+
+        my $rc = system($cmd);
+
+        if ($rc == 0) {
+            LOGOK "mqtt-service-tts has been restarted successfully.";
+        } else {
+            my $exit_code = $? >> 8;
+            LOGERR "Restart of mqtt-service-tts failed (exit code $exit_code). Please check sudoers and restart manually if required.";
+        }
+    } 
+    &print_save;
+    exit;
 }
+
 
 
 #####################################################

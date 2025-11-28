@@ -10,7 +10,7 @@
 # Will be executed as user "loxberry".
 
 current_hour=$(date +%H)
-if [[ "$current_hour" =~ ^(00|08|16)$ ]]; then
+if [[ "$current_hour" =~ ^(00|04|08|12|16)$ ]]; then
     /usr/bin/php /opt/loxberry/bin/plugins/text2speech/cleanup.php >/dev/null 2>&1
 fi
 

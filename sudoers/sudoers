@@ -7,4 +7,6 @@ loxberry ALL=(root) NOPASSWD: /usr/bin/tee -a /etc/mosquitto/tts-aclfile
 loxberry ALL=(root) NOPASSWD: /bin/cp /etc/mosquitto/tts-aclfile
 loxberry ALL=(root) NOPASSWD: /bin/chmod /etc/mosquitto/tts-aclfile
 loxberry ALL=(root) NOPASSWD: /usr/bin/systemctl reload mosquitto
+loxberry ALL=(root) NOPASSWD: /bin/systemctl restart mqtt-service-tts
+
 

@@ -2,11 +2,11 @@
 <?php
 /* mqtt-subscribe.php – TTS Handler (ohne MQTT-Config Responder) */
 
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_io.php";
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_log.php";
-require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php";
-require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_system.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_io.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_log.php";
+require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/helper.php";
+require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
 
 use Bluerhinos\phpMQTT;
 
@@ -17,20 +17,20 @@ error_reporting(E_ALL);
 /* =======================
  * Grundkonfiguration
  * ======================= */
-$logfile       = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt.log";
+$logfile       = "/opt/loxberry/log/plugins/text2speech/mqtt.log";
 $responseTopic = 'tts-subscribe';   // Rückkanal: Handler-Antworten (Default)
 
 /* LoxBerry Logging (Datei für allgemeine Interface-Logs) */
 $params = [
     "name"    => "TTS-Interface",
-    "filename"=> "REPLACELBHOMEDIR/log/plugins/text2speech/interface.log",
+    "filename"=> "/opt/loxberry/log/plugins/text2speech/interface.log",
     "append"  => 1,
     "addtime" => 1,
 ];
 $log = LBLog::newLog($params);
 
 /* Globales Logging für MQTT-Status (eigenes, optionales Logfile) */
-$enableLogMsg        = false; // true aktiviert zusätzlich $logfile-Ausgaben
+$enableLogMsg        = true; // true aktiviert zusätzlich $logfile-Ausgaben
 const HANDSHAKE_DEBUG = false; // true aktiviert zusätzlich Loxberry Logging
 
 umask(0002); // Dateien entstehen als 664, Ordner als 775
@@ -256,30 +256,30 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
         }
 
         $result = false;
-        require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php';
+        require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/bin/helper.php';
         switch ($func) {
             case 'weather':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/weather-to-speech.php';
                 $result = w2s();
                 break;
             case 'clock':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/clock-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/clock-to-speech.php';
                 $result = c2s();
                 break;
             case 'warning':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-warning-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/weather-warning-to-speech.php';
                 $result = ww2s();
                 break;
             case 'pollen':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/pollen-to-speach.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/pollen-to-speach.php';
                 $result = p2s();
                 break;
             case 'abfall':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/waste-calendar-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/waste-calendar-to-speech.php';
                 $result = muellkalender();
                 break;
             case 'distance':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/time-to-destination-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/time-to-destination-speech.php';
                 $result = tt2t();
                 break;
             default:
@@ -504,8 +504,9 @@ function createMessage(array $data) {
     if ($result) {
         logmsg("OK", $messresponse . ": $mp3filename");
 
-        $httpiface    = $config['SYSTEM']['httpinterface']    ?? null;
-        $httpmp3iface = $config['SYSTEM']['httpmp3interface'] ?? null;
+        $httpiface    	= $config['SYSTEM']['httpinterface']    ?? null;
+		$httphostiface	= $config['SYSTEM']['httphostinterface']    ?? null;
+        $httpmp3iface 	= $config['SYSTEM']['httpmp3interface'] ?? null;
 
         $finalResponse = [
             'status'            => 'done',
@@ -514,6 +515,7 @@ function createMessage(array $data) {
 
             // Legacy/top-level:
             'httpinterface'     => $httpiface,
+			'httphostinterface' => $httphostiface,
             'httpmp3interface'  => $httpmp3iface,
             'cifsinterface'     => $config['SYSTEM']['cifsinterface']    ?? null,
             'ttspath'           => $config['SYSTEM']['ttspath']          ?? null,
@@ -523,8 +525,9 @@ function createMessage(array $data) {
 
             // Alternatives Interfaces-Objekt:
             'interfaces'        => [
-                'httpinterface'    => $httpiface,
-                'httpmp3interface' => $httpmp3iface,
+                'httpinterface'     => $httpiface,
+				'httphostinterface' => $httphostiface,
+                'httpmp3interface'  => $httpmp3iface,
             ],
 
             // Original-Felder zurückspiegeln (ohne corr / reply_to)
