@@ -7,76 +7,71 @@
 # - Copy uninstall helper
 # - Ensure proper log directory ownership for loxberry
 
-set -eu pipefail
+set -euo pipefail
 
 INST=false
 
 install_piper() {
     # LBSCONFIG absichern (System-Config-Verzeichnis)
-    local LBSCONFIG_LOCAL="${LBSCONFIG:-/opt/loxberry/config/system}"
+    local LBSCONFIG_LOCAL="${LBSCONFIG:-REPLACELBHOMEDIR/config/system}"
     local piper_root="/usr/local/bin/piper"
     local piper_bin="$piper_root/piper"
     local expected_arch=""
     local url=""
     local archive=""
 
-    # ---- Architektur ermitteln ----
-    if [ -e "$LBSCONFIG_LOCAL/is_raspberry.cfg" ]; then
-        expected_arch="aarch64"
-        echo "<INFO> Piper install: Detected Raspberry platform (aarch64)."
-    elif [ -e "$LBSCONFIG_LOCAL/is_x64.cfg" ]; then
-        expected_arch="x86_64"
-        echo "<INFO> Piper install: Detected x64 platform (x86_64)."
-    else
-        # Fallback über uname -m
-        local uname_arch
-        uname_arch="$(uname -m)"
-        case "$uname_arch" in
-            x86_64)
-                expected_arch="x86_64"
-                echo "<INFO> Piper install: Fallback detected x86_64 via uname."
-                ;;
-            aarch64|arm64)
+    # ---- Architektur ermitteln (uname zuerst, Marker nur Fallback) ----
+    local uname_arch
+    uname_arch="$(uname -m)"
+
+    case "$uname_arch" in
+        armv7l)
+            expected_arch="armv7l"
+            echo "<INFO> Piper install: Detected armv7l via uname."
+            ;;
+        aarch64|arm64|armv8*)
+            expected_arch="aarch64"
+            echo "<INFO> Piper install: Detected aarch64 via uname."
+            ;;
+        x86_64|amd64)
+            expected_arch="x86_64"
+            echo "<INFO> Piper install: Detected x86_64 via uname."
+            ;;
+        *)
+            echo "<WARNING> Piper install: Unknown architecture '$uname_arch' – trying LoxBerry markers..."
+            if [ -e "$LBSCONFIG_LOCAL/is_arch_armv7l.cfg" ]; then
+                expected_arch="armv7l"
+                echo "<INFO> Piper install: LB marker armv7l."
+            elif [ -e "$LBSCONFIG_LOCAL/is_arch_aarch64.cfg" ] || [ -e "$LBSCONFIG_LOCAL/is_raspberry.cfg" ]; then
                 expected_arch="aarch64"
-                echo "<INFO> Piper install: Fallback detected aarch64 via uname."
-                ;;
-            *)
-                echo "<WARNING> Piper install: Unsupported architecture '$uname_arch' – skipping automatic Piper install."
+                echo "<INFO> Piper install: LB marker aarch64."
+            elif [ -e "$LBSCONFIG_LOCAL/is_x64.cfg" ] || [ -e "$LBSCONFIG_LOCAL/is_x86.cfg" ]; then
+                expected_arch="x86_64"
+                echo "<INFO> Piper install: LB marker x86_64."
+            else
+                echo "<WARNING> Piper install: Could not determine architecture – skipping automatic Piper install."
                 return 0
-                ;;
-        esac
-    fi
+            fi
+            ;;
+    esac
 
     # ---- Bereits existierendes Piper prüfen ----
     if [ -x "$piper_bin" ]; then
-        local file_out current_arch
-        file_out="$(file -b "$piper_bin" || true)"
-
-        if echo "$file_out" | grep -qi "x86-64"; then
-            current_arch="x86_64"
-        elif echo "$file_out" | grep -qi "aarch64"; then
-            current_arch="aarch64"
-        else
-            current_arch="unknown"
-        fi
-
-        if [ "$current_arch" = "$expected_arch" ]; then
-            echo "<OK> Piper binary already present with matching architecture ($expected_arch) – nothing to do."
-            return 0
-        else
-            echo "<WARNING> Piper binary architecture mismatch (have: $current_arch, need: $expected_arch) – reinstalling Piper."
-            rm -rf "$piper_root"
-        fi
+        echo "<OK> Piper binary already present at $piper_bin – nothing to do."
+        return 0
     fi
 
     # ---- Download-URL anhand der erwarteten Architektur setzen ----
     case "$expected_arch" in
+        armv7l)
+            url="https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_armv7l.tar.gz"
+            archive="piper_linux_armv7l.tar.gz"
+            ;;
         aarch64)
             url="https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz"
             archive="piper_linux_aarch64.tar.gz"
             ;;
         x86_64)
-            # Korrigierter x64-Buildname
             url="https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz"
             archive="piper_linux_x86_64.tar.gz"
             ;;
@@ -86,35 +81,55 @@ install_piper() {
             ;;
     esac
 
-    echo "<INFO> Piper install: Downloading Piper for architecture $expected_arch ..."
+    echo "<INFO> Piper install: Downloading Piper ($expected_arch) ..."
     mkdir -p /usr/local/bin
     cd /usr/local/bin
 
-    if wget -q "$url" -O "$archive"; then
-        tar -xzf "$archive"
-        rm -f "$archive"
+    # ---- Download mit Timeout/Retry (gegen "hängendes wget") ----
+    local tmp="${archive}.tmp"
+    if wget --timeout=20 --tries=3 --progress=dot:giga -O "$tmp" "$url"; then
+        mv -f "$tmp" "$archive"
+
+        if tar -xzf "$archive"; then
+            rm -f "$archive"
+        else
+            echo "<ERROR> Piper install: Extraction failed for $archive"
+            rm -f "$archive"
+            return 1
+        fi
 
         if [ -x "$piper_bin" ]; then
+            chmod +x "$piper_bin" || true
             echo "<OK> Piper successfully installed at $piper_bin"
             INST=true
         else
-            echo "<ERROR> Piper archive extracted, but '$piper_bin' not found or not executable."
+            echo "<ERROR> Piper install: Archive extracted, but '$piper_bin' not found or not executable."
+            return 1
         fi
     else
-        echo "<ERROR> Piper download failed from $url"
+        echo "<ERROR> Piper install: Download failed from $url"
+        rm -f "$tmp"
+        return 1
     fi
 }
 
 # ===== Aufruf gleich zu Beginn von postroot.sh =====
 install_piper
 
+# ---------------------------------------------------------
+# Symlink /usr/bin/piper (sicher)
+# ---------------------------------------------------------
 sym="/usr/bin/piper"
-if [ ! -L "$sym" ]; then
-	chmod +x /usr/local/bin/piper/piper || true
-	export PATH=/usr/local/bin/piper:$PATH
-	ln -s /usr/local/bin/piper/piper "$sym"
-	echo "<OK> Symlink 'piper' has been created in /usr/bin"
+
+if [ -e "$sym" ] && [ ! -L "$sym" ]; then
+    echo "<WARNING> /usr/bin/piper exists but is not a symlink – leaving it untouched."
+elif [ ! -L "$sym" ]; then
+    chmod +x /usr/local/bin/piper/piper || true
+    export PATH=/usr/local/bin/piper:$PATH
+    ln -s /usr/local/bin/piper/piper "$sym"
+    echo "<OK> Symlink 'piper' has been created in /usr/bin"
 fi
+
 
 # ===== T2S/Mosquitto bits =====
 ROLE_DIR="/etc/mosquitto/role"

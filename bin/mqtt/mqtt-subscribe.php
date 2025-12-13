@@ -2,11 +2,11 @@
 <?php
 /* mqtt-subscribe.php – TTS Handler (ohne MQTT-Config Responder) */
 
-require_once "/opt/loxberry/libs/phplib/loxberry_system.php";
-require_once "/opt/loxberry/libs/phplib/loxberry_io.php";
-require_once "/opt/loxberry/libs/phplib/loxberry_log.php";
-require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/helper.php";
-require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
+require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
+require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_io.php";
+require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_log.php";
+require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php";
+require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
 
 use Bluerhinos\phpMQTT;
 
@@ -17,13 +17,13 @@ error_reporting(E_ALL);
 /* =======================
  * Grundkonfiguration
  * ======================= */
-$logfile       = "/opt/loxberry/log/plugins/text2speech/mqtt.log";
+$logfile       = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt.log";
 $responseTopic = 'tts-subscribe';   // Rückkanal: Handler-Antworten (Default)
 
 /* LoxBerry Logging (Datei für allgemeine Interface-Logs) */
 $params = [
     "name"    => "TTS-Interface",
-    "filename"=> "/opt/loxberry/log/plugins/text2speech/interface.log",
+    "filename"=> "REPLACELBHOMEDIR/log/plugins/text2speech/interface.log",
     "append"  => 1,
     "addtime" => 1,
 ];
@@ -256,30 +256,30 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
         }
 
         $result = false;
-        require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/bin/helper.php';
+        require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php';
         switch ($func) {
             case 'weather':
-                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/weather-to-speech.php';
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-to-speech.php';
                 $result = w2s();
                 break;
             case 'clock':
-                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/clock-to-speech.php';
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/clock-to-speech.php';
                 $result = c2s();
                 break;
             case 'warning':
-                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/weather-warning-to-speech.php';
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-warning-to-speech.php';
                 $result = ww2s();
                 break;
             case 'pollen':
-                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/pollen-to-speach.php';
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/pollen-to-speach.php';
                 $result = p2s();
                 break;
             case 'abfall':
-                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/waste-calendar-to-speech.php';
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/waste-calendar-to-speech.php';
                 $result = muellkalender();
                 break;
             case 'distance':
-                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/time-to-destination-speech.php';
+                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/time-to-destination-speech.php';
                 $result = tt2t();
                 break;
             default:
