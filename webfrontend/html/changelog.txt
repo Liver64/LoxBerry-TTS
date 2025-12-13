@@ -47,4 +47,5 @@
  1.6.2		[Bugfix] Google Cloud korrigiert
 			[Bugfix] Uninstall optimiert (keep CA)
 			[Enhancement] Auto Erkennung Bridge User (per Handshake und Auto-ACL)
+ 1.6.3		[BUGFIX] fixed Piper Installation 
 			
