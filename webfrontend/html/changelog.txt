@@ -65,4 +65,4 @@ Phase 3.1 - Legacy Bridge migration cleanup
  1.6.2		[Bugfix] Google Cloud korrigiert
 			[Bugfix] Uninstall optimiert (keep CA)
  1.6.3		[BUGFIX] fixed Piper Installation 
-			
+ 1.7.0  	[BUGFIX] Bridge Konfiguration disabled, MQTT Connection stabilisert
