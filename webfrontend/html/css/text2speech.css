@@ -1,0 +1,549 @@
+.form {
+  max-width: 200px;
+}
+
+@keyframes marquee {
+  0%   { text-indent: -100%; }
+  100% { text-indent: 100%; }
+}
+
+.marquee {
+  width: 500px;
+  margin: auto;
+  padding: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  animation: marquee 10s linear infinite;
+}
+
+.marquee:hover {
+  animation-play-state: paused;
+}
+
+.sc-val {
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+  padding: 0 .35em;
+  border-radius: .35em;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+
+/* =========================================================
+   Calendar validation
+   ========================================================= */
+
+.textfield.valid {
+  background-color: #f3f4f6;
+  border-color: #2e7d32;
+}
+
+.textfield.invalid {
+  background-color: #fe4746;
+  color: #fff;
+  border-color: #c62828;
+}
+
+.calmsg {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #6b7280;
+}
+
+.calmsg.error {
+  color: #c62828;
+}
+
+.hidden {
+  display: none;
+}
+
+
+/* =========================================================
+   Text2Speech jQuery-Mobile compatibility
+   ========================================================= */
+
+#main_form .tts-engine-selector,
+#main_form .tts-option-selector,
+#main_form .tts-engine-selector .ui-controlgroup-controls,
+#main_form .tts-option-selector .ui-controlgroup-controls {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#main_form .tts-engine-selector .ui-controlgroup-controls,
+#main_form .tts-option-selector .ui-controlgroup-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+}
+
+#main_form .tts-engine-selector .ui-radio,
+#main_form .tts-option-selector .ui-checkbox {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#main_form .tts-engine-selector .ui-btn,
+#main_form .tts-option-selector .ui-btn {
+  margin: 0 !important;
+  border-radius: var(--lb-radius-sm, 8px) !important;
+  box-shadow: none !important;
+}
+
+#main_form .tts-engine-selector .ui-first-child,
+#main_form .tts-engine-selector .ui-last-child,
+#main_form .tts-option-selector .ui-first-child,
+#main_form .tts-option-selector .ui-last-child {
+  border-radius: var(--lb-radius-sm, 8px) !important;
+}
+
+
+/* =========================================================
+   Form actions
+   ========================================================= */
+
+#main_form .tts-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 24px 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+#main_form .tts-form-actions .ui-btn,
+#main_form .tts-form-actions .ui-btn-inline {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  min-width: 120px;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   Slider
+   LB4 + LB3 / jQuery Mobile
+   ========================================================= */
+
+#main_form .tts-slider-field {
+  position: relative;
+  width: 100% !important;
+  min-width: 0;
+  margin-left: 0 !important;
+}
+
+#main_form .tts-slider-main {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr);
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding-left: 0 !important;
+}
+
+#main_form .tts-slider-main > .ui-slider,
+#main_form .tts-slider-main > input[type="range"] {
+  width: 100% !important;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+#main_form .tts-slider-limits {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: 26px;
+  padding: 0 0 0 0 !important;
+  color: var(--lb-text-muted, inherit);
+  font-size: 0.78em;
+  line-height: 1.2;
+}
+
+#main_form .tts-slider-current {
+  position: absolute;
+  top: calc(100% - 33px);
+  z-index: 3;
+  transform: translateX(-50%);
+  min-width: max-content;
+  padding: 0 4px;
+  color: var(--lb-text, inherit);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.9em;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#main_form .tts-volume-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr);
+  align-items: start;
+  gap: 18px;
+  width: 100%;
+}
+
+
+
+/* =========================================================
+   Slider-Hilfseingabe ausblenden
+   LB4 + LB3 / jQuery Mobile
+   ========================================================= */
+
+/* LB4: Range-Hilfsfeld bleibt type="range" */
+#main_form .tts-slider-main input[type="range"].ui-slider-input,
+
+/* LB3/jQM: jQM wandelt es in type="number" + data-type="range" um */
+#main_form .tts-slider-main > .ui-slider > input.ui-slider-input[data-type="range"] {
+  display: none !important;
+}
+
+#main_form .tts-slider-main > .ui-slider {
+  width: 100% !important;
+}
+
+#main_form .tts-slider-main .ui-slider-track {
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+#main_form .tts-slider-main .ui-slider-handle {
+  touch-action: none;
+}
+
+
+
+
+/* =========================================================
+   Gemeinsame Form-Ausrichtung
+   ========================================================= */
+
+#main_form .tts-v4-formtable > tbody > tr > td:nth-child(2),
+#main_form .formtable > tbody > tr > td:nth-child(2) {
+  padding-left: 0 !important;
+}
+
+#main_form .tts-v4-formtable > tbody > tr > td:nth-child(2) > *,
+#main_form .formtable > tbody > tr > td:nth-child(2) > * {
+  margin-left: 0 !important;
+}
+
+#main_form .tts-v4-formtable > tbody > tr > td:nth-child(2) .ui-controlgroup,
+#main_form .tts-v4-formtable > tbody > tr > td:nth-child(2) .ui-select,
+#main_form .tts-v4-formtable > tbody > tr > td:nth-child(2) .ui-input-text,
+#main_form .tts-v4-formtable > tbody > tr > td:nth-child(2) .ui-slider,
+#main_form .formtable > tbody > tr > td:nth-child(2) .ui-controlgroup,
+#main_form .formtable > tbody > tr > td:nth-child(2) .ui-select,
+#main_form .formtable > tbody > tr > td:nth-child(2) .ui-input-text,
+#main_form .formtable > tbody > tr > td:nth-child(2) .ui-slider {
+  margin-left: 0 !important;
+}
+
+#main_form #engine-selector,
+#main_form #t2slang,
+#main_form #voice,
+#main_form #testtext,
+#main_form #mp3store,
+#main_form #file_gong,
+#main_form #cachesize,
+#main_form #out_list,
+#main_form #workdir,
+#main_form #volume {
+  margin-left: 0 !important;
+}
+
+
+/* =========================================================
+   Storage block
+   ========================================================= */
+
+#main_form .colmp3path > td:nth-child(2) > .lb-form-row {
+  position: relative;
+  left: 20px;
+}
+
+
+/* =========================================================
+   Destination fields
+   LB4 + LB3 / jQuery Mobile
+
+   Der äußere Wrapper zeichnet den sichtbaren Rahmen.
+   Das eigentliche Input darf darin keinen zweiten Rahmen haben.
+   ========================================================= */
+
+#main_form #googletown,
+#main_form #googlestreet {
+  box-sizing: border-box;
+}
+
+/* Wrapper bleibt vollständig sichtbar */
+#main_form .ui-input-text:has(> #googletown),
+#main_form .ui-input-text:has(> #googlestreet) {
+  box-sizing: border-box !important;
+  padding: 0 !important;
+}
+
+/* Inneres Input: zweiten Rahmen entfernen */
+#main_form .ui-input-text:has(> #googletown) > #googletown,
+#main_form .ui-input-text:has(> #googlestreet) > #googlestreet {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+
+  box-sizing: border-box !important;
+}
+
+
+/* =========================================================
+   Found devices / sound cards
+   ========================================================= */
+
+#main_form tr > td.foundusb:nth-child(2) {
+  width: 65% !important;
+}
+
+#main_form #workdir {
+  width: 99% !important;
+  max-width: none !important;
+  min-width: 0;
+  box-sizing: border-box;
+
+  /* explizite helle Lesefläche */
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: var(--lb-input-border, var(--lb-border)) !important;
+}
+
+#main_form #workdir,
+#main_form #workdir * {
+  color: #111111 !important;
+}
+
+
+/* =========================================================
+   Beschriftungen / Theme-Farben
+   ========================================================= */
+
+/*
+ * Feldbeschriftungen verwenden die normale Theme-Textfarbe.
+ * jQM-Buttons, Links und Überschriften sind bewusst ausgenommen.
+ */
+#main_form .formtable > tbody > tr > td:first-child:not([colspan]),
+#main_form .formtable label:not(.ui-btn),
+#main_form .lb-form-label,
+#main_form tr.destdet > td:first-child:not([colspan]),
+#main_form tr.caldet > td:first-child:not([colspan]),
+#main_form tr.weatherdet > td:first-child:not([colspan]),
+#main_form .destdet td[style*="text-align: center"]:not([colspan]),
+#main_form .weatherdet td[style*="text-align: center"]:not([colspan]) {
+  color: var(--lb-text) !important;
+}
+
+
+/* Abschnittsüberschriften und Erklärungstexte */
+#main_form .tts-section-heading,
+#main_form .tts-section-heading h3,
+#main_form .tts-section-description,
+#main_form tr.destdet > td[colspan] > h3,
+#main_form tr.destdet > td[colspan] > font,
+#main_form tr.caldet > td[colspan] > h3,
+#main_form tr.caldet > td[colspan] > h3 > a,
+#main_form tr.weatherdet > td[colspan] > h3,
+#main_form tr.weatherdet > td[colspan] > font {
+  color: var(--lb-text) !important;
+}
+
+/* Links innerhalb von Erklärungstexten */
+#main_form tr.destdet > td[colspan] > font a,
+#main_form tr.weatherdet > td[colspan] > font a {
+  color: var(--lb-link, var(--lb-primary)) !important;
+}
+
+
+/* =========================================================
+   Plugin Logmanager
+   ========================================================= */
+
+.tts-logmanager,
+.tts-logmanager summary,
+.tts-logmanager h4,
+.tts-logmanager label,
+.tts-logmanager .lb-table th,
+.tts-logmanager .lb-table td:not(:first-child) {
+  color: var(--lb-text) !important;
+}
+
+
+/* =========================================================
+   Test speech textarea
+   ========================================================= */
+
+#main_form #testtext {
+  color: var(
+    --lb-textarea-text,
+    var(--lb-input-text, var(--lb-text))
+  ) !important;
+
+  caret-color: var(
+    --lb-textarea-text,
+    var(--lb-input-text, var(--lb-text))
+  ) !important;
+}
+
+#main_form #testtext::placeholder {
+  color: var(
+    --lb-input-placeholder,
+    var(--lb-text-muted, var(--lb-text))
+  ) !important;
+
+  opacity: 1;
+}
+
+
+/* =========================================================
+   Wetter / Pollenflug
+   LB4 + LB3 / jQuery Mobile
+   ========================================================= */
+
+/*
+ * Innere Tabelle:
+ *
+ * 1 = Region Dropdown
+ * 2 = alte / leere Abstandszelle
+ * 3 = Stadt / Gemeinde Label
+ * 4 = Stadt / Gemeinde Input
+ */
+
+/* Region */
+#main_form tr.weatherdet > td > table > tbody > tr.weatherdet > td:nth-child(1) {
+  width: 32% !important;
+  padding-right: 8px !important;
+}
+
+/* Leere alte Zwischenzelle beseitigen */
+#main_form tr.weatherdet > td > table > tbody > tr.weatherdet > td:nth-child(2) {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Stadt / Gemeinde Label */
+#main_form tr.weatherdet > td > table > tbody > tr.weatherdet > td:nth-child(3) {
+  width: 155px !important;
+  min-width: 155px !important;
+  padding-left: 0 !important;
+  padding-right: 8px !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+/* Stadt / Gemeinde Eingabezelle */
+#main_form tr.weatherdet > td > table > tbody > tr.weatherdet > td:nth-child(4) {
+  width: auto !important;
+  padding-left: 0 !important;
+  padding-right: 8px !important;
+  text-align: left !important;
+}
+
+/* LB4 */
+#main_form #town {
+  width: 70% !important;
+  max-width: 70% !important;
+  margin-left: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* LB3 / jQuery Mobile Wrapper */
+#main_form .ui-input-text:has(> #town) {
+  width: 70% !important;
+  max-width: 70% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Das Input füllt innerhalb des jQM-Wrappers den Wrapper aus */
+#main_form .ui-input-text:has(> #town) > #town {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+
+/* =========================================================
+   Wetter / Pollenflug – rechte Linkspalte
+   ========================================================= */
+
+/*
+ * Äußere Wetterzeile:
+ *
+ * 1 = Bundesland / Region Label
+ * 2 = innere Tabelle
+ * 3 = Wetter-/Pollenflug-Links
+ */
+
+#main_form tr.weatherdet > td[valign="middle"][style*="font-size: smaller"] {
+  width: 260px !important;
+  min-width: 260px !important;
+  padding-left: 14px !important;
+  padding-right: 8px !important;
+  white-space: normal !important;
+}
+
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+
+@media (max-width: 760px) {
+
+  #main_form .tts-slider-main,
+  #main_form .tts-volume-layout {
+    grid-template-columns: 1fr;
+  }
+
+  #main_form .colmp3path > td:nth-child(2) > .lb-form-row {
+    left: 0;
+  }
+
+  #main_form tr > td.foundusb:nth-child(2) {
+    width: 100% !important;
+  }
+
+  #main_form #workdir {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}

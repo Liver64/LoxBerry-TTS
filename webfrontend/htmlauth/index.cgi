@@ -76,7 +76,6 @@ my $maintemplatefilename	 	= "index.html";
 my $outputfile 					= 'output.cfg';
 my $outputusbfile 				= 'hats.json';
 my $pluginlogfile				= "text2speech.log";
-my $clients_dir 				= '/etc/mosquitto/tts-role/clients/text2sip';
 my $devicefile					= "/tmp/soundcards2.txt";
 my $lbhostname 					= lbhostname();
 my $lbip 						= LoxBerry::System::get_localip();
@@ -237,7 +236,7 @@ $template->param("LBLANG", $lblang);
 $template->param("SELFURL", $ENV{REQUEST_URI});
 $template->param("LBPPLUGINDIR", $lbpplugindir);
 $template->param("LBPTEMPLATEDIR", $lbptemplatedir);
-$template->param("HTTPINTERFACE", "http://$lbip/plugins/$lbpplugindir/interfacedownload");
+$template->param("HTTPINTERFACE", "/plugins/$lbpplugindir/interfacedownload");
 
 LOGDEB "Read main settings from " . $languagefile . " for language: " . $lblang;
 
@@ -261,83 +260,6 @@ if (!-r $lbpconfigdir . "/" . $configfile)
 	mkdir $lbpconfigdir unless -d $lbpconfigdir or &error; 
 	LOGOK "Config directory: " . $lbpconfigdir . " has been created";
 }
-
-# ============================================================
-# Bridge health indicator (Text2Speech)
-# ============================================================
-
-my $health_file = "/dev/shm/text2speech/health.json";
-
-my $interface_status = 0;   # 0=keine Bridge, 1=aktiv, 2=idle
-my ($bridge_text, $bridge_last) = ("", "");
-
-if (-f $health_file) {
-    eval {
-        local $/;
-        open my $fh, '<', $health_file or die $!;
-        my $json = <$fh>;
-        close $fh;
-
-        my $data = decode_json($json);
-        if (ref $data eq 'HASH' && keys %$data) {
-            # Jüngsten Handshake bestimmen
-            my ($latest_key) = sort {
-                $data->{$b}->{timestamp} <=> $data->{$a}->{timestamp}
-            } keys %$data;
-
-            my $entry = $data->{$latest_key};
-            my $ts  = $entry->{timestamp} // 0;
-            my $iso = $entry->{iso_time}  // strftime("%Y-%m-%d %H:%M:%S", localtime($ts));
-
-            if ($ts > 0) {
-                my $age = time() - $ts;
-
-                # Zeitformat: [YYYY-MM-DD] HH:MMh
-                if ($iso =~ /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/) {
-                    $bridge_last = "[$1] $2:$3h";
-                } else {
-                    $bridge_last = strftime("[%Y-%m-%d] %H:%M:%S", localtime($ts));
-                }
-
-                # Statuslogik
-                if    ($age <= 300)    {   # ≤ 5 min
-                    $interface_status = 1;
-                    $bridge_text = $SL{'TEMPLATE.MESSAGE_BRIDGE3'};  # 🟢 aktiv
-                }
-                elsif ($age <= 43200)  {   # ≤ 12 h
-                    $interface_status = 2;
-                    $bridge_text = $SL{'TEMPLATE.MESSAGE_BRIDGE2'};  # 🟡 idle
-                }
-                else {                      # > 12 h
-                    $interface_status = 0;
-                    $bridge_text = $SL{'TEMPLATE.MESSAGE_BRIDGE1'};  # 🔴 getrennt
-                }
-            }
-        }
-    };
-    if ($@) {
-        LOGERR("index.cgi: Error parsing health.json: $@");
-        $interface_status = 0;
-    }
-}
-
-# ------------------------------------------------------------
-# Übergabe an Template (nur wenn health.json sinnvoll war)
-# ------------------------------------------------------------
-if ($bridge_text ne "") {
-    $template->param(
-        INTERFACE   => $interface_status,   # 0/1/2
-        BRIDGE_TEXT => $bridge_text,
-        BRIDGE_LAST => $bridge_last,
-    );
-    LOGDEB("index.cgi: Bridge interface detected (INTERFACE=$interface_status, $bridge_last)");
-} else {
-    $template->param(
-        INTERFACE   => 0,
-    );
-    LOGDEB("index.cgi: No active bridge detected -> INTERFACE=0");
-}
-
 
 ##########################################################################
 # Main program
@@ -939,7 +861,6 @@ sub pids
 	$pids{'mqttgateway'}   = trim(`pgrep mqttgateway.pl`);
 	$pids{'mosquitto'}     = trim(`pgrep mosquitto`);
 	$pids{'mqtt_handler'}  = trim(`pgrep -f mqtt-subscribe.php`);
-	$pids{'mqtt_watchdog'} = trim(`pgrep -f 'mqtt-watchdog.php'`);
 	#LOGDEB "PIDs updated";
 }
 

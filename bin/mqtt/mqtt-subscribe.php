@@ -31,7 +31,6 @@ $log = LBLog::newLog($params);
 
 /* Globales Logging für MQTT-Status (eigenes, optionales Logfile) */
 $enableLogMsg        = true; // true aktiviert zusätzlich $logfile-Ausgaben
-const HANDSHAKE_DEBUG = false; // true aktiviert zusätzlich Loxberry Logging
 
 umask(0002); // Dateien entstehen als 664, Ordner als 775
 
@@ -308,51 +307,9 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
 };
 
 
-/* ============================================================
- * Handshake-Callback (tts-handshake/request/#)
- * ============================================================ */
-$handshakeCb = function (string $topic, string $msg) use ($mqtt) {
-    // Kein zweiter Logger – bestehende Helfer nutzen:
-    logmsg("INFO", "Handshake request on [$topic]: $msg");
-    if (HANDSHAKE_DEBUG) { LOGDEB("mqtt-subscribe.php: Handshake request received on $topic"); }
-
-    $data = json_decode($msg, true);
-    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-        logmsg("ERROR", ['Invalid handshake JSON', json_last_error_msg()]);
-        if (HANDSHAKE_DEBUG) { LOGWARN("mqtt-subscribe.php: Invalid handshake JSON: " . json_last_error_msg()); }
-        return;
-    }
-
-    if (empty($data['client'])) {
-        logmsg("WARNING", "Handshake payload missing 'client'");
-        if (HANDSHAKE_DEBUG) { LOGWARN("mqtt-subscribe.php: Handshake payload missing 'client'"); }
-        return;
-    }
-
-    // Client-Teil für Topic absichern (nur harmlose Zeichen)
-    $client = preg_replace('/[^A-Za-z0-9._-]/', '', (string)$data['client']);
-    $corr   = isset($data['corr']) ? (string)$data['corr'] : (string)time();
-
-    $replyTopic = "tts-handshake/response/$client";
-    $resp = [
-        'status'    => 'ok',
-        'server'    => (gethostname() ?: 'unknown'),
-        'timestamp' => date('c'),
-        'corr'      => $corr,  // reine Payload-Info, Topic bleibt fix
-    ];
-
-    $mqtt->publish($replyTopic, json_encode($resp, JSON_UNESCAPED_UNICODE), 0);
-    logmsg("OK", "Handshake response sent to [$replyTopic] (corr=$corr)");
-    if (HANDSHAKE_DEBUG) { LOGOK("mqtt-subscribe.php: Handshake response sent to $replyTopic (corr=$corr)"); }
-    if (!setInterfaceMarker()) {
-        LOGWARN("mqtt-subscribe.php: setInterfaceMarker() failed after handshake");
-    }
-};
-
-/* Einmalig abonnieren – TTS + Handshake */
+/* Subscribe only to the validated Text2Speech request interface. */
 $mqtt->subscribe([
-    'tts-handshake/request/#' => ['qos'=>0,'function'=>$handshakeCb],
-    $subscribeTopic           => ['qos'=>0,'function'=>$callback],
+    $subscribeTopic => ['qos'=>0,'function'=>$callback],
 ]);
 
 /* Event-Loop + Reconnect-Handling */
@@ -370,8 +327,7 @@ while ($mqtt->proc()) {
             }
             // nach Reconnect Topic neu abonnieren
             $mqtt->subscribe([
-                $subscribeTopic           => ['qos'=>0,'function'=>$callback],
-                'tts-handshake/request/#' => ['qos'=>0,'function'=>$handshakeCb],
+                $subscribeTopic => ['qos'=>0,'function'=>$callback],
             ]);
 
         }
@@ -405,7 +361,7 @@ function setInterfaceMarker(): bool {
     $file = $dir . '/t2s_interface_active.marker';
 
     @mkdir($dir, 0755, true);
-    $ok = @file_put_contents($file, date('c') . " - First handshake or message\n");
+    $ok = @file_put_contents($file, date('c') . " - First validated MQTT message\n");
     return ($ok !== false);
 }
 

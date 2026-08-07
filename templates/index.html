@@ -1,93 +1,4 @@
-
-<style type="text/css">
-
-
-.form {
-  max-width: 200px;
-}
-
-@keyframes marquee {
- 0%   { text-indent: -100% }
- 100% { text-indent: 100% }
-}
-
-.marquee {
- width: 500px;
- margin: auto;
- padding: 2px;
- overflow: hidden;
- white-space: nowrap;
- border: solid 0px #CCCCCC;
- animation: marquee 10s linear infinite;
-}
-
-.marquee:hover {
- animation-play-state: paused;
-}
-
-.sc-val{
-    font: inherit;                 /* same size as text */
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    white-space: nowrap;
-    padding: 0 .35em;
-    border-radius: .35em;
-    background: #f3f4f6;           /* subtle pill */
-    border: 1px solid #e5e7eb;
-  }
-
-# Ab hier für Calendar Validation
-/* nur optik für die zwei felder */
-.textfield.valid {
-  background-color: #f3f4f6;      /* zart grün */
-  border-color:    #2e7d32;
-}
-.textfield.invalid {
-  background-color: #fe4746;      /* zart rot */
-  color: #fff;                 /* Text weiß */
-  border-color:    #c62828;
-}
-
-/* kleine Zeile unter dem Feld */
-.calmsg{
-  margin-top:4px;
-  font-size:12px;
-  line-height:1.35;
-  color:#6b7280;     /* grau für "Prüfe..." */
-}
-.calmsg.error{ color:#c62828; } /* rot bei Fehler */
-.hidden{ display:none; }
-
-.bridge-status {
-  text-align: center;              /* zentriert den kompletten Block */
-  font-size: 0.85em;               /* leicht kleinere Schrift */
-  color: #333;
-  line-height: 1.4em;
-  margin: 10px 0;
-}
-
-.bridge-status .status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 6px;
-  vertical-align: middle;
-  box-shadow: 0 0 2px rgba(0,0,0,0.3);
-}
-
-.bridge-status small {
-  color: #555;
-  font-size: 0.8em;
-}
-
-.green  { background-color: #3cb371; }
-.yellow { background-color: #ffd700; }
-.red    { background-color: #dc143c; }
-.grey   { background-color: #bbb; }
-
-
-
-</style>
+<link rel="stylesheet" href="/plugins/<TMPL_VAR PLUGINDIR>/css/text2speech.css?v=2">
 
 <TMPL_IF FORM>
 <!-- form 'FORM' START -->
@@ -111,13 +22,13 @@
 			&nbsp;
 		</TMPL_LOOP>
 	</TMPL_IF>-->
-<div class="form-group">
-<table class="formtable" border="0" width="100%" cellpadding="10">
+<div class="form-group" style="width:87% !important; max-width:none !important; margin:0 auto !important; padding:0 !important; box-sizing:border-box;">
+<table class="formtable" border="0" width="100%" cellpadding="10" style="width:100% !important; max-width:none !important; margin:0 !important; table-layout:auto;">
 	<tr>
 		<td valign="middle" style="height: 33px; width: 25%; text-align: center;">
 			<h2 class="auto-style3" style="width: 100%"></h2>
 			<td style="height: 33px; text-align: center;">
-			<img id="picture" class='ico_sonos' src='/plugins/<TMPL_VAR PLUGINDIR>/images/t2s.png' border='0' width='186' height='125' align="absmiddle">
+			<!--<img id="picture" class='ico_sonos' src='/plugins/<TMPL_VAR PLUGINDIR>/images/t2s.png' border='0' width='186' height='125' align="absmiddle">-->
 		</td>
 	</tr>
 
@@ -126,8 +37,8 @@
 		<td style="width: 25%; height: 45px;">
 			<label id="ltts_instanz"><TMPL_VAR T2S.TTS_INSTANZ></label>
 		</td>
-		<td style="width: 50%; height: 45px;">
-			<fieldset id="engine-selector" data-role="controlgroup" data-type="horizontal" data-mini="true">
+		<td style="width: 65%; height: 45px;">
+			<fieldset id="engine-selector" class="tts-engine-selector" data-role="controlgroup" data-type="horizontal" data-mini="true">
 				<input type="radio" name="t2s_engine" id="tts_voicerss" value="1001">
 	 			<label for="tts_voicerss">🔊 VoiceRSS</label>
 				<input type="radio" name="t2s_engine" id="tts_elevenlabs" value="3001">
@@ -192,7 +103,7 @@
         <td style="height: 48px; width: 25%">
             <label id="lapikey"><TMPL_VAR T2S.LABEL_API_KEY></label>
         </td>
-        <td style="width: 50%; height: 48px">
+        <td style="width: 65%; height: 48px">
             <input id="apikey" name="apikey" type="text" class="textfield" value="<TMPL_VAR APIKEY>">
 		</td>
         <td style="height: 48px; width: 100px;" class="auto-style4" valign="top">
@@ -209,7 +120,7 @@
 		<td style="width: 25%; height: 48px;">
 			<label id="lseckey"><TMPL_VAR T2S.LABEL_SECRET_KEY></label>
 		</td>
-		<td style="width: 50%; height: 48px;">
+		<td style="width: 65%; height: 48px;">
 			<input id="seckey" name="seckey" type="text" class="textfield" value="<TMPL_VAR SECKEY>">
 		<td style="width: 201px; height: 48px;">
 		</td>
@@ -235,13 +146,13 @@
 		<td style="height: 60px; width: 25%;">
 			<label id="llang"><TMPL_VAR T2S.TTS_LANGUAGE></label>
 		</td>
-		<td width="50%" style="height: 60px">
+		<td width="65%" style="height: 60px">
 			<table border=0 width="100%">
 				<tr>
 					<div data-role="collapsible">
 						<td style="height: 36px; width: 294px; text-align: left;">
 							<fieldset style="width: 286px">
-								<select onclick="FilterVoice()" id="t2slang" name="t2slang" data-mini="true" style="align:left; width: 258px;">
+								<select onclick="FilterVoice()" id="t2slang" name="t2slang" data-mini="true" style="align:left; width: 258px;" >
 								</select>
 							</fieldset>
 						</td>
@@ -275,7 +186,7 @@
 		<td style="height: 60px; width: 15%;">
 			<label id="tt"><TMPL_VAR T2S.LABEL_TEST_PLAYER></label>
 		</td>
-		<td style="width: 50%; height: 48px">
+		<td style="width: 65%; height: 48px">
 			<textarea placeholder="<TMPL_VAR T2S.TEST_PLAYER_PH>" maxlength="500" id="testtext" name="testtext" rows="7" cols="10" style="overflow-y: scroll;"></textarea>
 		</td>
 		<div class="ttsconfig ttsbaseconfig">
@@ -289,11 +200,11 @@
 			<td style="width: 25%">
 				<label id="lmp3store"><TMPL_VAR T2S.LABEL_MP3_FILES></label>
 			</td>
-			<td style="width: 50%">
+			<td style="width: 65%">
 				<table border=0 width="100%">
 			<tr>
 				<td width="19%">
-					<select id="mp3store" name="mp3store" data-mini="true" data-native-menu="false" width="50%">
+					<select id="mp3store" name="mp3store" data-mini="true" data-native-menu="false" width="50%" >
 						<option value="1"><TMPL_VAR T2S.1DAY_MP3_STORE></option>
 						<option value="7"><TMPL_VAR T2S.7DAY_MP3_STORE></option>
 						<option value="30"><TMPL_VAR T2S.30DAY_MP3_STORE></option>
@@ -341,8 +252,17 @@
 	<td style="height: 60px; width: 25%;">
 			<label id="lcachesize"><TMPL_VAR T2S.LABEL_CACHESIZE></label>
 		</td>
-		<td width="50%" style="height: 60px">
-			<input type="range" name="cachesize" id="cachesize" value="<TMPL_VAR MP3.cachesize>" min="100" max="5000" step="100">
+		<td width="65%" style="height: 60px">
+			<div class="tts-slider-field">
+				<div class="tts-slider-main">
+					<input type="range" name="cachesize" id="cachesize" value="<TMPL_VAR MP3.cachesize>" min="100" max="5000" step="100">
+				</div>
+				<output class="tts-slider-current" id="cachesize_current" for="cachesize"><TMPL_VAR MP3.cachesize> MB</output>
+				<div class="tts-slider-limits" aria-hidden="true">
+					<span>100 MB</span>
+					<span>5000 MB</span>
+				</div>
+			</div>
 		</td>
 		<td style="height: 30px; width: 201px;">
 		</td>
@@ -353,7 +273,7 @@
 	<td style="height: 60px; width: 25%;">
 			<label id="llang"><TMPL_VAR T2S.CARD></label>
 		</td>
-		<td width="50%" style="height: 60px">
+		<td width="65%" style="height: 60px">
 			<table border=0 width="100%">
 				<div data-role="collapsible">
 					<tr>
@@ -400,7 +320,7 @@
 	<td class="collapse_usb" style="height: 60px; width: 25%;">
 			<label id="lusb"><TMPL_VAR T2S.USB></label>
 		</td>
-		<td class="collapse_usb" width="50%" style="height: 60px">
+		<td class="collapse_usb" width="65%" style="height: 60px">
 			<table border=0 width="100%">
 			<div data-role="collapsible">
 				<tr>
@@ -419,7 +339,7 @@
 								<label id="lusb"><TMPL_VAR T2S.USB_CARDNO></label>
 							</td>	
 							<td class="collapse_usb" width="19%">
-								<select id="usbcardno" name="usbcardno" data-mini="true" data-native-menu="false" width="20%">
+								<select id="usbcardno" name="usbcardno" data-mini="true" data-native-menu="false" width="20%" >
 									<!--<option value="0">0</option>-->
 									<option selected="selected" value="1">1</option>
 									<option value="2">2</option>
@@ -433,7 +353,7 @@
 								<label id="lusb"><TMPL_VAR T2S.USB_DEVICE></label>
 							</td>	
 							<td class="collapse_usb" width="19%">
-								<select id="usbdeviceno" name="usbdeviceno" data-mini="true" data-native-menu="false" width="20%">
+								<select id="usbdeviceno" name="usbdeviceno" data-mini="true" data-native-menu="false" width="20%" >
 									<option value="0">0</option>
 									<option value="1">1</option>
 									<option value="2">2</option>
@@ -483,32 +403,21 @@
 				data-validation-rule="special:number-min-max-value:0:100">
 			</fieldset>
 		-->
-		<table border=0 width="100%">
-		<tr>
-			<td width="95%"> 
-			<input type="range" name="volume" id="volume" value="<TMPL_VAR TTS.volume>" min="0" max="500" step="10"
-				data-validation-error-msg="<TMPL_VAR ERRORS.ERR_VOLUME>"
-				data-validation-rule="special:number-min-max-value:0:500">
-			</td>
-			<td width="5%">
-			%
-			</td>
-			<td width="10%">
-				<input 
-					type="number"
-					id="jinglevolume"
-					name="jinglevolume"
-					step="0.1"
-					min="0"
-					max="1"
-					value="<TMPL_VAR TTS.jinglevolume>"
-					style="width:60px; text-align:center;"
-					oninput="if(this.value > 1) this.value = 1; if(this.value < 0) this.value = 0;"
-					title="Jingle volume factor (0–1)"
-				>
-			</td>
-		</tr>
-		</table>
+		<div class="tts-volume-layout">
+			<div class="tts-slider-field">
+				<div class="tts-slider-main">
+					<input type="range" name="volume" id="volume" value="<TMPL_VAR TTS.volume>" min="0" max="500" step="10"
+						data-validation-error-msg="<TMPL_VAR ERRORS.ERR_VOLUME>"
+						data-validation-rule="special:number-min-max-value:0:500">
+				</div>
+				<output class="tts-slider-current" id="volume_current" for="volume"><TMPL_VAR TTS.volume> %</output>
+				<div class="tts-slider-limits" aria-hidden="true">
+					<span>0 %</span>
+					<span>500 %</span>
+				</div>
+			</div>
+<input type="hidden" id="jinglevolume" name="jinglevolume" value="<TMPL_VAR TTS.jinglevolume>">
+		</div>
 		</td>
 			<td style="height: 30px; width: 20%;">
 		</td>
@@ -518,23 +427,23 @@
 		
 	<tr>
 		<td colspan=3 valign="middle" style="height: 33px">
-			<hr style="border:solid #bebebe 3px;height:2px; width: 100%;">
+			<hr>
 		</td>
 	</tr>
 		
 	<!-- Options-->
 	<tr>
-		<td colspan=3 style="height: 30px; ">
+		<td colspan=3 class="tts-section-heading" style="height: 30px; ">
 			<h3><TMPL_VAR TEMPLATE.MAIN_LABEL_OPTIONS></h3>
 		</td>
 	</tr>
-	<td style="height: 30px; width: 10%;">
+	<td class="tts-section-description" style="height: 30px; width: 10%;">
 		<TMPL_VAR TEMPLATE.LABEL_OPTIONS>
 	</td>
 	<td colspan=3 valign="middle">
-		<div style="width:36%;">
+		<div style="width:87%; max-width:none;">
 			<!--<div style="display:table; padding:10px; border: 1px solid black; border-radius: 5px; background-color: #6dac20;">-->
-				<fieldset data-role="controlgroup" class="fieldset-green" data-type="horizontal">
+				<fieldset data-role="controlgroup" class="fieldset-green tts-option-selector" data-type="horizontal" style="width:100%; max-width:none;">
 					<input name="Checkbox3" type="checkbox" onclick="WeatherLayout()" id="weather_det" data-icon="check">								
 					<label for="weather_det"><TMPL_VAR WEATHER.LAYOUT_CHECKBOX></label>
 					<input name="Checkbox4" type="checkbox" onclick="DestinationLayout()" id="dest_det" data-icon="check">								
@@ -564,7 +473,7 @@
 			<td style="height: 48px; width: 25%">
 				<label id="lapikey"><TMPL_VAR DESTINATION.LABEL_GOOGLE_API></label>
 			</td>
-			<td style="width: 50%; height: 48px">
+			<td style="width: 65%; height: 48px">
 				<input id="googlekey" name="googlekey" type="text" class="textfield" value="<TMPL_VAR LOCATION.googlekey>">
 			</td>
 			<td style="height: 48px; width: 201px;" class="auto-style4">
@@ -616,7 +525,7 @@
 		<td style="height: 48px; width: 25%">
 			<label id="lwastecal"><TMPL_VAR CALENDAR.WASTE_LABEL></label>
 		</td>
-		<td style="width: 50%; height: 48px">
+		<td style="width: 65%; height: 48px">
 			<input id="wastecal" name="wastecal" type="text" class="textfield" value="<TMPL_VAR VARIOUS.CALDavMuell>">
 		</td>
 		<td style="height: 48px; width: 201px;" class="auto-style4">
@@ -626,7 +535,7 @@
 		<td style="height: 48px; width: 25%">
 			<label id="lcal"><TMPL_VAR CALENDAR.CALENDAR_LABEL></label>
 		</td>
-		<td style="width: 50%; height: 48px">
+		<td style="width: 65%; height: 48px">
 			<input id="cal" name="cal" type="text" class="textfield" value="<TMPL_VAR VARIOUS.CALDav2>">
 		</td>
 		<td style="height: 48px; width: 201px;" class="auto-style4">
@@ -795,11 +704,11 @@
 		<tr class="weatherdet">
 		<td style="height: 56px"><TMPL_VAR WEATHER.REGION>
 		</td>
-		<td style="width: 50%; height: 56px;">
+		<td style="width: 65%; height: 56px;">
 			<table border=0 width="100%">
 				<tr class="weatherdet">
 					<td width="20%" style="height: 30px">
-						<select id="region" name="region" data-mini="true" style="width: 102px" >
+						<select id="region" name="region" data-mini="true" style="width: 102px"  >
 							<option value="baw" <TMPL_VAR REGION1>><TMPL_VAR WEATHER.REGION1></option>
 							<option value="bay" <TMPL_VAR REGION2>><TMPL_VAR WEATHER.REGION2></option>
 							<option value="bbb" <TMPL_VAR REGION3>><TMPL_VAR WEATHER.REGION3></option>
@@ -816,7 +725,7 @@
 						<script>$('#region').val('<TMPL_VAR LOCATION.region>');</script>
 					</td>
 				<td style="height: 30px">		
-			<td width="50%" style="height: 30px; text-align: center;"><TMPL_VAR WEATHER.TOWN></td>
+			<td width="65%" style="height: 30px; text-align: center;"><TMPL_VAR WEATHER.TOWN></td>
 			<td style="height: 30px"><input id="town" name="town" type="text" class="textfield" value="<TMPL_VAR LOCATION.town>"></td>
 		</tr>
 	</table>
@@ -840,30 +749,13 @@
 	
 			<td></td>
 			<td colspan=3>
-				<div id="form-error-message" class="form-error-message"></div>
+				<div id="form-error-message" class="form-error-message" role="alert" aria-live="assertive"></div>
 			</td>
 	
-		<p><p>
-			<center>
-				<a id="btncancel" data-role="button" data-inline="true" data-mini="true" data-icon="delete" href="/admin/index.cgi"><TMPL_VAR SAVE.CANCEL_BUTTON></a>
-				<button type="submit" form="main_form" id="btnsubmit" data-role="button" data-inline="true" data-mini="true" data-icon="check"><TMPL_VAR SAVE.SAVE_BUTTON></button>
-			</center>
-		</p>
-		
-		
-		<TMPL_IF INTERFACE>
-		  <div class="gate" style="display:flex;align-items:center;justify-content:center;font-size:12px;">
-			&nbsp;<span id="handlerstate"></span>&nbsp;|
-			&nbsp;<span id="watchdogstate"></span>&nbsp;
-		  </div>
-
-		  <TMPL_IF BRIDGE_TEXT>
-			<div class="bridge-status">
-			  <span><TMPL_VAR BRIDGE_TEXT></span><br>
-			  <small><TMPL_VAR TEMPLATE.MESSAGE_BRIDGE5> <TMPL_VAR BRIDGE_LAST></small>
-			</div>
-		  </TMPL_IF>
-		</TMPL_IF>
+		<div id="tts-form-actions" class="tts-form-actions">
+			<a id="btncancel" data-role="button" data-inline="true" data-mini="true" data-icon="delete" href="/admin/index.cgi"><TMPL_VAR SAVE.CANCEL_BUTTON></a>
+			<button type="submit" form="main_form" id="btnsubmit" data-role="button" data-inline="true" data-mini="true" data-icon="check"><TMPL_VAR SAVE.SAVE_BUTTON></button>
+		</div>
 
 
 
@@ -1250,11 +1142,6 @@ function update_pids() {
 			$("#handlerstate").attr("style", "color:green").html("MQTT Handler running (PID"+resp.pids.mqtt_handler+")");
 		} else {
 			$("#handlerstate").attr("style", "color:red").html("MQTT Handler not running");
-		}
-		if(resp.pids.mqtt_watchdog != null) {
-			$("#watchdogstate").attr("style", "color:green").html("Watchdog running (PID"+resp.pids.mqtt_watchdog+")");
-		} else {
-			$("#watchdogstate").attr("style", "color:red").html("Watchdog not running");
 		}
 		if(resp.pids.mqttgateway != null) {
 			$("#mqttgateway").attr("style", "color:green").html("MQTT Gateway running (PID"+resp.pids.mqttgateway+")");
@@ -1945,6 +1832,64 @@ async function validateTTSForm(e, state) {
 //************************ Prepare Document ready ********************************/
 
 $(document).ready(function() {
+    function updateSliderCurrent(sliderId, suffix) {
+        var slider = document.getElementById(sliderId);
+        var output = document.getElementById(sliderId + "_current");
+        if (!slider || !output) return;
+
+        output.value = slider.value + suffix;
+        output.textContent = slider.value + suffix;
+
+        var field = slider.closest(".tts-slider-field");
+        var track = field ? field.querySelector(".ui-slider-track") : null;
+        var handle = field ? field.querySelector(".ui-slider-handle") : null;
+
+        if (field && track && handle) {
+            var fieldRect = field.getBoundingClientRect();
+            var handleRect = handle.getBoundingClientRect();
+            var center = handleRect.left + (handleRect.width / 2) - fieldRect.left;
+            output.style.left = center + "px";
+        } else {
+            var min = Number(slider.min || 0);
+            var max = Number(slider.max || 100);
+            var value = Number(slider.value || min);
+            var percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+            output.style.left = percent + "%";
+        }
+    }
+
+    var sliderValueFrame = 0;
+
+    function refreshSliderCurrentValues() {
+        if (sliderValueFrame) {
+            window.cancelAnimationFrame(sliderValueFrame);
+        }
+
+        sliderValueFrame = window.requestAnimationFrame(function() {
+            updateSliderCurrent("cachesize", " MB");
+            updateSliderCurrent("volume", " %");
+            sliderValueFrame = 0;
+        });
+    }
+
+    $("#cachesize, #volume").on(
+        "input change slide slidestart slidestop vmousemove touchmove mousemove",
+        refreshSliderCurrentValues
+    );
+
+    $(document).on(
+        "input change slide slidestart slidestop vmousemove touchmove mousemove",
+        "#cachesize, #volume, .tts-slider-field .ui-slider-handle",
+        refreshSliderCurrentValues
+    );
+
+    $(window).on("resize orientationchange", refreshSliderCurrentValues);
+
+    refreshSliderCurrentValues();
+    window.setTimeout(refreshSliderCurrentValues, 0);
+    window.setTimeout(refreshSliderCurrentValues, 100);
+    window.setTimeout(refreshSliderCurrentValues, 300);
+
     SoundDevices();
     $('#engine-selector input').change(FieldControl);
 
@@ -2035,7 +1980,7 @@ $(document).ready(function() {
 
 <TMPL_IF WIZARD>
 <p>Test Text-to-speech</p>
-<textarea id="testbox"></textarea>
+<textarea id="testbox" ></textarea>
 <div>
 	<div style="float: left; width: 50%; padding:5px;">
 	<button id="testbox_submit">Talk!</button>
@@ -2080,7 +2025,9 @@ $("#testbox_submit").click(function(){
 
 <TMPL_IF LOGFILES>
 <!-- form 'LOGFILES' START -->
-	<TMPL_VAR LOGLIST_HTML>
+	<div class="tts-logmanager">
+		<TMPL_VAR LOGLIST_HTML>
+	</div>
 <!-- form 'LOGFILES' END -->
 </TMPL_IF LOGFILES>
 

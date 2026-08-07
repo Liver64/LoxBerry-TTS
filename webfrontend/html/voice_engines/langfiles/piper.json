@@ -1,22 +1,26 @@
 [
     {
+        "country": "United States",
+        "value": "en_US"
+    },
+    {
         "country": "Spain",
         "value": "es_ES"
-    },
-    {
-        "country": "Great Britain",
-        "value": "en_GB"
-    },
-    {
-        "country": "Germany",
-        "value": "de_DE"
     },
     {
         "country": "France",
         "value": "fr_FR"
     },
     {
-        "country": "United States",
-        "value": "en_US"
+        "country": "Italy",
+        "value": "it_IT"
+    },
+    {
+        "country": "Germany",
+        "value": "de_DE"
+    },
+    {
+        "country": "Great Britain",
+        "value": "en_GB"
     }
 ]

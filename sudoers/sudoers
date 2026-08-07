@@ -1,12 +1,3 @@
-# LoxBerry Text2Speech marker permissions
-loxberry ALL=(root) NOPASSWD: /bin/mkdir -p /dev/shm/text2speech
-loxberry ALL=(root) NOPASSWD: /usr/bin/touch /dev/shm/text2speech/t2s_interface_active.marker
-loxberry ALL=(root) NOPASSWD: /bin/chown loxberry /dev/shm/text2speech/t2s_interface_active.marker
-loxberry ALL=(root) NOPASSWD: /bin/chgrp loxberry /dev/shm/text2speech/t2s_interface_active.marker
-loxberry ALL=(root) NOPASSWD: /usr/bin/tee -a /etc/mosquitto/tts-aclfile
-loxberry ALL=(root) NOPASSWD: /bin/cp /etc/mosquitto/tts-aclfile
-loxberry ALL=(root) NOPASSWD: /bin/chmod /etc/mosquitto/tts-aclfile
-loxberry ALL=(root) NOPASSWD: /usr/bin/systemctl reload mosquitto
+# LoxBerry Text2Speech MQTT subscriber service
 loxberry ALL=(root) NOPASSWD: /bin/systemctl restart mqtt-service-tts
-
-
+loxberry ALL=(root) NOPASSWD: /bin/systemctl restart mqtt-service-tts.service

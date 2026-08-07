@@ -1,18 +1,13 @@
 [
    {
+      "filename" : "en_US-danny-low.onnx",
+      "language" : "en_US",
+      "name" : "danny"
+   },
+   {
       "filename" : "es_ES-davefx-medium.onnx",
       "language" : "es_ES",
       "name" : "davefx"
-   },
-   {
-      "filename" : "en_GB-cori-medium.onnx",
-      "language" : "en_GB",
-      "name" : "cori"
-   },
-   {
-      "filename" : "de_DE-thorsten-low.onnx",
-      "language" : "de_DE",
-      "name" : "thorsten"
    },
    {
       "filename" : "fr_FR-gilles-low.onnx",
@@ -20,8 +15,18 @@
       "name" : "gilles"
    },
    {
-      "filename" : "en_US-danny-low.onnx",
-      "language" : "en_US",
-      "name" : "danny"
+      "filename" : "it_IT-paola-medium.onnx",
+      "language" : "it_IT",
+      "name" : "paola"
+   },
+   {
+      "filename" : "de_DE-thorsten-low.onnx",
+      "language" : "de_DE",
+      "name" : "thorsten"
+   },
+   {
+      "filename" : "en_GB-cori-medium.onnx",
+      "language" : "en_GB",
+      "name" : "cori"
    }
 ]
