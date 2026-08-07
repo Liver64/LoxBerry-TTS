@@ -501,6 +501,62 @@
   max-width: 100% !important;
 }
 
+/* =========================================================
+   Wetter / Region Dropdown
+   LB4 + LB3 / jQuery Mobile
+   ========================================================= */
+
+/* Select und jQM-Wrapper nutzen dieselbe komplette Breite */
+#main_form tr.weatherdet #region,
+#main_form tr.weatherdet .ui-select:has(> #region) {
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+}
+
+/* Sichtbarer jQM-Button */
+#main_form #region-button {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+
+    background: var(--lb-input-bg, #ffffff) !important;
+    background-color: var(--lb-input-bg, #ffffff) !important;
+    background-image: none !important;
+
+    color: var(--lb-input-text, var(--lb-text, #111111)) !important;
+    text-shadow: none !important;
+}
+
+#main_form #region-button:hover,
+#main_form #region-button:focus,
+#main_form #region-button:active {
+    background: var(--lb-input-bg, #ffffff) !important;
+    background-color: var(--lb-input-bg, #ffffff) !important;
+    background-image: none !important;
+
+    color: var(--lb-input-text, var(--lb-text, #111111)) !important;
+}
+
+/* Das unsichtbare echte Select muss über der KOMPLETTEN
+   sichtbaren Fläche liegen – nicht nur über der linken Hälfte */
+#main_form tr.weatherdet .ui-select:has(> #region) > select#region {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  opacity: 0 !important;
+  cursor: pointer !important;
+}
+
 
 /* =========================================================
    Wetter / Pollenflug – rechte Linkspalte
