@@ -2,11 +2,11 @@
 <?php
 /* mqtt-subscribe.php – TTS Handler (ohne MQTT-Config Responder) */
 
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_system.php";
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_io.php";
-require_once "REPLACELBHOMEDIR/libs/phplib/loxberry_log.php";
-require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php";
-require_once "REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_system.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_io.php";
+require_once "/opt/loxberry/libs/phplib/loxberry_log.php";
+require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/helper.php";
+require_once "/opt/loxberry/webfrontend/html/plugins/text2speech/bin/phpmqtt/phpMQTT.php";
 
 use Bluerhinos\phpMQTT;
 
@@ -17,13 +17,13 @@ error_reporting(E_ALL);
 /* =======================
  * Grundkonfiguration
  * ======================= */
-$logfile       = "REPLACELBHOMEDIR/log/plugins/text2speech/mqtt.log";
+$logfile       = "/opt/loxberry/log/plugins/text2speech/mqtt.log";
 $responseTopic = 'tts-subscribe';   // Rückkanal: Handler-Antworten (Default)
 
 /* LoxBerry Logging (Datei für allgemeine Interface-Logs) */
 $params = [
     "name"    => "TTS-Interface",
-    "filename"=> "REPLACELBHOMEDIR/log/plugins/text2speech/interface.log",
+    "filename"=> "/opt/loxberry/log/plugins/text2speech/interface.log",
     "append"  => 1,
     "addtime" => 1,
 ];
@@ -138,7 +138,7 @@ $expectedSchema = [
         // optional, nur validieren:
         "client"   => ["type" => "string"],
         "instance" => ["type" => "string"],
-        "corr"     => ["type" => "string"],   // weiterhin erlaubt, aber nicht mehr genutzt
+        "corr"     => ["type" => "string"],   // Correlation-ID des Requests; wird in der Antwort gespiegelt
         "reply_to" => ["type" => "string"],   // Payload kann es weiterhin setzen
 
         // Funktionsfeld
@@ -184,6 +184,22 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
         }
     });
 
+    // Antwortziel und Correlation-ID so früh wie möglich aus dem Request ableiten.
+    // Damit gehen auch Validierungsfehler an den anfragenden Client zurück.
+    $requestResponseTopic = $responseTopic;
+    if (!empty($data['reply_to']) && is_string($data['reply_to'])) {
+        $requestResponseTopic = $data['reply_to'];
+    } elseif (!empty($data['client']) && is_string($data['client'])) {
+        $requestClient = preg_replace('/[^A-Za-z0-9._-]/', '', $data['client']);
+        if ($requestClient !== '') {
+            $requestResponseTopic = "tts-subscribe/$requestClient";
+        }
+    }
+
+    $corr = (isset($data['corr']) && is_string($data['corr']))
+        ? trim($data['corr'])
+        : '';
+
     // Ungültige Keys prüfen
     $allowedKeys = array_keys($expectedSchema['properties']);
     $inputKeys   = array_keys($data);
@@ -191,10 +207,10 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
     if (!empty($invalidKeys)) {
         logmsg("ERROR", ['Invalid keys', $invalidKeys]);
         LOGERR("mqtt-subscribe.php: Invalid keys in JSON: " . implode(',', $invalidKeys));
-        return sendMqtt($mqtt, $responseTopic, "Invalid keys in JSON", [
+        return sendMqtt($mqtt, $requestResponseTopic, "Invalid keys in JSON", [
             'invalid_keys' => array_values($invalidKeys),
             'original'     => $data
-        ]);
+        ], $corr);
     }
 
     // === Neue Regel: text ODER function ist Pflicht ===
@@ -207,10 +223,10 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
     if (!$hasText && !$hasFunction) {
         logmsg("ERROR", ['Invalid or incomplete JSON', 'missing' => ['text or function']]);
         LOGERR("mqtt-subscribe.php: Missing mandatory field: text or function");
-        return sendMqtt($mqtt, $responseTopic, "Missing mandatory field: text or function", [
+        return sendMqtt($mqtt, $requestResponseTopic, "Missing mandatory field: text or function", [
             'missing'  => ['text or function'],
             'original' => $data
-        ]);
+        ], $corr);
     }
 
     // Wenn function leer ist, aber existiert → ignorieren (wie nicht vorhanden)
@@ -230,10 +246,10 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
     if (!empty($invalid)) {
         logmsg("ERROR", ['Invalid types', 'invalid'=>$invalid]);
         LOGERR("mqtt-subscribe.php: Invalid types: " . json_encode($invalid));
-        return sendMqtt($mqtt, $responseTopic, "Invalid types", [
+        return sendMqtt($mqtt, $requestResponseTopic, "Invalid types", [
             'invalid'=>$invalid,
             'original'=>$data
-        ]);
+        ], $corr);
     }
 
     if (!setInterfaceMarker()) {
@@ -248,41 +264,41 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
         if (!in_array($func, $validFunctions, true)) {
             logmsg("ERROR", ['Invalid function value', $func]);
             LOGERR("mqtt-subscribe.php: Invalid function value: $func");
-            return sendMqtt($mqtt, $responseTopic, "Invalid function value", [
+            return sendMqtt($mqtt, $requestResponseTopic, "Invalid function value", [
                 'invalid_function' => $func,
                 'allowed'          => $validFunctions
-            ]);
+            ], $corr);
         }
 
         $result = false;
-        require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/bin/helper.php';
+        require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/bin/helper.php';
         switch ($func) {
             case 'weather':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/weather-to-speech.php';
                 $result = w2s();
                 break;
             case 'clock':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/clock-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/clock-to-speech.php';
                 $result = c2s();
                 break;
             case 'warning':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/weather-warning-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/weather-warning-to-speech.php';
                 $result = ww2s();
                 break;
             case 'pollen':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/pollen-to-speach.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/pollen-to-speach.php';
                 $result = p2s();
                 break;
             case 'abfall':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/waste-calendar-to-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/waste-calendar-to-speech.php';
                 $result = muellkalender();
                 break;
             case 'distance':
-                require_once 'REPLACELBHOMEDIR/webfrontend/html/plugins/text2speech/addon/time-to-destination-speech.php';
+                require_once '/opt/loxberry/webfrontend/html/plugins/text2speech/addon/time-to-destination-speech.php';
                 $result = tt2t();
                 break;
             default:
-                return sendMqtt($mqtt, $responseTopic, "Unknown function: $func");
+                return sendMqtt($mqtt, $requestResponseTopic, "Unknown function: $func", [], $corr);
         }
 
         if (is_string($result) && trim($result) !== '') {
@@ -296,7 +312,7 @@ $callback = function (string $topic, string $msg) use ($mqtt, $responseTopic, $e
         } else {
             logmsg("ERROR", "Function '$func' returned empty or invalid text.");
             LOGERR("mqtt-subscribe.php: Function '$func' returned empty or invalid text.");
-            return sendMqtt($mqtt, $responseTopic, "Function '$func' returned empty or invalid text");
+            return sendMqtt($mqtt, $requestResponseTopic, "Function '$func' returned empty or invalid text", [], $corr);
         }
     }
 
@@ -384,6 +400,10 @@ function createMessage(array $data) {
         $responseTopic = "tts-subscribe/$client";
     }
 
+    $corr = (isset($data['corr']) && is_string($data['corr']))
+        ? trim($data['corr'])
+        : '';
+
     // Pfade/Parameter
     $mp3path     = rtrim($config['SYSTEM']['ttspath'], '/');
     $t2s_param   = GetTTSParameter($config, $data);
@@ -394,11 +414,11 @@ function createMessage(array $data) {
 
     if (!file_exists($mp3path)) {
         LOGERR("mqtt-subscribe.php: TTS directory not found: $mp3path");
-        return sendMqtt($mqtt, $responseTopic, "Directory not found: $mp3path");
+        return sendMqtt($mqtt, $responseTopic, "Directory not found: $mp3path", [], $corr);
     }
     if (!is_writable($mp3path)) {
         LOGERR("mqtt-subscribe.php: TTS directory not writable: $mp3path");
-        return sendMqtt($mqtt, $responseTopic, "Directory not writable: $mp3path");
+        return sendMqtt($mqtt, $responseTopic, "Directory not writable: $mp3path", [], $corr);
     }
 
     // Engine wählen
@@ -486,12 +506,17 @@ function createMessage(array $data) {
                 'httpmp3interface'  => $httpmp3iface,
             ],
 
-            // Original-Felder zurückspiegeln (ohne corr / reply_to)
+            // Original-Felder zurückspiegeln (reply_to bleibt Transport-Metadatum)
             'original'          => [
                 'client'   => isset($data['client'])   ? (string)$data['client']   : null,
                 'instance' => isset($data['instance']) ? (string)$data['instance'] : null,
             ],
         ];
+
+        // Correlation-ID 1:1 zurückspiegeln, damit der Sender nur seine Antwort akzeptiert.
+        if ($corr !== '') {
+            $finalResponse['corr'] = $corr;
+        }
 
         if (!empty($data['mp3files']) && (int)$data['mp3files'] === 1) {
             $finalResponse['mp3files'] = getAudioFiles();
@@ -504,13 +529,13 @@ function createMessage(array $data) {
         LOGOK("mqtt-subscribe.php: OK response sent on Topic: [$responseTopic]");
     } else {
         LOGERR("mqtt-subscribe.php: MP3 could not be created");
-        return sendMqtt($mqtt, $responseTopic, "MP3 could not be created");
+        return sendMqtt($mqtt, $responseTopic, "MP3 could not be created", [], $corr);
     }
 }
 
 
 /* Zentrale MQTT-Error-Response */
-function sendMqtt($mqtt, string $topic, string $message, array $details = []) {
+function sendMqtt($mqtt, string $topic, string $message, array $details = [], ?string $corr = null) {
     global $logArray;
 
     $logArray = []; // Reset vor Versand
@@ -521,6 +546,10 @@ function sendMqtt($mqtt, string $topic, string $message, array $details = []) {
         'logs'      => $logArray,
         'timestamp' => date('c'),
     ];
+
+    if ($corr !== null && trim($corr) !== '') {
+        $response['corr'] = trim($corr);
+    }
 
     array_walk_recursive($response, function (&$item) {
         if (is_string($item)) {
