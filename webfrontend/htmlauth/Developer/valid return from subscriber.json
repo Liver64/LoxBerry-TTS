@@ -1,0 +1,38 @@
+{
+    "status": "done",
+    "message": "MP3 file created successfully.",
+    "file": "58439455ca9189d392a8f819be70ef5d.mp3",
+    "httpinterface": "http://<IP-ADRESS OF TEXT2SPEECH PLUGIN>/plugins/text2speech/interfacedownload",
+    "httpmp3interface": "http://<HOSTNAME OF TEXT2SPEECH PLUGIN>/plugindata/text2speech/mp3",
+    "cifsinterface": "//<HOSTNAME OF TEXT2SPEECH PLUGIN>/plugindata/text2speech/interfacedownload",
+    "ttspath": "/opt/loxberry/data/plugins/text2speech/tts",
+    "mp3path": "/opt/loxberry/data/plugins/text2speech/mp3",
+    "cifsmp3interface": "//loxberry/plugindata/text2speech/mp3",
+    "timestamp": "17:32:10",
+    "corr": "1761755529",
+    "interfaces": {
+        "httpinterface": "http://<IP-ADRESS OF TEXT2SPEECH PLUGIN>/plugins/text2speech/interfacedownload",
+        "httpmp3interface": "http://<HOSTNAME OF TEXT2SPEECH PLUGIN>/plugindata/text2speech/mp3"
+    },
+    "original": {
+        "corr": "1761755529",
+        "reply_to": "tts-subscribe/text2sip/1761755529",
+        "client": "text2sip",
+        "instance": null
+    },
+    "mp3files": [
+        "100_Tuerklingel 3x.mp3",
+        "17_schulglocke_2x.mp3",
+        "18_schulglocke_3x.mp3",
+        "1_Alarmsirene.mp3",
+        "2_Airport_gong.mp3",
+        "3_Ding-noise.mp3",
+        "4_Old-fashioned-doorbell.mp3"
+    ],
+    "logs": [
+        "<INFO> Payload received from [tts-publish/text2sip/1761755529]: {\"corr\":\"1761755529\",\"client\":\"text2sip\",\"nocache\":1,\"mp3files\":1,\"logging\":1,\"text\":\"hallo, Dies ist ein erneuter Testanruf für Nele\",\"reply_to\":\"tts-subscribe/text2sip/1761755529\"}",
+        "<OK> Valid JSON received. Processing TTS request...",
+        "<INFO> nocache=1 -> re-create MP3: /opt/loxberry/data/plugins/text2speech/tts/58439455ca9189d392a8f819be70ef5d.mp3",
+        "<OK> MP3 file re-created successfully.: 58439455ca9189d392a8f819be70ef5d.mp3"
+    ]
+}

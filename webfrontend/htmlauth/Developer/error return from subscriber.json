@@ -1,0 +1,20 @@
+{
+    "status": "error",
+    "message": "Invalid keys in JSON",
+    "details": {
+        "invalid_keys": [
+            "nocach"		# simulated need to be "nocache"
+        ],
+        "original": {
+            "nocach": 1,
+            "corr": "1761756727",
+            "reply_to": "tts-subscribe\/text2sip\/1761756727",
+            "logging": 1,
+            "client": "text2sip",
+            "text": "hello, this is a test messsage",
+            "mp3files": 1
+        }
+    },
+    "logs": [],
+    "timestamp": "2025-10-29T17:52:07+01:00"
+}
